@@ -136,6 +136,7 @@ vigia/
 
 - **[Gestión de Credenciales](docs/CREDENTIALS_MANAGEMENT.md)**
 - **[Deployment en Render](docs/RENDER_DEPLOYMENT.md)**
+- **[Deployment con Render CLI](docs/RENDER_CLI_DEPLOYMENT.md)**
 - **[Guía de configuración de Slack](docs/guides/slack_setup.md)**
 - **[Redis Setup Guide](docs/REDIS_SETUP.md)**
 - **[Redis Phase 2 Documentation](docs/REDIS_PHASE2_DOCS.md)**

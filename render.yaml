@@ -67,7 +67,7 @@ services:
     name: vigia-worker
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -c "import time; print('Worker ready for webhook processing'); time.sleep(86400)"
+    startCommand: python -c "print('Worker started'); import time; while True: time.sleep(3600)"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

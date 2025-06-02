@@ -5,13 +5,20 @@ Provides input validation, sanitization, and security checks
 
 import re
 import os
-import magic
 import hashlib
 import logging
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, List
 from PIL import Image
 import numpy as np
+
+# Try to import magic, fallback if not available
+try:
+    import magic
+    HAS_MAGIC = True
+except ImportError:
+    HAS_MAGIC = False
+    magic = None
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +64,11 @@ class SecurityValidator:
     
     def __init__(self):
         """Initialize security validator"""
-        self.mime = magic.Magic(mime=True)
+        if HAS_MAGIC:
+            self.mime = magic.Magic(mime=True)
+        else:
+            self.mime = None
+            logger.warning("python-magic not available, MIME type validation disabled")
     
     def validate_image(self, 
                       file_path: str, 
@@ -88,10 +99,13 @@ class SecurityValidator:
             if path.suffix.lower() not in ALLOWED_IMAGE_EXTENSIONS:
                 return False, f"Invalid extension: {path.suffix}"
             
-            # Check MIME type
-            mime_type = self.mime.from_file(str(path))
-            if mime_type not in ALLOWED_MIME_TYPES:
-                return False, f"Invalid MIME type: {mime_type}"
+            # Check MIME type (if magic is available)
+            if self.mime:
+                mime_type = self.mime.from_file(str(path))
+                if mime_type not in ALLOWED_MIME_TYPES:
+                    return False, f"Invalid MIME type: {mime_type}"
+            else:
+                logger.debug("Skipping MIME type validation (python-magic not available)")
             
             # Try to open with PIL to verify it's a valid image
             try:

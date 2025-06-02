@@ -9,6 +9,9 @@ python-dotenv==1.0.1
 pydantic==2.7.0
 pydantic-settings==2.2.1
 
+# Security
+python-magic==0.4.27
+
 # Deep Learning - YOLOv5
 torch==2.3.0
 torchvision==0.18.0

@@ -6,10 +6,6 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python render_whatsapp.py
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: PORT
-        value: "5000"
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
@@ -22,15 +18,6 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: vigia-redis
-          property: connectionString
-      - key: RATE_LIMIT_ENABLED
-        value: "true"
-      - key: RATE_LIMIT_PER_MINUTE
-        value: "30"
 
   # Webhook API Service
   - type: web
@@ -39,50 +26,11 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python render_webhook.py
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
       - key: WEBHOOK_SECRET
         generateValue: true
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: vigia-redis
-          property: connectionString
-
-  # Redis Cache
-  - type: redis
-    name: vigia-redis
-    plan: starter # 25MB free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: [] # Allow connections from Render services only
-
-  # Background Worker (for image processing)
-  - type: worker
-    name: vigia-worker
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -c "print('Worker started'); import time; while True: time.sleep(3600)"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: vigia-redis
-          property: connectionString
-      - key: WEBHOOK_ENABLED
-        value: "true"
-      - key: WEBHOOK_URL
-        value: https://vigia-webhook.onrender.com

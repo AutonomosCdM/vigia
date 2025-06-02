@@ -1,5 +1,7 @@
 # Vigía - Sistema de Detección Temprana de Lesiones Por Presión
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AutonomosCdM/vigia)
+
 Sistema inteligente para la detección y prevención de lesiones por presión en pacientes hospitalizados, utilizando visión computacional y comunicación multicanal.
 
 ## 🏥 Características Principales

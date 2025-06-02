@@ -1,0 +1,90 @@
+services:
+  # WhatsApp Bot Service
+  - type: web
+    name: vigia-whatsapp
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python render_whatsapp.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 5000
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: vigia-redis
+          property: connectionString
+      - key: RATE_LIMIT_ENABLED
+        value: true
+      - key: RATE_LIMIT_PER_MINUTE
+        value: 30
+
+  # Webhook API Service
+  - type: web
+    name: vigia-webhook
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python render_webhook.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: vigia-redis
+          property: connectionString
+
+  # Redis Cache
+  - type: redis
+    name: vigia-redis
+    plan: starter # 25MB free
+    maxmemoryPolicy: allkeys-lru
+
+  # Background Worker (for image processing)
+  - type: worker
+    name: vigia-worker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m vigia_detect.cli.process_images_refactored --watch
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: vigia-redis
+          property: connectionString
+      - key: WEBHOOK_ENABLED
+        value: true
+      - key: WEBHOOK_URL
+        fromService:
+          type: web
+          name: vigia-webhook
+          property: url

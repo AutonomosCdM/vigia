@@ -9,7 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: PORT
-        value: 5000
+        value: "5000"
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
@@ -28,9 +28,9 @@ services:
           name: vigia-redis
           property: connectionString
       - key: RATE_LIMIT_ENABLED
-        value: true
+        value: "true"
       - key: RATE_LIMIT_PER_MINUTE
-        value: 30
+        value: "30"
 
   # Webhook API Service
   - type: web
@@ -60,6 +60,7 @@ services:
     name: vigia-redis
     plan: starter # 25MB free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: [] # Allow connections from Render services only
 
   # Background Worker (for image processing)
   - type: worker
@@ -82,9 +83,6 @@ services:
           name: vigia-redis
           property: connectionString
       - key: WEBHOOK_ENABLED
-        value: true
+        value: "true"
       - key: WEBHOOK_URL
-        fromService:
-          type: web
-          name: vigia-webhook
-          property: url
+        value: https://vigia-webhook.onrender.com

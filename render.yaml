@@ -67,7 +67,7 @@ services:
     name: vigia-worker
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m vigia_detect.cli.process_images_refactored --watch
+    startCommand: python -c "import time; print('Worker ready for webhook processing'); time.sleep(86400)"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

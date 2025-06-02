@@ -16,13 +16,22 @@ Sistema inteligente para la detección y prevención de lesiones por presión en
 
 ## 🚀 Inicio Rápido
 
+### Configuración de Credenciales (Primera vez)
+
+```bash
+# Configurar credenciales de forma segura
+python scripts/setup_credentials.py
+# Selecciona opción 1 y configura: Twilio, Anthropic, Supabase
+
+# Cargar credenciales en tu sesión
+source scripts/quick_env_setup.sh
+```
+
+### Desarrollo Local
+
 ```bash
 # Instalar dependencias
 pip install -r vigia_detect/requirements.txt
-
-# Configurar variables de entorno
-cp config/.env.example .env
-# Editar .env con tus credenciales
 
 # Configurar Redis (opcional - modo mock disponible)
 brew install redis-stack  # macOS
@@ -125,6 +134,8 @@ vigia/
 
 ## 📚 Documentación
 
+- **[Gestión de Credenciales](docs/CREDENTIALS_MANAGEMENT.md)**
+- **[Deployment en Render](docs/RENDER_DEPLOYMENT.md)**
 - **[Guía de configuración de Slack](docs/guides/slack_setup.md)**
 - **[Redis Setup Guide](docs/REDIS_SETUP.md)**
 - **[Redis Phase 2 Documentation](docs/REDIS_PHASE2_DOCS.md)**

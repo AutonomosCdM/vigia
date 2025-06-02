@@ -1,0 +1,126 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dev-debug.log
+
+# Node
+node_modules/
+
+# Project specific
+data/input/*
+data/output/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+*.pt
+*.pth
+*.onnx
+*.jpg
+*.jpeg
+*.png
+*.mp4
+*.avi
+!docs/images/*
+temp/
+tmp/
+
+# Backup files
+backup/
+*.bak
+*.old
+
+# Database
+*.db
+*.sql
+dump.sql
+
+# Secrets
+.env.local
+.env.production
+credentials/
+secrets/
+
+# Model files
+models/
+*.h5
+*.pkl
+*.joblib
+
+# VCR cassettes for tests
+vcr_cassettes/
+*.yaml
+
+# Tasks
+tasks.json
+tasks/ 
+# Environment files with secrets
+.env
+.env.local
+.env.production
+.mcp.json

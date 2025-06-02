@@ -1,0 +1,163 @@
+# Security Alert Rules for Prometheus
+
+groups:
+  - name: vigia_security
+    interval: 30s
+    rules:
+      # High Error Rate Alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) /
+            sum(rate(http_requests_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+      
+      # Authentication Failures
+      - alert: HighAuthFailureRate
+        expr: |
+          sum(rate(auth_failures_total[5m])) > 10
+        for: 2m
+        labels:
+          severity: critical
+          service: vigia
+          security: true
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} auth failures per second detected"
+      
+      # Suspicious Request Patterns
+      - alert: SuspiciousRequestPattern
+        expr: |
+          sum(rate(http_requests_total{path=~".*(\\.\\.|%2e%2e|passwd|etc|admin).*"}[5m])) > 5
+        for: 1m
+        labels:
+          severity: critical
+          service: vigia
+          security: true
+        annotations:
+          summary: "Suspicious request patterns detected"
+          description: "Potential path traversal or scanning attempts"
+      
+      # Large Payload Uploads
+      - alert: LargePayloadUploads
+        expr: |
+          http_request_size_bytes{quantile="0.99"} > 52428800
+        for: 1m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "Large payload detected"
+          description: "Request size exceeds 50MB threshold"
+      
+      # Rate Limiting Triggered
+      - alert: RateLimitingActive
+        expr: |
+          sum(rate(rate_limit_exceeded_total[5m])) > 100
+        for: 2m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "Rate limiting is actively blocking requests"
+          description: "{{ $value }} requests per second being rate limited"
+      
+      # Unusual Geographic Access
+      - alert: UnusualGeographicAccess
+        expr: |
+          count(count by (country) (http_requests_total)) > 20
+        for: 10m
+        labels:
+          severity: info
+          service: vigia
+        annotations:
+          summary: "Access from unusual number of countries"
+          description: "Requests from {{ $value }} different countries"
+      
+      # Memory Usage Anomaly
+      - alert: MemoryUsageAnomaly
+        expr: |
+          (
+            container_memory_usage_bytes{name="vigia-detector"} /
+            container_spec_memory_limit_bytes{name="vigia-detector"}
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container using {{ $value | humanizePercentage }} of memory limit"
+      
+      # Database Connection Failures
+      - alert: DatabaseConnectionFailures
+        expr: |
+          sum(rate(db_connection_errors_total[5m])) > 1
+        for: 2m
+        labels:
+          severity: critical
+          service: vigia
+        annotations:
+          summary: "Database connection failures"
+          description: "{{ $value }} connection errors per second"
+      
+      # Webhook Delivery Failures
+      - alert: WebhookDeliveryFailures
+        expr: |
+          (
+            sum(rate(webhook_delivery_failures_total[5m])) /
+            sum(rate(webhook_deliveries_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "High webhook failure rate"
+          description: "{{ $value | humanizePercentage }} of webhooks failing"
+      
+      # Container Restart
+      - alert: ContainerRestarting
+        expr: |
+          rate(container_restart_count[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "Container restarting"
+          description: "Container {{ $labels.name }} has restarted"
+      
+      # SSL Certificate Expiry
+      - alert: SSLCertificateExpiringSoon
+        expr: |
+          probe_ssl_earliest_cert_expiry - time() < 86400 * 7
+        for: 1h
+        labels:
+          severity: warning
+          service: vigia
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "Certificate expires in {{ $value | humanizeDuration }}"
+      
+      # Disk Usage High
+      - alert: DiskUsageHigh
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"} /
+            node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: vigia
+        annotations:
+          summary: "Disk space running low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"

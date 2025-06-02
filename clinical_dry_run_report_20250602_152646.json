@@ -1,0 +1,32 @@
+{
+  "summary": {
+    "total_tests": 1,
+    "successful": 0,
+    "failed": 1,
+    "success_rate": 0.0,
+    "timestamp": "2025-06-02T15:26:46.073410"
+  },
+  "performance": {
+    "avg_total_time": 4.5e-05,
+    "avg_detection_time": 9.059906005859375e-06,
+    "max_total_time": 4.5e-05,
+    "min_total_time": 4.5e-05
+  },
+  "services": {
+    "whatsapp_available": false,
+    "slack_available": false,
+    "database_available": false,
+    "detector_available": false
+  },
+  "test_results": [
+    {
+      "name": "Low Severity - Grade 1",
+      "success": false,
+      "whatsapp_sent": false,
+      "slack_sent": false,
+      "stored_in_db": false,
+      "total_time": 4.5e-05,
+      "error": null
+    }
+  ]
+}

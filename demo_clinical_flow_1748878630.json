@@ -1,0 +1,33 @@
+{
+  "demo_type": "clinical_dry_run",
+  "timestamp": "2025-06-02T15:37:10.347227",
+  "steps_completed": [
+    "whatsapp_reception",
+    "ai_processing",
+    "slack_notification",
+    "data_storage"
+  ],
+  "detection_result": {
+    "detected": true,
+    "patient_code": "DEMO-001",
+    "timestamp": "2025-06-02T15:37:08.343005",
+    "severity": "medium",
+    "confidence": 0.85,
+    "location": "región sacra",
+    "stage": "Grado 2",
+    "area_cm2": 4.5,
+    "recommendations": [
+      "✅ Cambio de posición cada 2 horas",
+      "💊 Aplicar barrera de humedad",
+      "📋 Documentar evolución cada turno",
+      "🏥 Evaluación médica en próximas 24h"
+    ]
+  },
+  "performance_metrics": {
+    "total_time": 12.5,
+    "detection_time": 3.2,
+    "notification_time": 0.8,
+    "storage_time": 0.5
+  },
+  "status": "success"
+}

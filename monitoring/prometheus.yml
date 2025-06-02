@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Load security alert rules
+rule_files:
+  - 'security_alerts.yml'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+scrape_configs:
+  - job_name: 'vigia-app'
+    static_configs:
+      - targets: ['vigia:8080']
+        labels:
+          service: 'detection'
+          
+  - job_name: 'vigia-whatsapp'
+    static_configs:
+      - targets: ['whatsapp:5000']
+        labels:
+          service: 'whatsapp'
+          
+  - job_name: 'vigia-webhook'
+    static_configs:
+      - targets: ['webhook-server:8000']
+        labels:
+          service: 'webhook'
+          
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+        labels:
+          service: 'cache'

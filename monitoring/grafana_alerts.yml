@@ -1,0 +1,356 @@
+# Grafana Alert Rules for Vigia Medical Detection System
+# Configured for: Latencies >500ms, 5xx >5%, Abnormal loads per user
+
+apiVersion: 1
+
+groups:
+  - name: vigia_performance
+    orgId: 1
+    folder: Vigia Alerts
+    interval: 30s
+    rules:
+      # High Latency Alert (>500ms)
+      - uid: vigia_high_latency
+        title: "High Response Latency"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+              interval: ""
+              legendFormat: "95th percentile latency"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "Response latency is {{ $value }}s (95th percentile) which exceeds the 500ms threshold"
+          summary: "High response latency detected in Vigia services"
+        labels:
+          severity: warning
+          service: vigia
+          metric: latency
+
+      # High Error Rate Alert (5xx >5%)
+      - uid: vigia_high_error_rate
+        title: "High 5xx Error Rate"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                (
+                  sum(rate(http_requests_total{status=~"5.."}[5m])) /
+                  sum(rate(http_requests_total[5m]))
+                ) * 100 > 5
+              interval: ""
+              legendFormat: "5xx error rate %"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 3m
+        annotations:
+          description: "5xx error rate is {{ $value }}% which exceeds the 5% threshold"
+          summary: "High server error rate detected in Vigia services"
+        labels:
+          severity: critical
+          service: vigia
+          metric: error_rate
+
+      # Abnormal Load per User - WhatsApp
+      - uid: vigia_whatsapp_abnormal_load
+        title: "Abnormal WhatsApp Load per User"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: |
+                (
+                  sum(rate(whatsapp_requests_total[10m])) /
+                  count(count by (from_number) (whatsapp_requests_total))
+                ) > 10
+              interval: ""
+              legendFormat: "Requests per user per minute"
+              refId: A
+        intervalSeconds: 120
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "WhatsApp requests per user: {{ $value }}/min exceeds normal threshold"
+          summary: "Abnormal WhatsApp usage pattern detected"
+        labels:
+          severity: warning
+          service: whatsapp
+          metric: user_load
+
+      # Abnormal Load per User - Webhook
+      - uid: vigia_webhook_abnormal_load
+        title: "Abnormal Webhook Load per User"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              expr: |
+                (
+                  sum(rate(webhook_requests_total[10m])) /
+                  count(count by (client_ip) (webhook_requests_total))
+                ) > 20
+              interval: ""
+              legendFormat: "Webhook requests per client per minute"
+              refId: A
+        intervalSeconds: 120
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Webhook requests per client: {{ $value }}/min exceeds normal threshold"
+          summary: "Abnormal webhook usage pattern detected"
+        labels:
+          severity: warning
+          service: webhook
+          metric: client_load
+
+      # Redis Connection Issues
+      - uid: vigia_redis_connection_issues
+        title: "Redis Connection Problems"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                redis_connected_clients < 1 or 
+                rate(redis_rejected_connections_total[5m]) > 0
+              interval: ""
+              legendFormat: "Redis connectivity"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          description: "Redis connection issues detected - clients: {{ $value }}"
+          summary: "Redis cache experiencing connectivity problems"
+        labels:
+          severity: critical
+          service: redis
+          metric: connectivity
+
+      # Memory Usage High
+      - uid: vigia_memory_usage_high
+        title: "High Memory Usage"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                (
+                  container_memory_usage_bytes{name=~"vigia.*"} /
+                  container_spec_memory_limit_bytes{name=~"vigia.*"}
+                ) * 100 > 85
+              interval: ""
+              legendFormat: "Memory usage %"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 3m
+        annotations:
+          description: "Container {{ $labels.name }} memory usage: {{ $value }}%"
+          summary: "High memory usage detected in Vigia containers"
+        labels:
+          severity: warning
+          service: vigia
+          metric: memory
+
+      # CPU Usage High
+      - uid: vigia_cpu_usage_high
+        title: "High CPU Usage"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                rate(container_cpu_usage_seconds_total{name=~"vigia.*"}[5m]) * 100 > 80
+              interval: ""
+              legendFormat: "CPU usage %"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          description: "Container {{ $labels.name }} CPU usage: {{ $value }}%"
+          summary: "High CPU usage detected in Vigia containers"
+        labels:
+          severity: warning
+          service: vigia
+          metric: cpu
+
+      # Rate Limiting Active
+      - uid: vigia_rate_limiting_active
+        title: "Rate Limiting Active"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                sum(rate(rate_limit_exceeded_total[5m])) > 50
+              interval: ""
+              legendFormat: "Rate limited requests/s"
+              refId: A
+        intervalSeconds: 60
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          description: "Rate limiting is blocking {{ $value }} requests per second"
+          summary: "High rate limiting activity detected"
+        labels:
+          severity: info
+          service: vigia
+          metric: rate_limiting
+
+      # Detection Processing Time
+      - uid: vigia_detection_processing_slow
+        title: "Slow Detection Processing"
+        condition: A
+        data:
+          - refId: A
+            queryType: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              expr: |
+                histogram_quantile(0.95, 
+                  sum(rate(detection_processing_duration_seconds_bucket[5m])) by (le)
+                ) > 30
+              interval: ""
+              legendFormat: "Detection processing time (95th percentile)"
+              refId: A
+        intervalSeconds: 120
+        maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Alerting
+        for: 3m
+        annotations:
+          description: "Detection processing time: {{ $value }}s exceeds 30s threshold"
+          summary: "Slow medical detection processing detected"
+        labels:
+          severity: warning
+          service: vigia
+          metric: processing_time
+
+notification_policies:
+  - uid: vigia_default_policy
+    title: "Vigia Default Notification Policy"
+    receiver: vigia_alerts
+    group_by:
+      - alertname
+      - service
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 2h
+    routes:
+      - receiver: vigia_critical
+        match:
+          severity: critical
+        group_wait: 10s
+        repeat_interval: 30m
+      - receiver: vigia_warning
+        match:
+          severity: warning
+        group_wait: 1m
+        repeat_interval: 1h
+
+contact_points:
+  - uid: vigia_alerts
+    title: "Vigia General Alerts"
+    type: slack
+    settings:
+      url: "${SLACK_WEBHOOK_URL}"
+      channel: "#vigia-alerts"
+      title: "Vigia Alert: {{ .GroupLabels.alertname }}"
+      text: |
+        {{ range .Alerts }}
+        **{{ .Annotations.summary }}**
+        {{ .Annotations.description }}
+        
+        Labels: {{ range .Labels.SortedPairs }}{{ .Name }}={{ .Value }} {{ end }}
+        {{ end }}
+
+  - uid: vigia_critical
+    title: "Vigia Critical Alerts"
+    type: slack
+    settings:
+      url: "${SLACK_WEBHOOK_URL}"
+      channel: "#vigia-critical"
+      title: "🚨 CRITICAL: {{ .GroupLabels.alertname }}"
+      text: |
+        {{ range .Alerts }}
+        **{{ .Annotations.summary }}**
+        {{ .Annotations.description }}
+        
+        Severity: {{ .Labels.severity }}
+        Service: {{ .Labels.service }}
+        Time: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+        {{ end }}
+
+  - uid: vigia_warning
+    title: "Vigia Warning Alerts"
+    type: slack
+    settings:
+      url: "${SLACK_WEBHOOK_URL}"
+      channel: "#vigia-warnings"
+      title: "⚠️ WARNING: {{ .GroupLabels.alertname }}"
+      text: |
+        {{ range .Alerts }}
+        **{{ .Annotations.summary }}**
+        {{ .Annotations.description }}
+        
+        Service: {{ .Labels.service }}
+        Metric: {{ .Labels.metric }}
+        {{ end }}

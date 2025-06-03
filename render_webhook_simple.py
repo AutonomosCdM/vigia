@@ -1,39 +1,52 @@
 #!/usr/bin/env python3
 """
-Simple webhook server entry point for Render deployment.
+Simple webhook server for Render deployment testing
 """
-
 import os
-import sys
-from pathlib import Path
+import logging
+from flask import Flask, request, jsonify
 
-# Add project root to path
-sys.path.append(str(Path(__file__).resolve().parent))
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-import uvicorn
+app = Flask(__name__)
 
-# Simple FastAPI app
-app = FastAPI(title="Vigia Webhook Server", version="1.0.0")
+@app.route('/')
+def home():
+    """Home endpoint"""
+    return jsonify({
+        "service": "vigia-webhook",
+        "status": "running",
+        "version": "1.0.0"
+    })
 
-@app.get("/")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "vigia-webhook"}
+@app.route('/health')
+def health():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy"})
 
-@app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {"status": "ok", "timestamp": "2025-06-02"}
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    """Simple webhook receiver"""
+    try:
+        data = request.get_json()
+        logger.info(f"Received webhook: {data}")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Webhook received",
+            "data": data
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
-@app.post("/webhook")
-async def receive_webhook(data: dict):
-    """Receive webhook data."""
-    print(f"Received webhook: {data}")
-    return {"status": "received", "data": data}
-
-# Render will run this automatically
-if __name__ == "__main__":
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    logger.info(f"Starting webhook server on port {port}")
+    app.run(host='0.0.0.0', port=port)

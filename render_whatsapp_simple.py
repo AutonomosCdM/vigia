@@ -11,8 +11,15 @@ from twilio.twiml.messaging_response import MessagingResponse
 import logging
 import datetime
 
-# Agregar directorio raíz al path
-sys.path.append(str(Path(__file__).resolve().parent))
+# Agregar directorio raíz al path para importaciones
+vigia_root = str(Path(__file__).resolve().parent)
+if vigia_root not in sys.path:
+    sys.path.append(vigia_root)
+    
+# También intentar agregar el parent si estamos en un subdirectorio
+parent_root = str(Path(__file__).resolve().parent.parent)
+if parent_root not in sys.path and Path(parent_root).exists():
+    sys.path.append(parent_root)
 
 # Configurar logging
 logging.basicConfig(
@@ -48,10 +55,17 @@ def whatsapp_webhook():
             if media_type and media_type.startswith('image/'):
                 logger.info("Procesando imagen...")
                 
+                # Variables para tracking
+                detections = []
+                processing_type = "SIMULADO"
+                
                 # Intentar procesamiento real
                 try:
                     # Importar dinámicamente para evitar fallos en el arranque
+                    logger.info(f"Python path: {sys.path}")
+                    logger.info("Intentando importar procesador...")
                     from vigia_detect.messaging.whatsapp.processor import process_whatsapp_image
+                    logger.info("✅ Procesador importado exitosamente")
                     
                     # Autenticar con Twilio si está disponible
                     auth = None
@@ -65,6 +79,10 @@ def whatsapp_webhook():
                         message = result.get('message', 'Imagen procesada exitosamente')
                         twiml_response.message(message)
                         logger.info("✅ Imagen procesada exitosamente")
+                        
+                        # Guardar resultados para Slack
+                        detections = result.get('detections', [])
+                        processing_type = "REAL"
                     else:
                         raise Exception(result.get('error', 'Error desconocido'))
                         
@@ -88,6 +106,10 @@ _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser
                     
                     twiml_response.message(fake_message)
                     logger.info("✅ Respuesta simulada enviada (fallback)")
+                    
+                    # Valores por defecto para Slack
+                    detections = []
+                    processing_type = "SIMULADO"
                 
                 # Notificación a Slack simplificada
                 try:
@@ -96,17 +118,27 @@ _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser
                         from slack_sdk import WebClient
                         slack_client = WebClient(token=slack_token)
                         
+                        # Construir mensaje basado en resultados reales
+                        if detections and processing_type == "REAL":
+                            detection_info = f"• {len(detections)} lesión(es) detectada(s)\n"
+                            for i, det in enumerate(detections, 1):
+                                stage = det.get('stage', 'N/A')
+                                conf = det.get('confidence', 0) * 100
+                                detection_info += f"• Lesión {i}: Grado {stage}, Confianza: {conf:.1f}%\n"
+                        else:
+                            detection_info = """• Lesión por Presión detectada
+• Clasificación: Grado 2
+• Región afectada: Sacro
+• Confianza: 85%"""
+                        
                         slack_message = f"""🚨 *Alerta de Detección LPP* 🚨
                         
 *Fuente:* WhatsApp
 *Teléfono:* {from_number}
 *Hora:* {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
-*Análisis (SIMULADO):*
-• Lesión por Presión detectada
-• Clasificación: Grado 2
-• Región afectada: Sacro
-• Confianza: 85%
+*Análisis ({processing_type}):*
+{detection_info}
 
 *Recomendación:* Consultar personal médico para evaluación
 

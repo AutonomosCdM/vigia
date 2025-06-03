@@ -21,8 +21,9 @@ env_vars = {
     "SLACK_BOT_TOKEN": os.getenv("SLACK_BOT_TOKEN", ""),
     "SLACK_CHANNEL_ID": "C08TJHZFVD1",  # Canal #vigia
     "PYTHON_VERSION": "3.11.0",
-    "RATE_LIMIT_ENABLED": "true",
-    "RATE_LIMIT_PER_MINUTE": "30"
+    "RATE_LIMIT_ENABLED": "true", 
+    "RATE_LIMIT_PER_MINUTE": "30",
+    "VIGIA_USE_MOCK_YOLO": "true"
 }
 
 print("🔧 Configuración de Variables de Entorno para Render")

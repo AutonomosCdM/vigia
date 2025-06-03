@@ -101,13 +101,23 @@ def create_mock_yolo_model():
     Returns:
         Objeto que simula un modelo YOLOv5
     """
-    import torch
     import numpy as np
+    
+    # Intentar importar torch, pero si falla, usar un mock
+    try:
+        import torch
+        torch_available = True
+    except ImportError:
+        torch_available = False
+        logger.warning("PyTorch no disponible, usando simulación completa")
     
     class MockYOLOModel:
         def __init__(self):
             self.conf = 0.25
-            self.device = torch.device('cpu')
+            if torch_available:
+                self.device = torch.device('cpu')
+            else:
+                self.device = 'cpu'
             
         def to(self, device):
             self.device = device
@@ -139,7 +149,18 @@ def create_mock_yolo_model():
                         
                         detections.append([x1, y1, x2, y2, conf, cls])
                     
-                    self.pred = [torch.tensor(detections) if detections else torch.empty((0, 6))]
+                    if torch_available:
+                        self.pred = [torch.tensor(detections) if detections else torch.empty((0, 6))]
+                    else:
+                        # Mock tensor-like object
+                        class MockTensor:
+                            def __init__(self, data):
+                                self.data = np.array(data) if data else np.empty((0, 6))
+                            def cpu(self):
+                                return self
+                            def numpy(self):
+                                return self.data
+                        self.pred = [MockTensor(detections)]
                     self.t = [0, np.random.uniform(30, 100), 0]  # Tiempo simulado
                     
             return MockResults()

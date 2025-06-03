@@ -125,7 +125,7 @@ def whatsapp_webhook():
                 
                 # En lugar de procesar sincrónicamente, vamos directo a la simulación
                 # para evitar timeouts de Twilio
-                if False and processor_available:  # Deshabilitado temporalmente
+                if processor_available:  # Procesamiento habilitado
                     # Autenticar con Twilio para acceder al media_url
                     auth = (os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
                     

@@ -22,8 +22,6 @@ services:
         sync: false
       - key: SLACK_CHANNEL_ID
         value: C08TJHZFVD1
-      - key: VIGIA_USE_MOCK_YOLO
-        value: true
 
   # Webhook API Service
   - type: web

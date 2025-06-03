@@ -32,9 +32,14 @@ except Exception as e:
 
 # Agregar directorio raíz al path para importaciones
 # IMPORTANTE: Insertamos al final para evitar conflictos con YOLOv5
-vigia_root = str(Path(__file__).resolve().parent.parent.parent)
+current_dir = Path(__file__).resolve().parent
+vigia_root = str(current_dir.parent.parent.parent)  # Desde whatsapp/ hasta proyecto raíz
 if vigia_root not in sys.path:
     sys.path.append(vigia_root)
+    
+# También agregar el directorio actual por si acaso
+if str(current_dir) not in sys.path:
+    sys.path.append(str(current_dir))
 
 # Importar rate limiter
 try:

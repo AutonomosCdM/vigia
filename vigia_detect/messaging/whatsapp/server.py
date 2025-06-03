@@ -121,6 +121,7 @@ def whatsapp_webhook():
             
             logger.info(f"Media URL: {media_url}")
             logger.info(f"Media Type: {media_type}")
+            logger.info(f"Processor available: {processor_available}")
             
             if media_type and media_type.startswith('image/'):
                 logger.info("Procesando imagen...")
@@ -136,14 +137,15 @@ def whatsapp_webhook():
                     
                     # Enviar respuesta
                     if result.get('success'):
-                        if twilio_client:
-                            twilio_client.send_whatsapp(from_number, result.get('message', ''))
+                        twiml_response.message(result.get('message', 'Imagen procesada exitosamente'))
+                        logger.info("Imagen procesada exitosamente")
                     else:
-                        if twilio_client:
-                            error_msg = "Error procesando la imagen. Por favor, intente nuevamente."
-                            twilio_client.send_whatsapp(from_number, error_msg)
+                        error_msg = "Error procesando la imagen. Por favor, intente nuevamente."
+                        twiml_response.message(error_msg)
+                        logger.error(f"Error en procesamiento: {result.get('error', 'Unknown')}")
                 else:
                     # Respuesta inmediata con análisis simulado
+                    logger.info("Usando análisis simulado (processor no disponible)")
                     fake_message = """🔍 *Análisis de Vigia - Detección LPP*
 
 📸 Imagen recibida y procesada
@@ -161,6 +163,7 @@ _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser
                     
                     # Primero enviar respuesta a WhatsApp
                     twiml_response.message(fake_message)
+                    logger.info("Respuesta simulada enviada a WhatsApp")
                     
                     # Luego enviar notificación a Slack
                     if slack_notifier:
@@ -195,6 +198,8 @@ _Este es un sistema en fase piloto, la evaluación final siempre debe ser realiz
                             logger.error(f"Error de Slack API: {e.response['error']}")
                         except Exception as e:
                             logger.error(f"Error enviando notificación a Slack: {e}")
+                    else:
+                        logger.info("Slack notifier no disponible, saltando notificación")
             else:
                 twiml_response.message("Solo se aceptan imágenes por el momento.")
         else:

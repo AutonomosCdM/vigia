@@ -54,20 +54,17 @@ class LPPDetector:
         try:
             logger.info(f"Cargando modelo YOLOv5-Wound en {self.device}...")
             
-            # TODO: Implementar clonación desde repo como submódulo
-            # Por ahora, usamos el modelo preentrenado de calisma/pressure-ulcer
-            # que debe descargarse previamente
+            # Usar cargador aislado para evitar conflictos de nombres
+            from .yolo_loader import load_yolo_model_isolated, create_mock_yolo_model
             
-            # Verificar si ya tenemos el modelo clonado o usar torch hub
-            if self.model_path and os.path.exists(self.model_path):
-                logger.info(f"Cargando modelo desde {self.model_path}")
-                self.model = torch.hub.load('ultralytics/yolov5', 'custom', 
-                                           path=self.model_path)
+            # Intentar cargar YOLOv5 real con entorno aislado
+            self.model = load_yolo_model_isolated(self.model_type, self.model_path)
+            
+            if self.model is None:
+                logger.warning("No se pudo cargar YOLOv5 real, usando simulación")
+                self.model = create_mock_yolo_model()
             else:
-                # En implementación real, debemos descargar el modelo específico
-                # Por ahora usamos uno genérico para simular
-                logger.info(f"Cargando modelo preentrenado {self.model_type}")
-                self.model = torch.hub.load('ultralytics/yolov5', self.model_type)
+                logger.info("✅ Modelo YOLOv5 real cargado exitosamente")
             
             # Configurar el modelo
             self.model.to(self.device)
@@ -76,7 +73,7 @@ class LPPDetector:
             # Modo evaluación
             self.model.eval()
             
-            logger.info("Modelo cargado exitosamente")
+            logger.info("Modelo configurado exitosamente")
             
         except Exception as e:
             logger.error(f"Error cargando modelo: {str(e)}")

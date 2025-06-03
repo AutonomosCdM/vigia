@@ -21,7 +21,10 @@ logging.basicConfig(
 logger = logging.getLogger('vigia-detect.whatsapp.processor')
 
 # Agregar directorio raíz al path para importaciones
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+# IMPORTANTE: Insertamos al final para evitar conflictos con YOLOv5
+vigia_root = str(Path(__file__).resolve().parent.parent.parent)
+if vigia_root not in sys.path:
+    sys.path.append(vigia_root)
 
 # Intentar importar los componentes de Vigía
 try:

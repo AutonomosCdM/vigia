@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 """
-Servidor de WhatsApp simplificado para Render - Solo simulación
+Servidor de WhatsApp simplificado para Render - Con procesamiento real y fallback
 """
 
 import os
+import sys
+from pathlib import Path
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import logging
 import datetime
+
+# Agregar directorio raíz al path
+sys.path.append(str(Path(__file__).resolve().parent))
 
 # Configurar logging
 logging.basicConfig(
@@ -41,10 +46,32 @@ def whatsapp_webhook():
             logger.info(f"Media Type: {media_type}")
             
             if media_type and media_type.startswith('image/'):
-                logger.info("Procesando imagen con simulación...")
+                logger.info("Procesando imagen...")
                 
-                # Respuesta simulada siempre
-                fake_message = """🔍 *Análisis de Vigia - Detección LPP*
+                # Intentar procesamiento real
+                try:
+                    # Importar dinámicamente para evitar fallos en el arranque
+                    from vigia_detect.messaging.whatsapp.processor import process_whatsapp_image
+                    
+                    # Autenticar con Twilio si está disponible
+                    auth = None
+                    if os.getenv('TWILIO_ACCOUNT_SID') and os.getenv('TWILIO_AUTH_TOKEN'):
+                        auth = (os.getenv('TWILIO_ACCOUNT_SID'), os.getenv('TWILIO_AUTH_TOKEN'))
+                    
+                    # Procesar imagen
+                    result = process_whatsapp_image(media_url, auth, patient_code='CD-2025-001')
+                    
+                    if result.get('success'):
+                        message = result.get('message', 'Imagen procesada exitosamente')
+                        twiml_response.message(message)
+                        logger.info("✅ Imagen procesada exitosamente")
+                    else:
+                        raise Exception(result.get('error', 'Error desconocido'))
+                        
+                except Exception as e:
+                    logger.error(f"Error procesando imagen: {e}")
+                    # Fallback a respuesta simulada
+                    fake_message = """🔍 *Análisis de Vigia - Detección LPP*
 
 📸 Imagen recibida y procesada
 
@@ -58,9 +85,9 @@ def whatsapp_webhook():
 Consultar personal médico para evaluación inmediata.
 
 _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser realizada por profesionales de salud._"""
-                
-                twiml_response.message(fake_message)
-                logger.info("✅ Respuesta simulada enviada exitosamente")
+                    
+                    twiml_response.message(fake_message)
+                    logger.info("✅ Respuesta simulada enviada (fallback)")
                 
                 # Notificación a Slack simplificada
                 try:

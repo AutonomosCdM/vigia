@@ -26,8 +26,8 @@ def load_yolo_model_isolated(model_type='yolov5s', model_path=None):
     Returns:
         Modelo YOLOv5 cargado o None si hay error
     """
-    # Verificar si está en modo de desarrollo/test (usar simulación por defecto)
-    if os.getenv('VIGIA_USE_MOCK_YOLO', 'true').lower() == 'true':
+    # Verificar si está en modo de desarrollo/test (usar procesamiento real por defecto)
+    if os.getenv('VIGIA_USE_MOCK_YOLO', 'false').lower() == 'true':
         logger.info("VIGIA_USE_MOCK_YOLO está activado, usando modelo simulado")
         return None
     

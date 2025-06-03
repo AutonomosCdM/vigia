@@ -4,7 +4,7 @@ services:
     name: vigia-whatsapp
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python render_whatsapp.py
+    startCommand: python render_whatsapp_simple.py
     envVars:
       - key: TWILIO_ACCOUNT_SID
         sync: false
@@ -18,6 +18,12 @@ services:
         sync: false
       - key: SUPABASE_KEY
         sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_CHANNEL_ID
+        value: C08TJHZFVD1
+      - key: VIGIA_USE_MOCK_YOLO
+        value: true
 
   # Webhook API Service
   - type: web

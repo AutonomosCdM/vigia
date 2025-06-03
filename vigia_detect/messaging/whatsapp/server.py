@@ -83,7 +83,6 @@ except Exception as e:
 app = Flask(__name__)
 
 @app.route('/webhook/whatsapp', methods=['POST'])
-@rate_limit_flask(limit=30, window=60) if rate_limiter_available else lambda f: f
 def whatsapp_webhook():
     """
     Endpoint para recibir mensajes de WhatsApp vía Twilio
@@ -217,7 +216,6 @@ _Este es un sistema en fase piloto, la evaluación final siempre debe ser realiz
         return str(resp)
 
 @app.route('/health', methods=['GET'])
-@rate_limit_flask(limit=120, window=60) if rate_limiter_available else lambda f: f
 def health_check():
     """
     Health check endpoint

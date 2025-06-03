@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 WhatsApp server entry point for Render deployment.
+Updated: 2025-06-03 - Force redeploy with real processing
 """
 
 import os

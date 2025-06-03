@@ -114,6 +114,9 @@ _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser
                 # Notificación a Slack simplificada
                 try:
                     slack_token = os.getenv('SLACK_BOT_TOKEN')
+                    logger.info(f"Slack token presente: {'Sí' if slack_token else 'No'}")
+                    logger.info(f"Detecciones para Slack: {len(detections)} ({processing_type})")
+                    
                     if slack_token:
                         from slack_sdk import WebClient
                         slack_client = WebClient(token=slack_token)
@@ -146,12 +149,13 @@ _⚠️ Este es un sistema en fase piloto, la evaluación final siempre debe ser
 
 _Este es un sistema en fase piloto, la evaluación final siempre debe ser realizada por profesionales de salud._
 """
-                        slack_client.chat_postMessage(
+                        response = slack_client.chat_postMessage(
                             channel="C08TJHZFVD1",  # Canal #vigia
                             text=slack_message,
                             mrkdwn=True
                         )
-                        logger.info("✅ Notificación enviada a Slack")
+                        logger.info(f"✅ Notificación enviada a Slack: {response['ok']}")
+                        logger.info(f"Timestamp del mensaje: {response.get('ts', 'N/A')}")
                     else:
                         logger.info("Slack token no configurado")
                 except Exception as e:

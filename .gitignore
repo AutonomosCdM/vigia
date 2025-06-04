@@ -125,3 +125,15 @@ tasks/
 .env.production
 .mcp.json
 render_env_complete.txt
+
+# Generated reports and test results (keep them generated, not stored)
+stress_test_results/
+security_reports/
+bandit_report.json
+
+# Requirements lock files (keep requirements.txt as source)
+requirements.lock
+requirements*.lock
+
+# Redis dumps
+dump.rdb

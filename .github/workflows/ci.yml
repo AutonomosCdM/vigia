@@ -1,0 +1,273 @@
+name: Vigia Medical System - CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  validate:
+    name: System Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Copy testing environment
+      run: |
+        cp .env.testing .env
+    
+    - name: Run post-refactor validation
+      run: |
+        python scripts/validate_post_refactor_simple.py --verbose
+    
+    - name: Upload validation report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: validation-report
+        path: validation-report.json
+        retention-days: 30
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    strategy:
+      matrix:
+        test-suite: [unit, integration, e2e, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Copy testing environment
+      run: |
+        cp .env.testing .env
+    
+    - name: Run test suite
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh ${{ matrix.test-suite }}
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.test-suite }}
+        path: |
+          htmlcov/
+          pytest-report.xml
+        retention-days: 30
+
+  security-scan:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        pip install -r requirements.txt
+    
+    - name: Run Bandit security scan
+      run: |
+        bandit -r vigia_detect/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run Safety check
+      run: |
+        safety check --json --output safety-report.json
+      continue-on-error: true
+    
+    - name: Run custom security analysis
+      run: |
+        if [ -f "scripts/run_security_analysis.sh" ]; then
+          chmod +x scripts/run_security_analysis.sh
+          ./scripts/run_security_analysis.sh
+        fi
+      continue-on-error: true
+    
+    - name: Upload security reports
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+          security-analysis-report.json
+        retention-days: 30
+
+  medical-compliance:
+    name: Medical Compliance Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Copy testing environment
+      run: |
+        cp .env.testing .env
+    
+    - name: Run medical compliance tests
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh medical
+    
+    - name: Run clinical dry run
+      run: |
+        if [ -f "scripts/clinical_dry_run.py" ]; then
+          python scripts/clinical_dry_run.py --validate-only
+        fi
+      continue-on-error: true
+
+  deployment-ready:
+    name: Deployment Readiness
+    runs-on: ubuntu-latest
+    needs: [validate, test, security-scan, medical-compliance]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+    
+    - name: Copy testing environment
+      run: |
+        cp .env.testing .env
+    
+    - name: Run complete validation
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh all
+    
+    - name: Generate deployment report
+      run: |
+        echo "# Vigia Medical System - Deployment Report" > deployment-report.md
+        echo "## Build: ${{ github.sha }}" >> deployment-report.md
+        echo "## Date: $(date)" >> deployment-report.md
+        echo "" >> deployment-report.md
+        echo "### Validation Status" >> deployment-report.md
+        python scripts/validate_post_refactor_simple.py --quick >> deployment-report.md
+        echo "" >> deployment-report.md
+        echo "### System Ready for:" >> deployment-report.md
+        echo "- ✅ Staging deployment" >> deployment-report.md
+        echo "- ✅ Production deployment (with proper env vars)" >> deployment-report.md
+        echo "- ✅ Medical compliance validation" >> deployment-report.md
+    
+    - name: Upload deployment report
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-report
+        path: deployment-report.md
+        retention-days: 90
+    
+    - name: Comment deployment status
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '🩺 **Vigia Medical System** - All validation checks passed! ✅\n\nSystem is ready for deployment to staging/production.'
+          })
+
+  notification:
+    name: Notification
+    runs-on: ubuntu-latest
+    needs: [deployment-ready]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.deployment-ready.result == 'success'
+      run: |
+        echo "✅ Vigia Medical System CI/CD completed successfully"
+        echo "System is validated and ready for deployment"
+    
+    - name: Notify on failure
+      if: needs.deployment-ready.result != 'success'
+      run: |
+        echo "❌ Vigia Medical System CI/CD failed"
+        echo "Review failed jobs before deployment"
+        exit 1

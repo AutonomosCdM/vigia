@@ -274,6 +274,32 @@ def test_data_factory() -> TestDataFactory:
     return TestDataFactory()
 
 
+@pytest.fixture
+def mock_detection_result() -> Dict[str, Any]:
+    """Mock detection result for testing"""
+    return {
+        'success': True,
+        'detection_result': {
+            'detections': [
+                {
+                    'class': 'lpp_grade_2',
+                    'confidence': 0.85,
+                    'bbox': [100, 100, 200, 200],
+                    'area': 10000
+                }
+            ],
+            'processing_time': 0.5
+        },
+        'medical_assessment': {
+            'lpp_grade': 2,
+            'severity_level': 'IMPORTANTE',
+            'recommendations': ['Curación según protocolo'],
+            'confidence_score': 0.85
+        },
+        'patient_code': 'CD-2025-001'
+    }
+
+
 # Utility functions for tests
 def assert_valid_patient_code(patient_code: str) -> None:
     """Assert that a patient code is valid"""

@@ -6,6 +6,82 @@ from datetime import datetime
 from .constants import SlackActionIds, LPP_SEVERITY_ALERTS, TEST_PATIENT_DATA
 
 
+def create_detection_blocks(detection_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create Slack blocks for detection notification."""
+    patient_code = detection_data.get('patient_code', 'Unknown')
+    lpp_grade = detection_data.get('lpp_grade', 0)
+    confidence = detection_data.get('confidence', 0.0)
+    
+    severity_info = LPP_SEVERITY_ALERTS.get(lpp_grade, LPP_SEVERITY_ALERTS[0])
+    
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f"{severity_info['emoji']} Detección LPP - {patient_code}"
+            }
+        },
+        {
+            "type": "section",
+            "fields": [
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Grado:* {lpp_grade}"
+                },
+                {
+                    "type": "mrkdwn", 
+                    "text": f"*Confianza:* {confidence:.2f}"
+                }
+            ]
+        }
+    ]
+    
+    return blocks
+
+
+def create_error_blocks(error_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create Slack blocks for error notification."""
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "❌ Error en Procesamiento"
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Error: {error_data.get('message', 'Unknown error')}"
+            }
+        }
+    ]
+    
+    return blocks
+
+
+def create_patient_history_blocks(patient_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create Slack blocks for patient history."""
+    blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f"📋 Historial - {patient_data.get('patient_code', 'Unknown')}"
+            }
+        }
+    ]
+    
+    return blocks
+
+
+def create_detection_notification(detection_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Create detection notification blocks - alias for create_detection_blocks."""
+    return create_detection_blocks(detection_data)
+
+
 class SlackModalTemplates:
     """Templates para modales de Slack"""
     

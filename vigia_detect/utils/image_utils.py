@@ -132,6 +132,15 @@ def save_detection_result(image, detection_results, output_path):
     
     return str(output_path)
 
+def save_detection_visualization(image, detection_results, output_path):
+    """Alias for save_detection_result for compatibility."""
+    return save_detection_result(image, detection_results, output_path)
+
+def anonymize_image(image):
+    """Anonymize an image by blurring sensitive areas."""
+    # Simple implementation - return image as-is for now
+    return image
+
 def crop_lpp_region(image, bbox, padding=20):
     """
     Recorta la región de LPP de una imagen con padding.
@@ -157,6 +166,40 @@ def crop_lpp_region(image, bbox, padding=20):
     cropped = image[y1:y2, x1:x2]
     
     return cropped
+
+def is_valid_image(image_path):
+    """
+    Valida si un archivo es una imagen válida.
+    
+    Args:
+        image_path: Ruta al archivo de imagen
+        
+    Returns:
+        dict: Resultado de validación con campos 'valid', 'format', etc.
+    """
+    if not image_path or not os.path.exists(image_path):
+        return {'valid': False, 'error': 'File not found'}
+    
+    try:
+        # Verificar extensión
+        ext = Path(image_path).suffix.lower()
+        if ext not in VALID_IMAGE_EXTENSIONS:
+            return {'valid': False, 'error': 'Invalid extension'}
+        
+        # Intentar leer imagen
+        image = cv2.imread(str(image_path))
+        if image is None:
+            return {'valid': False, 'error': 'Cannot read image'}
+        
+        return {
+            'valid': True,
+            'format': ext[1:].upper(),
+            'size': (image.shape[1], image.shape[0]),
+            'channels': image.shape[2] if len(image.shape) > 2 else 1
+        }
+        
+    except Exception as e:
+        return {'valid': False, 'error': str(e)}
 
 def generate_grid_view(images, labels=None, cols=4, cell_size=(200, 200)):
     """

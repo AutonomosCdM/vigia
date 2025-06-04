@@ -5,6 +5,19 @@ Este módulo proporciona una función para cargar YOLOv5 de manera aislada,
 evitando el conflicto de nombres entre nuestro módulo utils y el de YOLOv5.
 """
 
+class YOLOLoader:
+    """Cargador de modelos YOLO."""
+    
+    @staticmethod
+    def load_model(model_type='yolov5s', model_path=None):
+        """Carga un modelo YOLO."""
+        return load_yolo_model_isolated(model_type, model_path)
+    
+    @staticmethod
+    def create_mock():
+        """Crea un modelo simulado."""
+        return create_mock_yolo_model()
+
 import sys
 import os
 import logging

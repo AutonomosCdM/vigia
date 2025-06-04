@@ -6,12 +6,9 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Importar módulos centralizados
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from core.base_client import BaseClient
-from core.slack_templates import SlackMessageTemplates
-from core.constants import SlackChannels, LPP_SEVERITY_ALERTS
+from ..core.base_client import BaseClient
+from ..core.slack_templates import SlackMessageTemplates
+from ..core.constants import SlackChannels, LPP_SEVERITY_ALERTS
 
 
 class SlackNotifierRefactored(BaseClient):

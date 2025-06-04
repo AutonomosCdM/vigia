@@ -9,10 +9,7 @@ from typing import Dict, Any, Optional, List
 from supabase import create_client, Client
 
 # Importar la clase base
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.base_client import BaseClient
+from ..core.base_client import BaseClient
 
 
 class SupabaseClientRefactored(BaseClient):

@@ -5,6 +5,6 @@ Este módulo proporciona clientes y utilidades para interactuar con
 la base de datos de LPP-Detect.
 """
 
-from .supabase_client import SupabaseClient
+from .supabase_client_refactored import SupabaseClientRefactored as SupabaseClient
 
 __all__ = ['SupabaseClient']

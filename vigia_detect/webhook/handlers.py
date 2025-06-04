@@ -14,22 +14,22 @@ from .models import EventType, Severity
 
 # Optional imports - these may not be available in all environments
 try:
-    from ..messaging.slack_notifier import SlackNotifier
+    from ..messaging.slack_notifier_refactored import SlackNotifier
 except ImportError:
     SlackNotifier = None
 
 try:
-    from ..messaging.twilio_client import TwilioClient
+    from ..messaging.twilio_client_refactored import TwilioClient
 except ImportError:
     TwilioClient = None
 
 try:
-    from ..db.supabase_client import SupabaseClient
+    from ..db.supabase_client_refactored import SupabaseClient
 except ImportError:
     SupabaseClient = None
 
 try:
-    from ..redis_layer.client import RedisClient
+    from ..redis_layer.client_v2 import MedicalRedisClient as RedisClient
 except ImportError:
     RedisClient = None
 

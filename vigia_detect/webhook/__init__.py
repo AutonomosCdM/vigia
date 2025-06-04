@@ -16,7 +16,7 @@ from .models import (
     DetectionPayload,
     PatientInfo
 )
-from .handlers import WebhookHandlers, create_default_handlers
+from .handlers import WebhookHandlers as WebhookHandler, create_default_handlers
 
 __all__ = [
     # Client

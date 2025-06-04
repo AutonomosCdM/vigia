@@ -21,14 +21,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger('vigia-detect.whatsapp.server')
 
-# Cargar variables de entorno
+# Usar configuración centralizada
 try:
-    from dotenv import load_dotenv
-    load_dotenv()
+    from config.settings import settings
 except ImportError:
-    logger.warning("python-dotenv no instalado, continuando sin cargar .env")
-except Exception as e:
-    logger.warning(f"Error cargando .env: {e}")
+    logger.error("Cannot import centralized settings")
+    sys.exit(1)
 
 # Agregar directorio raíz al path para importaciones
 # IMPORTANTE: Insertamos al final para evitar conflictos con YOLOv5

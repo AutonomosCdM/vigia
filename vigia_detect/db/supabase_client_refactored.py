@@ -9,45 +9,48 @@ from typing import Dict, Any, Optional, List
 from supabase import create_client, Client
 
 # Importar la clase base
-from ..core.base_client import BaseClient
+from ..core.base_client_v2 import BaseClientV2
 
 
-class SupabaseClientRefactored(BaseClient):
+class SupabaseClientRefactored(BaseClientV2):
     """
     Cliente mejorado para interactuar con Supabase.
     Extiende BaseClient para manejo consistente de configuración y logging.
     """
     
     def __init__(self):
-        """Inicializa el cliente Supabase con credenciales del entorno"""
-        required_vars = {
-            'supabase_url': 'SUPABASE_URL',
-            'supabase_key': 'SUPABASE_KEY'
-        }
-        
-        optional_vars = {
-            'supabase_service_key': 'SUPABASE_SERVICE_KEY'  # Para operaciones admin
-        }
+        """Inicializa el cliente Supabase con configuración centralizada"""
+        required_fields = [
+            'supabase_url',
+            'supabase_key'
+        ]
         
         super().__init__(
             service_name="Supabase",
-            required_env_vars=required_vars,
-            optional_env_vars=optional_vars
+            required_fields=required_fields
         )
     
     def _initialize_client(self):
         """Inicializa el cliente Supabase específico"""
         try:
-            self.client: Client = create_client(self.supabase_url, self.supabase_key)
-            
-            # Si tenemos service key, crear cliente admin también
-            if self.supabase_service_key:
-                self.admin_client = create_client(self.supabase_url, self.supabase_service_key)
-            else:
-                self.admin_client = None
+            self.client: Client = create_client(
+                self.settings.supabase_url, 
+                self.settings.supabase_key
+            )
                 
         except Exception as e:
-            self.log_error("Failed to initialize Supabase client", e)
+            self.logger.error(f"Failed to initialize Supabase client: {str(e)}")
+            raise
+    
+    def validate_connection(self) -> bool:
+        """Valida la conexión con Supabase"""
+        try:
+            # Intentar una operación simple para validar la conexión
+            response = self.client.table('_realtime_schema').select('*').limit(1).execute()
+            return True
+        except Exception as e:
+            self.logger.error(f"Supabase connection validation failed: {str(e)}")
+            return False
             raise
     
     def health_check(self) -> bool:

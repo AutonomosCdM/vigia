@@ -5,7 +5,8 @@ Este módulo implementa la canalización completa para procesamiento de imágene
 detección y clasificación de lesiones por presión (LPP).
 """
 
-from .detector import LPPDetector
-from .preprocessor import ImagePreprocessor
+from .detector import LPPDetector as Detector
+from .preprocessor import ImagePreprocessor as Preprocessor
+from .yolo_loader import YOLOLoader
 
-__all__ = ['LPPDetector', 'ImagePreprocessor']
+__all__ = ['Detector', 'Preprocessor', 'YOLOLoader']

@@ -1,2 +1,0 @@
-# Add slack-sdk to requirements
-slack-sdk>=3.27.0

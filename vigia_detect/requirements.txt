@@ -32,6 +32,9 @@ twilio>=7.0.0
 flask>=2.0.0
 requests>=2.25.0
 
+# Slack integration
+slack-sdk>=3.27.0
+
 # Web (para fases posteriores)
 fastapi>=0.70.0
 uvicorn>=0.15.0

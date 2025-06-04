@@ -2,7 +2,7 @@
 Constantes y configuraciones compartidas del sistema Vigía
 """
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Final, ClassVar
 
 
 class LPPGrade(Enum):
@@ -17,23 +17,23 @@ class LPPGrade(Enum):
 class SlackActionIds:
     """Action IDs estandarizados para interacciones de Slack"""
     # Botones principales
-    VER_HISTORIAL = "ver_historial_medico"
-    SOLICITAR_EVALUACION = "solicitar_evaluacion_medica"
-    MARCAR_RESUELTO = "marcar_resuelto"
+    VER_HISTORIAL: ClassVar[str] = "ver_historial_medico"
+    SOLICITAR_EVALUACION: ClassVar[str] = "solicitar_evaluacion_medica"
+    MARCAR_RESUELTO: ClassVar[str] = "marcar_resuelto"
     
     # Modales
-    MODAL_HISTORIAL = "modal_historial_medico"
-    MODAL_RESOLUCION = "modal_resolucion_caso"
+    MODAL_HISTORIAL: ClassVar[str] = "modal_historial_medico"
+    MODAL_RESOLUCION: ClassVar[str] = "modal_resolucion_caso"
     
     # Acciones secundarias
-    ACEPTAR_EVALUACION = "aceptar_evaluacion"
-    VER_DETALLES_EVALUACION = "ver_detalles_evaluacion"
+    ACEPTAR_EVALUACION: ClassVar[str] = "aceptar_evaluacion"
+    VER_DETALLES_EVALUACION: ClassVar[str] = "ver_detalles_evaluacion"
 
 
 class SlackChannels:
     """IDs de canales de Slack"""
-    PROJECT_LPP = "C08KK1SRE5S"  # #project-lpp
-    VIGIA = "C08TJHZFVD1"        # #vigia
+    PROJECT_LPP: ClassVar[str] = "C08KK1SRE5S"  # #project-lpp
+    VIGIA: ClassVar[str] = "C08TJHZFVD1"        # #vigia
     
     # Método para obtener de configuración si existe
     @classmethod
@@ -45,7 +45,7 @@ class SlackChannels:
 
 
 # Mapeo de severidad de LPP para alertas
-LPP_SEVERITY_ALERTS: Dict[int, Dict[str, Any]] = {
+LPP_SEVERITY_ALERTS: Final[Dict[int, Dict[str, Any]]] = {
     0: {
         'emoji': '⚪',
         'level': 'INFO',
@@ -85,7 +85,7 @@ LPP_SEVERITY_ALERTS: Dict[int, Dict[str, Any]] = {
 
 
 # Descripciones detalladas de cada grado
-LPP_GRADE_DESCRIPTIONS: Dict[int, str] = {
+LPP_GRADE_DESCRIPTIONS: Final[Dict[int, str]] = {
     0: "Categoría 1 (Eritema no blanqueable): Piel intacta con enrojecimiento no blanqueable.",
     1: "Categoría 1 (Eritema no blanqueable): Piel intacta con enrojecimiento no blanqueable de un área localizada.",
     2: "Categoría 2: Pérdida parcial del grosor de la piel que afecta a la epidermis y/o dermis.",
@@ -95,7 +95,7 @@ LPP_GRADE_DESCRIPTIONS: Dict[int, str] = {
 
 
 # Recomendaciones por grado
-LPP_GRADE_RECOMMENDATIONS: Dict[int, str] = {
+LPP_GRADE_RECOMMENDATIONS: Final[Dict[int, str]] = {
     0: "• Aliviar presión en zona afectada\n• Mantener piel limpia y seca\n• Cambios posturales c/2h",
     1: "• Aliviar presión inmediatamente\n• Aplicar apósitos protectores\n• Evaluar riesgo con escala Braden",
     2: "• Curación según protocolo\n• Apósitos hidrocoloides\n• Evaluar dolor y signos de infección",

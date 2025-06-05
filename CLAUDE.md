@@ -1,132 +1,133 @@
-# CLAUDE.md - Vigia Project Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Vigia is a medical detection system for pressure injuries (LPP - Lesiones Por Presión) that uses computer vision and AI to help healthcare providers identify and track patient conditions. The system integrates with messaging platforms (WhatsApp, Slack) and features a custom webhook system for external integrations.
+Vigia is a medical-grade pressure injury (LPP - Lesiones Por Presión) detection system using computer vision and AI. The system implements a secure 3-layer architecture for healthcare compliance (HIPAA, ISO 13485, SOC2) with messaging integration (WhatsApp, Slack) and comprehensive audit capabilities.
 
-## Key Project Context
+## Architecture Overview
 
-### Architecture
-- **Main Detection Pipeline**: `vigia_detect/` - Core CV and detection logic
-- **Messaging Integration**: WhatsApp bot and Slack notifications
-- **Database**: Supabase (shared with autonomos-agent project)
-- **Redis**: Caching layer for medical protocols and embeddings
-- **Webhook System**: Custom webhook client/server for external integrations
+### 🏗️ 3-Layer Security Architecture
+The system implements strict separation of concerns across three layers:
 
-### Important Commands
+**Layer 1 - Input Isolation (Zero Medical Knowledge)**
+- `vigia_detect/messaging/whatsapp/isolated_bot.py` - WhatsApp Bot with no medical data access
+- `vigia_detect/core/input_packager.py` - Standardizes inputs without medical analysis  
+- `vigia_detect/core/input_queue.py` - Encrypted temporal storage with session tokens
+
+**Layer 2 - Medical Orchestration**
+- `vigia_detect/core/medical_dispatcher.py` - Routes based on medical content and urgency
+- `vigia_detect/core/triage_engine.py` - Applies medical rules for clinical urgency assessment
+- `vigia_detect/core/session_manager.py` - Manages temporal isolation with 15-minute timeouts
+
+**Layer 3 - Specialized Medical Systems**
+- `vigia_detect/systems/clinical_processing.py` - LPP detection and medical analysis
+- `vigia_detect/systems/medical_knowledge.py` - Medical protocols and knowledge base
+- `vigia_detect/systems/human_review_queue.py` - Human escalation with priority queues
+
+**Cross-Cutting Services**
+- `vigia_detect/utils/audit_service.py` - Complete audit trail with 7-year retention
+- `vigia_detect/interfaces/slack_orchestrator.py` - Medical team notifications
+- `vigia_detect/utils/access_control_matrix.py` - Granular permissions by layer and role
+
+## Key Commands
+
+### Testing
 ```bash
-# Run tests
-npm run test
+# Run all tests with standardized runner
+./scripts/run_tests.sh
 
-# Lint code
-npm run lint
+# Run specific test suites
+./scripts/run_tests.sh e2e          # End-to-end tests
+./scripts/run_tests.sh unit         # Unit tests only  
+./scripts/run_tests.sh security     # Security tests
+./scripts/run_tests.sh medical      # Medical/clinical tests
+./scripts/run_tests.sh quick        # Smoke tests + basic validation
 
-# Type checking
-npm run typecheck
+# Direct pytest (with markers)
+python -m pytest tests/ -m "unit"           # Unit tests
+python -m pytest tests/ -m "not slow"       # Skip slow tests
+python -m pytest tests/e2e/ -v              # E2E with verbose output
 
-# Start WhatsApp server
-./start_whatsapp_server.sh
-
-# Start Slack server
-./scripts/start_slack_server.sh
-
-# Process images with webhook notifications
-python vigia_detect/cli/process_images_refactored.py --webhook
+# Coverage (webhook module)
+cd vigia_detect/webhook && python -m pytest --cov=vigia_detect.webhook --cov-report=html
 ```
 
-### API Keys and Services
-- Uses Anthropic Claude API for AI capabilities
-- Supabase instance: autonomos-agent project
-- Twilio for WhatsApp integration
-- Slack API for notifications
+### Linting and Code Quality
+```bash
+# Security analysis
+./scripts/run_security_analysis.sh
 
-### Webhook System
-The project includes a custom webhook system to send detection results to external services:
+# Python linting (via pylint in requirements.txt)
+python -m pylint vigia_detect/
 
-1. **Configuration** (via environment variables):
-   - `WEBHOOK_ENABLED`: Enable/disable webhooks globally
-   - `WEBHOOK_URL`: Target webhook endpoint
-   - `WEBHOOK_API_KEY`: Optional authentication token
-   - `WEBHOOK_TIMEOUT`: Request timeout (default: 30s)
-   - `WEBHOOK_RETRY_COUNT`: Number of retry attempts (default: 3)
+# Run validation script
+python scripts/validate_post_refactor_simple.py --verbose
+```
 
-2. **CLI Usage**:
-   ```bash
-   # Send results via webhook
-   python process_images_refactored.py --webhook --patient-code CD-2025-001
-   
-   # Override webhook URL
-   python process_images_refactored.py --webhook --webhook-url https://api.example.com/webhook
-   ```
+### System Operations
+```bash
+# Start services
+./start_whatsapp_server.sh                    # WhatsApp webhook server
+./scripts/start_slack_server.sh               # Slack notification server
 
-3. **Webhook Events**:
-   - `detection.completed`: When image processing completes
-   - `detection.failed`: When processing fails
-   - `patient.updated`: When patient data changes
-   - `protocol.triggered`: When medical protocol is activated
+# Environment setup
+source scripts/quick_env_setup.sh             # Load environment variables
+python scripts/setup_credentials.py           # Initial credential setup
 
-### Code Style Guidelines
-- Use existing patterns from the codebase
-- Follow the modular architecture in `vigia_detect/`
-- Maintain separation between core logic, messaging, and UI layers
-- Use type hints in Python code
-- Follow existing import patterns (vigia_detect, not lpp_detect)
+# Image processing
+python vigia_detect/cli/process_images_refactored.py --input /path/to/images
+python vigia_detect/cli/process_images_refactored.py --webhook --patient-code CD-2025-001
 
-### Testing Requirements
-- Always run tests after making changes
-- Use pytest for Python tests
-- Mock external services (Twilio, Slack, Supabase) in tests
-- Check `tests/` directories in each module
+# Redis operations
+python scripts/test_redis_connection.py       # Test Redis connectivity
+python scripts/migrate_redis_phase2.py        # Migrate to Phase 2 vector search
+```
 
-### Security Considerations
-- Never commit API keys or secrets
-- Use environment variables for configuration
-- Medical data is sensitive - ensure proper handling
-- Follow HIPAA-like practices for patient information
+## Development Context
 
-### Module-Specific Notes
+### Core Modules
+- **CV Pipeline** (`vigia_detect/cv_pipeline/`): YOLOv5-based lesion detection with medical-grade preprocessing
+- **Messaging** (`vigia_detect/messaging/`): WhatsApp/Slack integration with template system
+- **Database** (`vigia_detect/db/`): Supabase client with row-level security policies
+- **Redis Layer** (`vigia_detect/redis_layer/`): Medical protocol caching and vector search
+- **Webhook System** (`vigia_detect/webhook/`): FastAPI-based external integrations
 
-#### CV Pipeline (`vigia_detect/cv_pipeline/`)
-- Handles image preprocessing and detection
-- Uses YOLO for object detection
-- Outputs detection results with confidence scores
+### Security & Compliance
+- **Medical data encryption** at rest using Fernet symmetric encryption
+- **Session-based temporal isolation** prevents data persistence beyond medical need
+- **Complete audit trail** for regulatory compliance (HIPAA/SOC2/ISO 13485)
+- **Least privilege access** with granular permissions matrix
+- **Human-in-the-loop** escalation for ambiguous medical cases
 
-#### Messaging (`vigia_detect/messaging/`)
-- WhatsApp: Handles incoming images and sends results
-- Slack: Sends formatted notifications with detection results
-- Templates in `templates/` for consistent messaging
+### External Services
+- **Anthropic Claude** for medical analysis and natural language processing
+- **Supabase** for persistent medical data storage (shared with autonomos-agent project)
+- **Twilio** for WhatsApp messaging integration
+- **Slack API** for medical team notifications  
+- **Redis** for medical protocol caching and vector embeddings
 
-#### Webhook System (`vigia_detect/webhook/`)
-- Client: Async/sync webhook sender with retry logic
-- Server: FastAPI-based webhook receiver
-- Models: Structured event payloads for medical data
-- Full authentication support with Bearer tokens
+### Testing Architecture
+- **Comprehensive mocking** of external services (Twilio, Slack, Supabase)
+- **Medical data safety** using synthetic patient data in tests
+- **Async test support** in webhook module with VCR for HTTP recording
+- **Test categorization** with markers: unit, integration, e2e, medical, security, smoke
+- **Coverage reporting** enabled for webhook module
 
-#### Redis Layer (`vigia_detect/redis_layer/`)
-- Caches medical protocols and embeddings
-- Vector search for similar cases
-- Two-phase implementation (Phase 1: basic cache, Phase 2: vectors)
+### Medical Workflow
+The system handles the complete medical workflow from input to clinical decision:
+1. **Input Reception**: WhatsApp Bot receives images/messages from healthcare staff
+2. **Medical Triage**: Triage Engine assesses clinical urgency and routes appropriately  
+3. **Clinical Analysis**: Specialized systems perform LPP detection and grading
+4. **Human Escalation**: Complex cases route to qualified medical personnel
+5. **Team Notification**: Slack Orchestrator delivers results to appropriate medical teams
+6. **Audit & Compliance**: All actions logged for medical-legal traceability
 
-#### Database (`vigia_detect/db/`)
-- Supabase client for data persistence
-- Stores detection history and patient records
-- Row-level security policies for data protection
+### Key Configuration
+- Environment variables managed through `.env` files with secure credential handling
+- Medical protocols stored in Redis with vector search capabilities
+- Session timeouts enforced at 15 minutes for temporal data isolation
+- Multi-language support (Spanish/English) for medical notifications
 
-### Development Workflow
-1. Make changes in feature branches
-2. Run tests locally before committing
-3. Use meaningful commit messages
-4. Update documentation if adding new features
-5. Test integrations (WhatsApp/Slack/Webhooks) manually when modifying messaging
-
-### Common Tasks
-- **Adding a new medical protocol**: Update Redis cache and protocol indexer
-- **Modifying detection logic**: Work in `cv_pipeline/detector.py`
-- **Updating message templates**: Edit files in `messaging/templates/`
-- **Adding new Slack blocks**: Modify `core/slack_templates.py`
-- **Creating webhook handlers**: Add handlers in webhook server or implement receiver
-
-### Current Focus Areas
-- Improving detection accuracy for pressure injuries
-- Building custom medical UI and agent system
-- Implementing patient history and memory features
-- Expanding webhook integrations for hospital systems
+### Recent Architecture Implementation
+The system recently implemented a complete 3-layer security architecture to meet medical compliance requirements. All new development should follow the layered access patterns and maintain strict separation between input processing, medical orchestration, and specialized clinical systems.

@@ -3,7 +3,7 @@ Configuración centralizada para el proyecto Vigía
 """
 import os
 from typing import Optional
-from pydantic import Field, validator
+from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -17,19 +17,19 @@ class Settings(BaseSettings):
     log_level: str = Field("INFO", env="LOG_LEVEL")
     
     # Database - Supabase
-    supabase_url: str = Field(..., env="SUPABASE_URL")
-    supabase_key: str = Field(..., env="SUPABASE_KEY")
+    supabase_url: str = Field(default="https://placeholder.supabase.co", description="Supabase project URL")
+    supabase_key: str = Field(default="placeholder_key", description="Supabase anon key")
     
     # Messaging - Twilio
-    twilio_account_sid: str = Field(..., env="TWILIO_ACCOUNT_SID")
-    twilio_auth_token: str = Field(..., env="TWILIO_AUTH_TOKEN")
-    twilio_whatsapp_from: str = Field(..., env="TWILIO_WHATSAPP_FROM")
-    twilio_phone_from: str = Field(..., env="TWILIO_PHONE_FROM")
+    twilio_account_sid: str = Field(default="placeholder_sid", description="Twilio Account SID")
+    twilio_auth_token: str = Field(default="placeholder_token", description="Twilio Auth Token")
+    twilio_whatsapp_from: str = Field(default="whatsapp:+1234567890", description="Twilio WhatsApp number")
+    twilio_phone_from: str = Field(default="+1234567890", description="Twilio phone number")
     
     # Messaging - Slack
-    slack_bot_token: str = Field(..., env="SLACK_BOT_TOKEN")
-    slack_app_token: Optional[str] = Field(None, env="SLACK_APP_TOKEN")
-    slack_signing_secret: str = Field(..., env="SLACK_SIGNING_SECRET")
+    slack_bot_token: str = Field(default="xoxb-placeholder", description="Slack Bot Token")
+    slack_app_token: Optional[str] = Field(None, description="Slack App Token")
+    slack_signing_secret: str = Field(default="placeholder_secret", description="Slack Signing Secret")
     slack_channel_lpp: str = Field("C08KK1SRE5S", env="SLACK_CHANNEL_LPP")
     slack_channel_vigia: str = Field("C08TJHZFVD1", env="SLACK_CHANNEL_VIGIA")
     
@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     webhook_path: str = Field("/slack/events", env="WEBHOOK_PATH")
     
     # Security
-    secret_key: str = Field(..., env="SECRET_KEY")
+    secret_key: str = Field(default="dev_secret_key_change_in_production", description="Application secret key")
     allowed_hosts: list = Field(["localhost", "127.0.0.1"], env="ALLOWED_HOSTS")
     
     # Webhook Configuration
@@ -84,39 +84,49 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = Field(60, env="RATE_LIMIT_PER_MINUTE")
     
     # Anthropic API
-    anthropic_api_key: str = Field(..., env="ANTHROPIC_API_KEY")
+    anthropic_api_key: str = Field(default="placeholder_anthropic_key", description="Anthropic API key")
     anthropic_model: str = Field("claude-3-sonnet-20240229", env="ANTHROPIC_MODEL")
     
-    @validator("environment")
+    @field_validator("environment")
+    @classmethod
     def validate_environment(cls, v):
         allowed = ["development", "staging", "production"]
         if v not in allowed:
             raise ValueError(f"Environment must be one of {allowed}")
         return v
     
-    @validator("log_level")
+    @field_validator("log_level")
+    @classmethod
     def validate_log_level(cls, v):
         allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in allowed:
             raise ValueError(f"Log level must be one of {allowed}")
         return v.upper()
     
-    @validator("model_confidence")
+    @field_validator("model_confidence")
+    @classmethod
     def validate_confidence(cls, v):
         if not 0 <= v <= 1:
             raise ValueError("Model confidence must be between 0 and 1")
         return v
     
-    @validator("rate_limit_per_minute")
+    @field_validator("rate_limit_per_minute")
+    @classmethod
     def validate_rate_limit(cls, v):
         if v < 1:
             raise ValueError("Rate limit must be at least 1 per minute")
         return v
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8", 
+        case_sensitive=False,
+        env_prefix="",
+        protected_namespaces=("settings_",),
+        # Load from multiple env files in order of priority
+        env_file_priority=[".env.local", ".env.testing", ".env"],
+        extra="ignore"
+    )
 
 
 @lru_cache()

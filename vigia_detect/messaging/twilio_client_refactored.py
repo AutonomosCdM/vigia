@@ -8,9 +8,7 @@ from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 
 # Importar la clase base
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from core.base_client import BaseClient
+from ..core.base_client import BaseClient
 
 
 class TwilioClientRefactored(BaseClient):

@@ -352,3 +352,47 @@ class MedicalErrorHandler:
             "Intente la operación nuevamente",
             "Contacte al soporte técnico si el problema persiste"
         ])
+
+
+def handle_exceptions(default_return=None):
+    """
+    Decorator para manejar excepciones de manera consistente.
+    
+    Args:
+        default_return: Valor a retornar en caso de excepción
+        
+    Returns:
+        Función decorada con manejo de excepciones
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                # Log del error
+                logger = logging.getLogger(func.__module__)
+                logger.error(f"Exception in {func.__name__}: {str(e)}", exc_info=True)
+                
+                # Retornar valor por defecto
+                return default_return
+                
+        # Para funciones async
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                # Log del error
+                logger = logging.getLogger(func.__module__)
+                logger.error(f"Exception in {func.__name__}: {str(e)}", exc_info=True)
+                
+                # Retornar valor por defecto
+                return default_return
+        
+        # Retornar el wrapper apropiado
+        import asyncio
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return wrapper
+            
+    return decorator

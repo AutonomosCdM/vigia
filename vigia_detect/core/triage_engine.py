@@ -8,9 +8,12 @@ Responsabilidades:
 - Clasificar severidad clínica
 - Identificar necesidad de escalamiento humano
 - Mantener explicabilidad de decisiones
+
+Versión mejorada con integración MedGemma para análisis médico inteligente.
 """
 
 import re
+import asyncio
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
@@ -18,6 +21,7 @@ from enum import Enum
 
 from .input_packager import StandardizedInput
 from ..utils.secure_logger import SecureLogger
+from ..ai.medgemma_client import MedGemmaClient, MedicalContext, MedicalAnalysisType
 
 logger = SecureLogger("triage_engine")
 
@@ -68,6 +72,7 @@ class TriageResult:
     explanation: str
     requires_human_review: bool
     timestamp: datetime
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class MedicalTriageEngine:
@@ -75,17 +80,29 @@ class MedicalTriageEngine:
     Motor de triage médico con reglas clínicas.
     """
     
-    def __init__(self):
+    def __init__(self, use_medgemma: bool = False):
         """Inicializar motor de triage."""
         self.rules = self._initialize_medical_rules()
         self.emergency_patterns = self._compile_emergency_patterns()
         self.clinical_patterns = self._compile_clinical_patterns()
         
+        # Inicializar MedGemma client si está habilitado
+        self.use_medgemma = use_medgemma
+        self.medgemma_client = None
+        if use_medgemma:
+            try:
+                self.medgemma_client = MedGemmaClient()
+                logger.info("MedGemma client initialized for enhanced medical triage")
+            except Exception as e:
+                logger.warning(f"Failed to initialize MedGemma client: {e}")
+                self.use_medgemma = False
+        
         logger.audit("triage_engine_initialized", {
             "component": "layer2_triage_engine",
             "total_rules": len(self.rules),
             "emergency_patterns": len(self.emergency_patterns),
-            "clinical_compliance": True
+            "clinical_compliance": True,
+            "medgemma_enabled": self.use_medgemma
         })
     
     def _initialize_medical_rules(self) -> List[TriageRule]:
@@ -346,6 +363,220 @@ class MedicalTriageEngine:
                 requires_human_review=True,
                 timestamp=datetime.now(timezone.utc)
             )
+    
+    async def perform_enhanced_triage(self, standardized_input: StandardizedInput) -> TriageResult:
+        """
+        Realizar triage médico mejorado con MedGemma (si está disponible).
+        
+        Args:
+            standardized_input: Input estandarizado
+            
+        Returns:
+            TriageResult con análisis médico mejorado
+        """
+        try:
+            # Realizar triage básico primero
+            basic_result = await self.perform_triage(standardized_input)
+            
+            # Si MedGemma está disponible y hay contenido médico relevante, mejorar el análisis
+            if (self.use_medgemma and self.medgemma_client and 
+                basic_result.context in [ClinicalContext.PRESSURE_INJURY, 
+                                       ClinicalContext.WOUND_ASSESSMENT,
+                                       ClinicalContext.GENERAL_MEDICAL]):
+                
+                enhanced_result = await self._enhance_with_medgemma(standardized_input, basic_result)
+                return enhanced_result
+            
+            return basic_result
+            
+        except Exception as e:
+            logger.error("enhanced_triage_error", {
+                "session_id": standardized_input.session_id,
+                "error": str(e)
+            })
+            # Fallback al triage básico
+            return await self.perform_triage(standardized_input)
+    
+    async def _enhance_with_medgemma(self, standardized_input: StandardizedInput, 
+                                   basic_result: TriageResult) -> TriageResult:
+        """
+        Mejorar resultado de triage usando MedGemma.
+        
+        Args:
+            standardized_input: Input original
+            basic_result: Resultado del triage básico
+            
+        Returns:
+            TriageResult mejorado con análisis de MedGemma
+        """
+        try:
+            text_content = standardized_input.raw_content.get("text", "")
+            has_image = standardized_input.metadata.get("has_media", False)
+            
+            # Construir contexto médico si está disponible
+            medical_context = self._build_medical_context(standardized_input)
+            
+            # Realizar análisis de triage con MedGemma
+            medgemma_response = await self.medgemma_client.perform_clinical_triage(
+                patient_message=text_content,
+                symptoms_description=f"Patient input with {basic_result.context.value} context",
+                medical_context=medical_context
+            )
+            
+            if medgemma_response:
+                # Combinar resultados del triage básico con análisis MedGemma
+                enhanced_urgency = self._combine_urgency_assessment(
+                    basic_result.urgency, 
+                    medgemma_response.risk_level
+                )
+                
+                enhanced_confidence = max(
+                    basic_result.confidence,
+                    medgemma_response.confidence_score
+                )
+                
+                # Agregar flags de MedGemma
+                enhanced_flags = list(basic_result.clinical_flags)
+                if medgemma_response.clinical_findings.get('alarm_signs'):
+                    enhanced_flags.extend(medgemma_response.clinical_findings['alarm_signs'])
+                if medgemma_response.clinical_findings.get('red_flags'):
+                    enhanced_flags.extend(['red_flag_' + flag for flag in medgemma_response.clinical_findings['red_flags']])
+                
+                # Mejorar explicación
+                enhanced_explanation = self._enhance_explanation(
+                    basic_result.explanation,
+                    medgemma_response
+                )
+                
+                # Determinar si requiere revisión humana (más conservador)
+                enhanced_requires_human = (
+                    basic_result.requires_human_review or 
+                    medgemma_response.follow_up_needed or
+                    enhanced_urgency in [ClinicalUrgency.EMERGENCY, ClinicalUrgency.URGENT]
+                )
+                
+                # Crear resultado mejorado
+                enhanced_result = TriageResult(
+                    urgency=enhanced_urgency,
+                    context=basic_result.context,
+                    confidence=enhanced_confidence,
+                    matched_rules=basic_result.matched_rules + ["MEDGEMMA_ENHANCED"],
+                    recommended_route=self._enhance_route_recommendation(
+                        basic_result.recommended_route, 
+                        medgemma_response
+                    ),
+                    clinical_flags=list(set(enhanced_flags)),
+                    explanation=enhanced_explanation,
+                    requires_human_review=enhanced_requires_human,
+                    timestamp=datetime.now(timezone.utc),
+                    # Agregar metadata de MedGemma
+                    metadata={
+                        "medgemma_analysis": {
+                            "urgency_level": medgemma_response.clinical_findings.get('urgency_level'),
+                            "disposition": medgemma_response.clinical_findings.get('disposition'),
+                            "clinical_reasoning": medgemma_response.clinical_findings.get('clinical_reasoning'),
+                            "confidence": medgemma_response.confidence_score
+                        }
+                    }
+                )
+                
+                logger.info("triage_enhanced_with_medgemma", {
+                    "session_id": standardized_input.session_id,
+                    "basic_urgency": basic_result.urgency.value,
+                    "enhanced_urgency": enhanced_urgency.value,
+                    "confidence_improvement": enhanced_confidence - basic_result.confidence,
+                    "medgemma_confidence": medgemma_response.confidence_score
+                })
+                
+                return enhanced_result
+            
+            # Si MedGemma no pudo procesar, retornar resultado básico
+            return basic_result
+            
+        except Exception as e:
+            logger.warning("medgemma_enhancement_failed", {
+                "session_id": standardized_input.session_id,
+                "error": str(e)
+            })
+            # Fallback al resultado básico
+            return basic_result
+    
+    def _build_medical_context(self, standardized_input: StandardizedInput) -> Optional[MedicalContext]:
+        """Construir contexto médico desde el input estandarizado."""
+        try:
+            metadata = standardized_input.metadata
+            
+            # Extraer información médica disponible del metadata
+            medical_context = MedicalContext(
+                patient_age=metadata.get("patient_age"),
+                medical_history=metadata.get("medical_history"),
+                current_medications=metadata.get("current_medications"),
+                mobility_status=metadata.get("mobility_status"),
+                risk_factors=metadata.get("risk_factors"),
+                previous_lpp_history=metadata.get("previous_lpp_history")
+            )
+            
+            return medical_context
+            
+        except Exception as e:
+            logger.debug(f"Could not build medical context: {e}")
+            return None
+    
+    def _combine_urgency_assessment(self, basic_urgency: ClinicalUrgency, 
+                                  medgemma_urgency: Optional[str]) -> ClinicalUrgency:
+        """Combinar evaluaciones de urgencia (conservador: usar la más alta)."""
+        if not medgemma_urgency:
+            return basic_urgency
+        
+        # Mapear urgencia de MedGemma a ClinicalUrgency
+        medgemma_mapping = {
+            "crítica": ClinicalUrgency.EMERGENCY,
+            "alta": ClinicalUrgency.URGENT, 
+            "moderada": ClinicalUrgency.PRIORITY,
+            "baja": ClinicalUrgency.ROUTINE
+        }
+        
+        mapped_urgency = medgemma_mapping.get(medgemma_urgency.lower(), ClinicalUrgency.PRIORITY)
+        
+        # Retornar la urgencia más alta (más conservador)
+        urgency_priority = {
+            ClinicalUrgency.EMERGENCY: 4,
+            ClinicalUrgency.URGENT: 3,
+            ClinicalUrgency.PRIORITY: 2,
+            ClinicalUrgency.ROUTINE: 1
+        }
+        
+        if urgency_priority[mapped_urgency] > urgency_priority[basic_urgency]:
+            return mapped_urgency
+        else:
+            return basic_urgency
+    
+    def _enhance_explanation(self, basic_explanation: str, 
+                           medgemma_response) -> str:
+        """Mejorar explicación con insights de MedGemma."""
+        enhanced = basic_explanation
+        
+        if medgemma_response.clinical_findings.get('clinical_reasoning'):
+            enhanced += f"\n\nAnálisis médico especializado: {medgemma_response.clinical_findings['clinical_reasoning']}"
+        
+        if medgemma_response.recommendations:
+            enhanced += f"\n\nRecomendaciones clínicas: {'; '.join(medgemma_response.recommendations)}"
+        
+        return enhanced
+    
+    def _enhance_route_recommendation(self, basic_route: str, 
+                                    medgemma_response) -> str:
+        """Mejorar recomendación de ruta con análisis MedGemma."""
+        disposition = medgemma_response.clinical_findings.get('disposition', '')
+        
+        if 'evaluación inmediata' in disposition.lower():
+            return "emergency_escalation"
+        elif 'evaluación urgente' in disposition.lower():
+            return "urgent_clinical_review" 
+        elif 'evaluación programada' in disposition.lower():
+            return "scheduled_clinical_review"
+        else:
+            return basic_route
     
     def _detect_clinical_context(self, text: str, has_image: bool) -> ClinicalContext:
         """Detectar contexto clínico del input."""

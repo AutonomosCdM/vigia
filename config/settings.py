@@ -87,6 +87,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="placeholder_anthropic_key", description="Anthropic API key")
     anthropic_model: str = Field("claude-3-sonnet-20240229", env="ANTHROPIC_MODEL")
     
+    # MedGemma Configuration
+    medgemma_enabled: bool = Field(False, env="MEDGEMMA_ENABLED")
+    medgemma_model: str = Field("gemini-1.5-pro", env="MEDGEMMA_MODEL")
+    google_api_key: str = Field(default="placeholder_google_key", description="Google API key for MedGemma")
+    medgemma_temperature: float = Field(0.1, env="MEDGEMMA_TEMPERATURE")
+    medgemma_max_tokens: int = Field(2048, env="MEDGEMMA_MAX_TOKENS")
+    
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v):

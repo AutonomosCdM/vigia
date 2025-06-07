@@ -7,63 +7,17 @@ This package provides:
 - Messaging integrations (WhatsApp, Slack)
 - Webhook system for external integrations
 - Patient data management with Supabase
+
+IMPORTANTE: Los módulos son independientes. Importe directamente lo que necesite:
+  from vigia_detect.ai.medgemma_client import MedGemmaClient
+  from vigia_detect.core.triage_engine import MedicalTriageEngine
 """
 
 __version__ = "1.0.0"
 __author__ = "Vigia Team"
 
-# Core components
-from .core import (
-    constants,
-    image_processor,
-    slack_templates,
-    BaseClient,
-)
-
-# Database
-from .db import SupabaseClient
-
-# Messaging
-from .messaging import (
-    SlackNotifier,
-    TwilioClient,
-    WhatsAppProcessor,
-)
-
-# Computer Vision
-from .cv_pipeline import (
-    Detector,
-    Preprocessor,
-    YOLOLoader,
-)
-
-# Redis Layer
-from .redis_layer import (
-    create_redis_client,
-    RedisClient,
-    CacheService,
-    VectorService,
-)
-
-# Webhook System
-from .webhook import (
-    WebhookClient,
-    WebhookServer,
-    WebhookEvent,
-    WebhookHandler,
-)
-
-# CLI Tools
-from .cli import process_images
-
-# Agents
-from .agents import LPPMedicalAgent
-
-# Interfaces
-from .interfaces import (
-    SlackInterface,
-    WebInterface,
-)
+# NO IMPORTAR TODO AUTOMÁTICAMENTE - Los módulos deben ser independientes
+# Cada módulo debe importarse explícitamente cuando se necesite
 
 __all__ = [
     # Version info

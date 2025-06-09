@@ -30,7 +30,16 @@ The system implements strict separation of concerns across three layers:
 - `vigia_detect/interfaces/slack_orchestrator.py` - Medical team notifications
 - `vigia_detect/utils/access_control_matrix.py` - Granular permissions by layer and role
 
-## Key Commands
+## Commands & Modes
+
+### 📋 Planning Mode
+```bash
+# Use /plan to enter planning mode for brainstorming and ideation
+/plan [topic]    # Enter planning mode without code execution
+                 # Focus on: design, architecture, research, strategy, brainstorming
+                 # Prevents jumping directly to implementation
+                 # Ideal for: new features, refactoring, system design, project planning
+```
 
 ### Testing
 ```bash
@@ -173,3 +182,13 @@ The system integrates multiple AI approaches for medical analysis:
 The system recently implemented a complete 3-layer security architecture to meet medical compliance requirements. All new development should follow the layered access patterns and maintain strict separation between input processing, medical orchestration, and specialized clinical systems.
 
 The MedGemma local integration represents a major shift toward fully private medical AI processing, eliminating external API dependencies for core medical analysis while maintaining professional-grade capabilities.
+
+## Planning Mode Instructions
+When user starts a message with `/plan` or requests planning mode:
+- **DO NOT execute any code or create files**
+- Focus on ideation, brainstorming, architecture design, and strategy
+- Provide detailed analysis, options, tradeoffs, and recommendations
+- Ask clarifying questions to better understand requirements
+- Create conceptual frameworks and high-level designs
+- Research and compare different approaches
+- Only move to implementation when explicitly asked to exit planning mode

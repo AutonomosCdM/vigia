@@ -41,6 +41,15 @@ The system implements strict separation of concerns across three layers:
                  # Ideal for: new features, refactoring, system design, project planning
 ```
 
+### ⚡ YOLO Mode
+```bash
+# Use /yolo to execute tasks without permission prompts (equivalent to --dangerously-skip-permissions)
+/yolo [task]     # Execute task immediately without confirmations
+                 # Focus on: rapid execution, testing, quick fixes, urgent tasks
+                 # Bypasses safety prompts and permission checks
+                 # Ideal for: experienced developers, testing scenarios, urgent fixes
+```
+
 ### Testing
 ```bash
 # Run all tests with standardized runner
@@ -183,7 +192,9 @@ The system recently implemented a complete 3-layer security architecture to meet
 
 The MedGemma local integration represents a major shift toward fully private medical AI processing, eliminating external API dependencies for core medical analysis while maintaining professional-grade capabilities.
 
-## Planning Mode Instructions
+## Mode Instructions
+
+### Planning Mode Instructions
 When user starts a message with `/plan` or requests planning mode:
 - **DO NOT execute any code or create files**
 - Focus on ideation, brainstorming, architecture design, and strategy
@@ -192,3 +203,13 @@ When user starts a message with `/plan` or requests planning mode:
 - Create conceptual frameworks and high-level designs
 - Research and compare different approaches
 - Only move to implementation when explicitly asked to exit planning mode
+
+### YOLO Mode Instructions
+When user starts a message with `/yolo` or requests YOLO mode:
+- **Execute tasks immediately without permission confirmations**
+- Skip safety prompts and user confirmations (equivalent to --dangerously-skip-permissions)
+- Focus on rapid execution and immediate results
+- Prioritize speed over cautious verification
+- Assume user has already considered risks and wants immediate action
+- Ideal for experienced developers who know what they're doing
+- Use with caution - no safety nets or confirmation dialogs

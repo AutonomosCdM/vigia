@@ -9,6 +9,7 @@ that can be used for medical testing without requiring ADK runtime.
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import json
+from vigia_detect.systems.medical_decision_engine import make_evidence_based_decision
 
 
 class LPPMedicalAgent:
@@ -82,17 +83,21 @@ class LPPMedicalAgent:
             confidence = primary_detection.get('confidence', 0.0)
             location = primary_detection.get('anatomical_location', 'unknown')
             
-            # Generate medical analysis
-            analysis = self._generate_lpp_analysis(
-                lpp_grade, confidence, location, patient_code, patient_context
+            # Generate evidence-based medical analysis
+            evidence_based_analysis = make_evidence_based_decision(
+                lpp_grade, confidence, location, patient_context
             )
+            
+            # Merge with legacy format for compatibility
+            analysis = self._merge_with_legacy_format(evidence_based_analysis, patient_code)
             
             return {
                 'success': True,
                 'analysis': analysis,
                 'patient_code': patient_code,
                 'image_path': image_path,
-                'processing_timestamp': datetime.now().isoformat()
+                'processing_timestamp': datetime.now().isoformat(),
+                'evidence_based_decision': evidence_based_analysis  # Nueva documentación médica
             }
             
         except Exception as e:
@@ -273,6 +278,36 @@ class LPPMedicalAgent:
         elif confidence < 0.7:
             analysis['clinical_recommendations'].append('Considerar segunda evaluación')
     
+    def _merge_with_legacy_format(self, evidence_based_analysis: Dict[str, Any], patient_code: str) -> Dict[str, Any]:
+        """
+        Fusiona el análisis basado en evidencia con el formato legacy para compatibilidad.
+        """
+        # Extraer campos del análisis basado en evidencia
+        escalation = evidence_based_analysis.get('escalation_requirements', {})
+        
+        # Crear análisis en formato legacy compatible
+        legacy_analysis = {
+            'lpp_grade': evidence_based_analysis['lpp_grade'],
+            'severity_assessment': evidence_based_analysis['severity_assessment'],
+            'confidence_score': evidence_based_analysis['confidence_score'],
+            'anatomical_location': evidence_based_analysis['anatomical_location'],
+            'clinical_recommendations': evidence_based_analysis['clinical_recommendations'],
+            'medical_warnings': evidence_based_analysis['medical_warnings'],
+            'requires_human_review': escalation.get('requires_human_review', False),
+            'requires_specialist_review': escalation.get('requires_specialist_review', False),
+            'prevention_focused': evidence_based_analysis['lpp_grade'] == 0,
+            # Nuevos campos con documentación médica
+            'evidence_documentation': evidence_based_analysis.get('evidence_documentation', {}),
+            'quality_metrics': evidence_based_analysis.get('quality_metrics', {}),
+            'escalation_requirements': escalation
+        }
+        
+        # Agregar campos específicos según escalación
+        if escalation.get('escalation_reasons'):
+            legacy_analysis['human_review_reason'] = escalation['escalation_reasons'][0]
+            
+        return legacy_analysis
+
     def _generate_error_analysis(self, error_message: str) -> Dict[str, Any]:
         """Generate analysis for error cases"""
         return {

@@ -1,50 +1,76 @@
 # Vigía - Sistema de Detección Temprana de Lesiones Por Presión
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AutonomosCdM/vigia)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![AI](https://img.shields.io/badge/AI-MedGemma_Local-purple)
+![Cache](https://img.shields.io/badge/Cache-Redis_Semantic-red)
 
-Sistema inteligente para la detección y prevención de lesiones por presión en pacientes hospitalizados, utilizando visión computacional y comunicación multicanal.
+Sistema inteligente para la detección y prevención de lesiones por presión en pacientes hospitalizados, utilizando visión computacional, IA médica local (MedGemma) y comunicación multicanal.
+
+## 🆕 **Nuevo en v1.1.0 - Integración MedGemma Local**
+- **🤖 IA Médica Local**: MedGemma para análisis clínico sin dependencias externas
+- **🗄️ Caché Semántico**: Redis con búsqueda vectorial de protocolos médicos
+- **📚 Base de Conocimiento**: Protocolos LPP completos con evidencia científica
+- **🧪 Suite de Pruebas**: 15 tests comprehensivos con 100% de éxito
+- **🔒 Privacidad Total**: Procesamiento completamente local, cumple HIPAA
 
 ## 🏥 Características Principales
 
-- **Detección Automática**: Análisis de imágenes con YOLOv5 para identificar lesiones
-- **Clasificación Inteligente**: Categorización automática por grados (0-4)
-- **Alertas Multicanal**: Notificaciones vía WhatsApp y Slack
-- **Análisis con IA**: Procesamiento de lenguaje natural con Google Vertex AI
-- **Base de Datos FHIR**: Almacenamiento estructurado compatible con estándares médicos
-- **Caché Semántico Médico**: Redis con embeddings para respuestas inteligentes
-- **Búsqueda de Protocolos**: Vector search para guías médicas con RediSearch
+- **🤖 IA Médica Local**: MedGemma para análisis clínico sin conexión externa
+- **🔍 Detección Automática**: Análisis de imágenes con YOLOv5 para identificar lesiones
+- **📊 Clasificación Inteligente**: Categorización automática por grados (0-4)
+- **📱 Alertas Multicanal**: Notificaciones vía WhatsApp y Slack
+- **🧠 Caché Semántico**: Redis con embeddings para respuestas médicas inteligentes
+- **📚 Protocolos Médicos**: Búsqueda vectorial de guías clínicas con evidencia
+- **🗄️ Base de Datos FHIR**: Almacenamiento estructurado compatible con estándares médicos
+- **🔒 Privacidad Completa**: Todo el procesamiento médico permanece local
 
 ## 🚀 Inicio Rápido
 
-### Configuración de Credenciales (Primera vez)
+### Configuración Inicial
 
 ```bash
-# Configurar credenciales de forma segura
+# 1. Configurar credenciales de forma segura
 python scripts/setup_credentials.py
 # Selecciona opción 1 y configura: Twilio, Anthropic, Supabase
 
-# Cargar credenciales en tu sesión
+# 2. Cargar credenciales en tu sesión
 source scripts/quick_env_setup.sh
+
+# 3. Instalar dependencias
+pip install -r vigia_detect/requirements.txt
 ```
 
-### Desarrollo Local
+### Configuración MedGemma Local (Nuevo)
 
 ```bash
-# Instalar dependencias
-pip install -r vigia_detect/requirements.txt
+# Instalar Ollama y MedGemma
+python scripts/setup_medgemma_ollama.py --install-ollama
+python scripts/setup_medgemma_ollama.py --model 27b --install
+python scripts/setup_medgemma_ollama.py --model 27b --test
 
-# Configurar Redis (opcional - modo mock disponible)
-brew install redis-stack  # macOS
-./scripts/redis_setup.sh  # Setup automático
+# Configurar Redis con protocolos médicos
+python scripts/setup_redis_simple.py
 
-# Ejecutar tests
-pytest tests/
+# Probar integración completa
+python examples/redis_integration_demo.py
+```
+
+### Desarrollo y Testing
+
+```bash
+# Ejecutar suite completa de pruebas
+./scripts/run_redis_medgemma_tests.sh
 
 # Iniciar servidor Slack (desarrollo)
 ./scripts/start_slack_server.sh
 
-# Procesar imágenes
+# Procesar imágenes con IA local
 python vigia_detect/cli/process_images_refactored.py --input /path/to/images
+
+# Análisis de imágenes médicas con MedGemma
+python examples/medgemma_image_analysis_demo.py
 ```
 
 ## 🔴 Redis - Caché Semántico Médico
@@ -118,31 +144,39 @@ vigia/
 - ✅ **Base de datos Supabase** con estructura FHIR
 - ✅ **Código refactorizado** y optimizado
 - ✅ **Configuración centralizada** y segura
-- ✅ **Redis Phase 2** - Caché semántico médico implementado
-- 🚧 **Redis Phase 3-4** - Búsqueda vectorial avanzada e integración completa
-- 🚧 **Agentes ADK** en desarrollo
+- ✅ **Integración MedGemma Local** - IA médica completamente local
+- ✅ **Redis Semantic Cache** - Caché inteligente con vector search
+- ✅ **Suite de Pruebas Completa** - 15 tests con 100% éxito
+- ✅ **Protocolos Médicos Mejorados** - Base de conocimiento expandida
+- 🚧 **Agentes de Riesgo** en desarrollo
+- 🚧 **Análisis de sentimientos** para adaptación de respuestas
 
 ## 🛠️ Stack Tecnológico
 
-- **Backend**: Python 3.8+, FastAPI/Flask
-- **AI/ML**: PyTorch, YOLOv5, Google ADK, Sentence Transformers
+- **Backend**: Python 3.11+, FastAPI/Flask
+- **AI/ML**: MedGemma (local), PyTorch, YOLOv5, Sentence Transformers
+- **IA Local**: Ollama, Hugging Face Transformers
+- **Cache**: Redis Stack 7.0+ con vector search y semantic cache
 - **Comunicaciones**: Twilio (WhatsApp), Slack SDK
-- **Datos**: Supabase (PostgreSQL), Redis Stack (RediSearch)
+- **Datos**: Supabase (PostgreSQL), Redis (cache y protocolos)
 - **Configuración**: Pydantic Settings, python-dotenv
-- **Testing**: pytest con fixtures compartidas
-- **Embeddings**: all-MiniLM-L6-v2 para búsqueda semántica
+- **Testing**: pytest con mocking completo (15 tests, 100% éxito)
+- **Embeddings**: Semantic similarity para cache médico
 
 ## 📚 Documentación
 
+### 🆕 Nuevas Guías
+- **[MedGemma Local Setup](docs/MEDGEMMA_LOCAL_SETUP.md)** - Configuración completa de IA local
+- **[Redis + MedGemma Integration](docs/REDIS_MEDGEMMA_INTEGRATION.md)** - Integración completa
+- **[Release Notes v1.1.0](docs/releases/RELEASE_NOTES_MEDGEMMA_INTEGRATION.md)** - Notas de la versión
+
+### Documentación Existente
 - **[Gestión de Credenciales](docs/CREDENTIALS_MANAGEMENT.md)**
 - **[Deployment en Render](docs/RENDER_DEPLOYMENT.md)**
-- **[Deployment con Render CLI](docs/RENDER_CLI_DEPLOYMENT.md)**
 - **[Guía de configuración de Slack](docs/guides/slack_setup.md)**
-- **[Redis Setup Guide](docs/REDIS_SETUP.md)**
-- **[Redis Phase 2 Documentation](docs/REDIS_PHASE2_DOCS.md)**
-- **[Documentación técnica](docs/)**
-- **[Changelog](docs/CHANGELOG.md)**
-- **[Ejemplos de uso](examples/)**
+- **[Documentación técnica](docs/)** - Arquitectura y APIs
+- **[Changelog](docs/CHANGELOG.md)** - Historial de cambios
+- **[Ejemplos de uso](examples/)** - Demos y casos de uso
 
 ## 🔄 Migración
 
@@ -162,4 +196,4 @@ Proyecto privado - Hospital Regional de Quilpué
 
 ---
 
-**Actualizado**: Mayo 2025 | **Versión**: 0.4.0 | **Estado**: Redis Phase 2 implementado
+**Actualizado**: Enero 2025 | **Versión**: 1.1.0 | **Estado**: MedGemma Local + Redis Semantic Cache

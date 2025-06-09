@@ -479,6 +479,135 @@ class MedicalKnowledgeSystem:
                     "evidence_level": "regulatory_requirement",
                     "last_updated": "2024-01-01"
                 }
+            },
+            "advanced_therapies": {
+                \"negative_pressure\": {
+                    \"title\": \"Terapia de Presi\u00f3n Negativa (VAC)\",
+                    \"content\": {
+                        \"indications\": [
+                            \"LPP grado 3-4 con lecho limpio\",
+                            \"Heridas con exudado abundante\",
+                            \"Preparaci\u00f3n de lecho para cirug\u00eda\",
+                            \"Post-quir\u00fargicas complicadas\"
+                        ],
+                        \"contraindications\": [
+                            \"Tejido necr\u00f3tico no desbridado\",
+                            \"F\u00edstulas enterocut\u00e1neas\",
+                            \"Vasos sangu\u00edneos expuestos\",
+                            \"Infecci\u00f3n activa no controlada\"
+                        ],
+                        \"parameters\": [
+                            \"Presi\u00f3n: 75-125 mmHg continua\",
+                            \"Modo intermitente: 5min ON, 2min OFF\",
+                            \"Cambio de ap\u00f3sito: cada 2-3 d\u00edas\",
+                            \"Duraci\u00f3n: hasta granulaci\u00f3n completa\"
+                        ]
+                    },
+                    \"evidence_level\": \"high\",
+                    \"last_updated\": \"2024-12-01\"
+                },
+                \"growth_factors\": {
+                    \"title\": \"Factores de Crecimiento y Terapias Avanzadas\",
+                    \"content\": {
+                        \"pdgf_therapy\": [
+                            \"Becaplermin gel 0.01%\",
+                            \"Aplicaci\u00f3n diaria en capa fina\",
+                            \"Indicado en \u00falceras diab\u00e9ticas\",
+                            \"Eficacia en LPP limitada\"
+                        ],
+                        \"platelet_rich_plasma\": [
+                            \"Concentrado aut\u00f3logo de plaquetas\",
+                            \"Rico en factores de crecimiento\",
+                            \"Aplicaci\u00f3n semanal\",
+                            \"Evidencia preliminar prometedora\"
+                        ],
+                        \"stem_cell_therapy\": [
+                            \"C\u00e9lulas madre mesenquimales\",
+                            \"Terapia experimental\",
+                            \"Resultados variables\",
+                            \"Requiere protocolo de investigaci\u00f3n\"
+                        ]
+                    },
+                    \"evidence_level\": \"moderate\",
+                    \"last_updated\": \"2024-12-01\"
+                },
+                \"hyperbaric_oxygen\": {
+                    \"title\": \"Oxigenoterapia Hiperb\u00e1rica\",
+                    \"content\": {
+                        \"mechanism\": [
+                            \"Aumenta tensi\u00f3n de O2 en tejidos\",
+                            \"Estimula angiog\u00e9nesis\",
+                            \"Efecto bactericida\",
+                            \"Mejora migraci\u00f3n de neutr\u00f3filos\"
+                        ],
+                        \"indications\": [
+                            \"LPP grado 3-4 refractarias\",
+                            \"Osteomielitis asociada\",
+                            \"Falla de injertos/colgajos\",
+                            \"Radionecrosis\"
+                        ],
+                        \"protocol\": [
+                            \"2.0-2.5 ATA por 90-120 minutos\",
+                            \"20-40 sesiones seg\u00fan respuesta\",
+                            \"5 d\u00edas por semana\",
+                            \"Evaluaci\u00f3n semanal de progreso\"
+                        ]
+                    },
+                    \"evidence_level\": \"moderate\",
+                    \"last_updated\": \"2024-12-01\"
+                }
+            },
+            \"surgical_interventions\": {
+                \"debridement\": {
+                    \"title\": \"Desbridamiento Quir\u00fargico de LPP\",
+                    \"content\": {
+                        \"indications\": [
+                            \"Tejido necr\u00f3tico extenso\",
+                            \"Signos de infecci\u00f3n profunda\",
+                            \"Falta de progreso con manejo conservador\",
+                            \"Preparaci\u00f3n para cirug\u00eda reconstructiva\"
+                        ],
+                        \"techniques\": [
+                            \"Sharp debridement: bistur\u00ed/tijeras\",
+                            \"Hydrosurgical: Versajet\u00ae\",
+                            \"Ultras\u00f3nico: MIST Therapy\u00ae\",
+                            \"L\u00e1ser: CO2 o Er:YAG\"
+                        ],
+                        \"post_operative\": [
+                            \"Hemostasia cuidadosa\",
+                            \"Irrigaci\u00f3n copiosa\",
+                            \"Ap\u00f3sito absorbente primario\",
+                            \"Antibi\u00f3ticos seg\u00fan cultivo\"
+                        ]
+                    },
+                    \"evidence_level\": \"high\",
+                    \"last_updated\": \"2024-12-01\"
+                },
+                \"reconstruction\": {
+                    \"title\": \"Cirug\u00eda Reconstructiva de LPP\",
+                    \"content\": {
+                        \"flap_selection\": [
+                            \"Sacro: colgajo gl\u00fateo superior\",
+                            \"Isquion: colgajo gracilis/semimembranoso\",
+                            \"Troc\u00e1nter: colgajo tensor fascia lata\",
+                            \"Occipital: colgajo trapecio\"
+                        ],
+                        \"principles\": [
+                            \"Resecci\u00f3n de prominencias \u00f3seas\",
+                            \"Cierre por planos\",
+                            \"Evitar tensi\u00f3n excesiva\",
+                            \"Drenaje cerrado\"
+                        ],
+                        \"post_operative_care\": [
+                            \"Reposo absoluto 2-3 semanas\",
+                            \"Progresi\u00f3n gradual de movilidad\",
+                            \"Fisioterapia especializada\",
+                            \"Seguimiento a largo plazo\"
+                        ]
+                    },
+                    \"evidence_level\": \"moderate\",
+                    \"last_updated\": \"2024-12-01\"
+                }
             }
         }
     

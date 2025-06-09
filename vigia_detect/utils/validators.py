@@ -4,7 +4,7 @@ Elimina duplicación de validaciones en múltiples módulos.
 """
 import re
 import os
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 from pathlib import Path
 
 
@@ -262,6 +262,24 @@ class PatientValidator:
             return True, "Paciente pediátrico - requiere consentimiento del tutor"
         
         return True, None
+
+
+def validate_patient_code_format(code: str) -> bool:
+    """
+    Valida formato de código de paciente.
+    
+    Args:
+        code: Código a validar
+        
+    Returns:
+        True si el formato es válido
+    """
+    if not code:
+        return False
+    
+    # Formato: 2-3 letras seguidas de guión y números/año
+    pattern = r'^[A-Z]{2,3}-\d{4}-\d{3,4}$'
+    return bool(re.match(pattern, code))
 
 
 class ClinicalValidator:

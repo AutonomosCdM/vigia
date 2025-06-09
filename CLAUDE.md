@@ -80,8 +80,25 @@ python vigia_detect/cli/process_images_refactored.py --input /path/to/images
 python vigia_detect/cli/process_images_refactored.py --webhook --patient-code CD-2025-001
 
 # Redis operations
-python scripts/test_redis_connection.py       # Test Redis connectivity
-python scripts/migrate_redis_phase2.py        # Migrate to Phase 2 vector search
+python scripts/test_redis_connection.py       # Test Redis connectivity  
+python scripts/setup_redis_simple.py          # Setup Redis with medical protocols and cache
+python examples/redis_integration_demo.py     # Demo Redis + MedGemma integration
+
+# MedGemma AI Setup (Local)
+
+## Opción 1: Ollama (Recomendado - Sin autenticación)
+python scripts/setup_medgemma_ollama.py --install-ollama   # Install Ollama
+python scripts/setup_medgemma_ollama.py --list             # List available models
+python scripts/setup_medgemma_ollama.py --model 27b --install  # Install 27B model
+python scripts/setup_medgemma_ollama.py --model 27b --test # Test model
+ollama run symptoma/medgemma3 "¿Cuáles son los grados de LPP?"  # Direct usage
+
+## Opción 2: Hugging Face (Requiere autenticación)
+python scripts/setup_medgemma_local.py --check-only        # Check requirements
+python scripts/setup_medgemma_local.py --install-deps      # Install dependencies
+python scripts/setup_medgemma_local.py --model 4b --download  # Download 4B model
+python scripts/setup_medgemma_local.py --model 4b --test   # Test model installation
+python examples/medgemma_local_demo.py                     # Run complete demo
 ```
 
 ## Development Context
@@ -92,6 +109,7 @@ python scripts/migrate_redis_phase2.py        # Migrate to Phase 2 vector search
 - **Database** (`vigia_detect/db/`): Supabase client with row-level security policies
 - **Redis Layer** (`vigia_detect/redis_layer/`): Medical protocol caching and vector search
 - **Webhook System** (`vigia_detect/webhook/`): FastAPI-based external integrations
+- **AI Module** (`vigia_detect/ai/`): MedGemma local client for medical analysis with full privacy
 
 ### Security & Compliance
 - **Medical data encryption** at rest using Fernet symmetric encryption
@@ -101,7 +119,8 @@ python scripts/migrate_redis_phase2.py        # Migrate to Phase 2 vector search
 - **Human-in-the-loop** escalation for ambiguous medical cases
 
 ### External Services
-- **Anthropic Claude** for medical analysis and natural language processing
+- **MedGemma Local** for medical analysis and natural language processing (fully local, HIPAA-compliant)
+- **Anthropic Claude** for medical analysis and natural language processing (optional API-based)
 - **Supabase** for persistent medical data storage (shared with autonomos-agent project)
 - **Twilio** for WhatsApp messaging integration
 - **Slack API** for medical team notifications  
@@ -129,5 +148,28 @@ The system handles the complete medical workflow from input to clinical decision
 - Session timeouts enforced at 15 minutes for temporal data isolation
 - Multi-language support (Spanish/English) for medical notifications
 
+### AI Integration Architecture
+The system integrates multiple AI approaches for medical analysis:
+
+**MedGemma Local (Recommended)**
+- `vigia_detect/ai/medgemma_local_client.py` - Complete local MedGemma implementation
+- Models: 4B multimodal (text+image) and 27B text-only
+- Features: Quantization, caching, multimodal support, medical context integration
+- Benefits: Full privacy, no API costs, HIPAA-compliant, predictable latency
+- Setup: Use `scripts/setup_medgemma_local.py` for automated configuration
+
+**External AI APIs (Fallback)**
+- Anthropic Claude for complex medical reasoning when local AI insufficient
+- Used only when MedGemma local cannot provide adequate analysis
+- Requires careful privacy and compliance consideration
+
+### Data Architecture
+**Redis vs Supabase Usage**
+- **Redis**: Medical protocol cache, vector embeddings, session data (temporal)
+- **Supabase**: Permanent medical records, audit trails, user management (persistent)
+- **Local Storage**: AI model cache, temporary image processing
+
 ### Recent Architecture Implementation
 The system recently implemented a complete 3-layer security architecture to meet medical compliance requirements. All new development should follow the layered access patterns and maintain strict separation between input processing, medical orchestration, and specialized clinical systems.
+
+The MedGemma local integration represents a major shift toward fully private medical AI processing, eliminating external API dependencies for core medical analysis while maintaining professional-grade capabilities.

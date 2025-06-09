@@ -9,6 +9,17 @@ python-dotenv==1.0.1
 pydantic==2.7.0
 pydantic-settings==2.2.1
 
+# MedGemma Local Dependencies (optional - install with setup script)
+# torch>=2.0.0  # Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# transformers>=4.50.0
+# accelerate>=0.20.0
+# bitsandbytes>=0.41.0  # For quantization
+# sentencepiece>=0.1.99  # For tokenization
+
+# Vector Search Dependencies  
+sentence-transformers>=2.2.2
+faiss-cpu>=1.7.4  # Use faiss-gpu if CUDA available
+
 # Security
 python-magic==0.4.27
 

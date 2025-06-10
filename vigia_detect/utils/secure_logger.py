@@ -206,6 +206,23 @@ class SecureLogger:
         self.info(f"Patient Action: {action}", 
                  patient_code=masked_code,
                  details=details or {})
+    
+    def audit(self, event: str, details: Optional[Dict] = None):
+        """Log audit event for compliance and security tracking"""
+        audit_entry = {
+            'audit_event': event,
+            'timestamp': self._get_timestamp(),
+            'compliance_level': 'audit',
+            'details': details or {}
+        }
+        
+        # Use info level for audit events
+        self.info(f"AUDIT: {event}", extra=audit_entry)
+    
+    def _get_timestamp(self) -> str:
+        """Get current timestamp in ISO format"""
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).isoformat()
 
 
 def secure_log(action: str = "function_call"):

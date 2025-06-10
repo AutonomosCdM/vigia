@@ -71,6 +71,10 @@ sentence-transformers==2.7.0
 transformers==4.40.1
 PyPDF2==3.0.1
 
+# Asynchronous Task Processing
+celery==5.3.6
+kombu==5.3.5
+
 # Monitoring and profiling (optional)
 # codecarbon==2.3.4
 # py-spy==0.3.14

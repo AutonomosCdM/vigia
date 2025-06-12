@@ -1,8 +1,10 @@
-# Documentación de Decisiones Médicas - Sistema Vigía
-## Referencias NPUAP/EPUAP/PPPIA y Justificación Científica
+# NPUAP/EPUAP/PPPIA Clinical Decision Framework for Vigia System
 
-### Propósito
-Este documento establece la base científica y normativa para todas las decisiones médicas automatizadas del Sistema Vigía, garantizando cumplimiento con estándares internacionales de atención de lesiones por presión.
+## Overview
+This document provides the complete scientific justification framework for all automated clinical decisions made by the Vigia system. All decisions are based on the 2019 NPUAP/EPUAP/PPPIA Clinical Practice Guidelines.
+
+**Primary Reference:**
+European Pressure Ulcer Advisory Panel, National Pressure Injury Advisory Panel and Pan Pacific Pressure Injury Alliance. Prevention and Treatment of Pressure Ulcers/Injuries: Clinical Practice Guideline. The International Guideline. Third Edition. 2019.
 
 ---
 

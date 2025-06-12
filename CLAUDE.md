@@ -98,16 +98,23 @@ python scripts/validate_post_refactor_simple.py --verbose
 ./start_whatsapp_server.sh                    # WhatsApp webhook server
 ./scripts/start_slack_server.sh               # Slack notification server
 
-# Async Pipeline (NEW - v1.2.0) ✅ IMPLEMENTED
+# Async Pipeline (NEW - v1.2.0) ✅ FULLY IMPLEMENTED
 pip install celery==5.3.6 kombu==5.3.5        # Install async dependencies (REQUIRED)
 ./scripts/start_celery_worker.sh               # Start async medical workers
 python scripts/celery_monitor.py --interval 30 # Monitor pipeline health
-python test_async_simple.py                   # Test implementation (works without Celery)
+python test_async_simple.py                   # Test implementation (✅ 5/5 PASSED)
 
 # Async Pipeline Validation
 python examples/redis_integration_demo.py --quick  # Core system test (✅ WORKING)
 python test_async_simple.py                       # Async structure test (✅ 5/5 PASSED)
 redis-cli ping                                     # Redis backend test (✅ WORKING)
+
+# Async Tasks and Components
+vigia_detect/core/async_pipeline.py               # Central orchestrator for async workflows
+vigia_detect/tasks/medical.py                     # Medical analysis tasks (image, risk, triage)
+vigia_detect/tasks/notifications.py               # Async medical notifications
+vigia_detect/tasks/audit.py                       # Async audit logging for compliance
+vigia_detect/utils/failure_handler.py             # Medical failure handling with escalation
 
 # Environment setup
 source scripts/quick_env_setup.sh             # Load environment variables
@@ -234,6 +241,8 @@ The MedGemma local integration represents a major shift toward fully private med
 Latest additions: 
 1. Evidence-based medical decision system ensuring all automated clinical decisions include scientific justification and comply with international medical standards.
 2. Asynchronous medical pipeline with Celery preventing timeouts in critical medical workflows, featuring specialized task queues, retry policies, and failure escalation for patient safety.
+3. Comprehensive NPUAP/EPUAP clinical documentation framework with complete scientific references and evidence levels (A/B/C) for all medical recommendations.
+4. Medical-grade failure handling with automatic escalation to human review for patient safety and regulatory compliance.
 
 ### Asynchronous Pipeline Architecture (NEW - v1.2.0)
 The system now implements a fully asynchronous medical pipeline using Celery to prevent timeouts and blocking:

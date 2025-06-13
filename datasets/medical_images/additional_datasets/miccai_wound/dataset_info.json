@@ -1,0 +1,15 @@
+{
+  "name": "MICCAI Wound Segmentation Dataset",
+  "description": "Medical challenge dataset with precise segmentation masks",
+  "url": "https://miccai2022.org/",
+  "paper": "Various MICCAI papers",
+  "type": "wound_segmentation",
+  "access": "registration_required",
+  "images": "500+",
+  "formats": [
+    "High-res images",
+    "Pixel-level masks"
+  ],
+  "relevance_score": 9.0,
+  "download_method": "manual_registration"
+}

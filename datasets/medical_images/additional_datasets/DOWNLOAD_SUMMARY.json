@@ -1,0 +1,13 @@
+{
+  "download_summary": "Additional Medical Datasets for LPP Detection",
+  "timestamp": "2025-06-13",
+  "total_datasets": 4,
+  "successful_downloads": 4,
+  "datasets": {
+    "azh_wound": {
+      "dataset_id": "azh_wound",
+      "name": "AZH Wound Dataset",
+      "status": "success",
+      "method": "git_clone",
+      "files_created": [
+        

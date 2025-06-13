@@ -1,0 +1,14 @@
+{
+  "ham10000": {
+    "error": "Dataset ham10000 not found at datasets/ham10000",
+    "exists": false
+  },
+  "isic": {
+    "error": "Dataset isic not found at datasets/isic",
+    "exists": false
+  },
+  "piid": {
+    "error": "Dataset piid not found at datasets/piid",
+    "exists": false
+  }
+}

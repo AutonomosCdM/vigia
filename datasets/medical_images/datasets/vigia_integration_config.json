@@ -1,0 +1,102 @@
+{
+  "datasets": {
+    "ham10000": {
+      "path": "datasets/ham10000",
+      "type": "skin_lesions",
+      "classes": [
+        "akiec",
+        "bcc",
+        "bkl",
+        "df",
+        "mel",
+        "nv",
+        "vasc"
+      ],
+      "use_for": "transfer_learning",
+      "preprocessing": {
+        "resize": [
+          224,
+          224
+        ],
+        "normalize": true,
+        "augmentation": [
+          "rotation",
+          "flip",
+          "brightness"
+        ]
+      }
+    },
+    "piid": {
+      "path": "datasets/piid",
+      "type": "pressure_ulcers",
+      "classes": [
+        "stage_1",
+        "stage_2",
+        "stage_3",
+        "stage_4"
+      ],
+      "use_for": "primary_training",
+      "preprocessing": {
+        "resize": [
+          299,
+          299
+        ],
+        "normalize": true,
+        "augmentation": [
+          "rotation",
+          "flip",
+          "brightness",
+          "contrast"
+        ]
+      }
+    },
+    "isic": {
+      "path": "datasets/isic",
+      "type": "skin_lesions_extended",
+      "classes": [
+        "melanoma",
+        "nevus",
+        "seborrheic_keratosis",
+        "basal_cell_carcinoma"
+      ],
+      "use_for": "supplementary_training",
+      "preprocessing": {
+        "resize": [
+          224,
+          224
+        ],
+        "normalize": true,
+        "augmentation": [
+          "rotation",
+          "flip"
+        ]
+      }
+    }
+  },
+  "training_strategy": {
+    "phase_1": {
+      "description": "Transfer learning on general skin lesions",
+      "dataset": "ham10000",
+      "epochs": 50,
+      "learning_rate": 0.001
+    },
+    "phase_2": {
+      "description": "Fine-tuning on pressure ulcers",
+      "dataset": "piid",
+      "epochs": 100,
+      "learning_rate": 0.0001
+    },
+    "phase_3": {
+      "description": "Final validation and testing",
+      "dataset": "piid",
+      "validation_split": 0.2,
+      "test_split": 0.1
+    }
+  },
+  "integration": {
+    "cv_pipeline_path": "/Users/autonomos_dev/Projects/vigia/vigia_detect/cv_pipeline",
+    "model_output_path": "/Users/autonomos_dev/Projects/vigia/models",
+    "preprocessing_script": "preprocess_medical_images.py",
+    "training_script": "train_lpp_model.py"
+  }
+}

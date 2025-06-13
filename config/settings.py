@@ -76,7 +76,7 @@ class Settings(BaseSettings):
     
     # Processing Configuration
     use_mock_yolo: bool = Field(False, env="VIGIA_USE_MOCK_YOLO")
-    yolo_model_path: str = Field("./models/yolov5s.pt", env="YOLO_MODEL_PATH")
+    yolo_model_path: str = Field("./models/lpp_detection/pressure_ulcer_yolov5.pt", env="YOLO_MODEL_PATH")
     detection_confidence: float = Field(0.25, env="DETECTION_CONFIDENCE")
     
     # Rate Limiting

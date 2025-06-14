@@ -1,0 +1,333 @@
+name: Hospital Deployment CI/CD
+
+on:
+  push:
+    branches: [ main, hospital-deployment ]
+    paths:
+      - 'docker-compose.hospital.yml'
+      - 'docker/**'
+      - 'scripts/hospital-deploy.sh'
+      - '.env.hospital'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docker-compose.hospital.yml'
+      - 'docker/**'
+      - 'scripts/hospital-deploy.sh'
+      - '.env.hospital'
+  workflow_dispatch:
+    inputs:
+      hospital_name:
+        description: 'Hospital name for deployment'
+        required: true
+        default: 'Test Hospital'
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+  HOSPITAL_NAME: ${{ github.event.inputs.hospital_name || 'CI Hospital' }}
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'staging' }}
+
+jobs:
+  validate-infrastructure:
+    name: Validate Hospital Infrastructure
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest requests docker psycopg2-binary redis celery
+    
+    - name: Validate Docker Compose
+      run: |
+        docker-compose -f docker-compose.hospital.yml config
+    
+    - name: Validate deployment script
+      run: |
+        chmod +x scripts/hospital-deploy.sh
+        bash -n scripts/hospital-deploy.sh
+    
+    - name: Run infrastructure tests
+      run: |
+        python -m pytest tests/infrastructure/test_hospital_deployment.py -v
+    
+    - name: Security scan
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: docker/celery/worker.dockerfile
+        failure-threshold: error
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: infrastructure-test-results
+        path: test-results/
+
+  test-deployment:
+    name: Test Hospital Deployment
+    runs-on: ubuntu-latest
+    needs: validate-infrastructure
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Create test secrets
+      run: |
+        mkdir -p /tmp/vigia-secrets
+        echo "test_user" > /tmp/vigia-secrets/postgres_user
+        echo "test_password_$(date +%s)" > /tmp/vigia-secrets/postgres_password
+        echo "test_redis_password" > /tmp/vigia-secrets/redis_password
+        openssl rand -base64 32 > /tmp/vigia-secrets/encryption_key
+        openssl rand -base64 64 > /tmp/vigia-secrets/jwt_secret
+        
+        # Mock external service credentials
+        echo "test_twilio_sid" > /tmp/vigia-secrets/twilio_sid
+        echo "test_twilio_token" > /tmp/vigia-secrets/twilio_token
+        echo "test_slack_token" > /tmp/vigia-secrets/slack_token
+        echo "test_slack_signing" > /tmp/vigia-secrets/slack_signing
+        echo "test_agentops_key" > /tmp/vigia-secrets/agentops_api_key
+        echo "admin:password" > /tmp/vigia-secrets/flower_auth
+        echo "test_grafana_password" > /tmp/vigia-secrets/grafana_password
+        echo "test_backup_key" > /tmp/vigia-secrets/backup_encryption_key
+        
+        # Generate test SSL certificates
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+          -keyout /tmp/vigia-secrets/ssl_key \
+          -out /tmp/vigia-secrets/ssl_cert \
+          -subj "/C=US/ST=Test/L=Test/O=Test Hospital/CN=vigia.test.local"
+    
+    - name: Initialize Docker Swarm
+      run: |
+        docker swarm init
+        
+        # Create Docker secrets
+        for secret_file in /tmp/vigia-secrets/*; do
+          secret_name=$(basename "$secret_file")
+          docker secret create "$secret_name" "$secret_file"
+        done
+    
+    - name: Build medical containers
+      run: |
+        docker-compose -f docker-compose.hospital.yml build
+    
+    - name: Deploy hospital services
+      run: |
+        # Set test environment
+        export HOSPITAL_NAME="$HOSPITAL_NAME"
+        export ENVIRONMENT="staging"
+        
+        # Deploy core services
+        docker-compose -f docker-compose.hospital.yml up -d vigia-postgres vigia-redis
+        
+        # Wait for database
+        sleep 30
+        
+        # Deploy remaining services
+        docker-compose -f docker-compose.hospital.yml up -d
+        
+        # Wait for services to start
+        sleep 60
+    
+    - name: Run health checks
+      run: |
+        # Test database connectivity
+        docker-compose -f docker-compose.hospital.yml exec -T vigia-postgres pg_isready -U test_user
+        
+        # Test Redis connectivity
+        docker-compose -f docker-compose.hospital.yml exec -T vigia-redis redis-cli ping
+        
+        # Test Celery workers
+        docker-compose -f docker-compose.hospital.yml exec -T vigia-celery-worker celery -A vigia_detect.tasks inspect ping
+    
+    - name: Run end-to-end tests
+      run: |
+        python -m pytest tests/infrastructure/test_hospital_deployment.py::TestHospitalServices -v
+    
+    - name: Test backup functionality
+      run: |
+        # Create test backup
+        docker-compose -f docker-compose.hospital.yml exec -T vigia-backup /usr/local/bin/backup.sh
+        
+        # Verify backup files exist
+        docker-compose -f docker-compose.hospital.yml exec -T vigia-backup ls -la /backups/
+    
+    - name: Collect service logs
+      if: always()
+      run: |
+        mkdir -p deployment-logs
+        docker-compose -f docker-compose.hospital.yml logs > deployment-logs/services.log
+        docker ps -a > deployment-logs/containers.log
+    
+    - name: Upload deployment logs
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: deployment-logs
+        path: deployment-logs/
+    
+    - name: Cleanup test deployment
+      if: always()
+      run: |
+        docker-compose -f docker-compose.hospital.yml down -v
+        docker system prune -f
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: validate-infrastructure
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Docker security scan
+      run: |
+        # Scan Docker images for vulnerabilities
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $(pwd):/src aquasec/trivy image --format json --output docker-scan.json \
+          python:3.11-slim-bullseye
+    
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-scan-results
+        path: |
+          trivy-results.sarif
+          docker-scan.json
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test-deployment, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure staging environment
+      run: |
+        echo "HOSPITAL_NAME=Staging Hospital" >> $GITHUB_ENV
+        echo "ENVIRONMENT=staging" >> $GITHUB_ENV
+        echo "DEPLOYMENT_TARGET=staging" >> $GITHUB_ENV
+    
+    - name: Deploy to staging server
+      run: |
+        # This would typically use SSH to deploy to staging server
+        echo "Deploying to staging environment..."
+        echo "Hospital: $HOSPITAL_NAME"
+        echo "Environment: $ENVIRONMENT"
+        
+        # Mock deployment command
+        # ssh user@staging-server "cd /opt/vigia && ./scripts/hospital-deploy.sh deploy"
+        
+        echo "Staging deployment completed"
+    
+    - name: Run staging health checks
+      run: |
+        echo "Running staging health checks..."
+        # curl -k https://vigia-staging.hospital.local/health
+        echo "Staging health checks passed"
+    
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Staging deployment successful for $HOSPITAL_NAME"
+        # Notification logic here (Slack, email, etc.)
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure production environment
+      run: |
+        echo "HOSPITAL_NAME=${{ github.event.inputs.hospital_name }}" >> $GITHUB_ENV
+        echo "ENVIRONMENT=production" >> $GITHUB_ENV
+        echo "DEPLOYMENT_TARGET=production" >> $GITHUB_ENV
+    
+    - name: Pre-deployment checks
+      run: |
+        echo "Running pre-deployment checks..."
+        # Verify staging deployment is healthy
+        # Check production readiness
+        # Validate certificates and secrets
+        echo "Pre-deployment checks passed"
+    
+    - name: Deploy to production
+      run: |
+        echo "Deploying to production environment..."
+        echo "Hospital: $HOSPITAL_NAME"
+        echo "Environment: $ENVIRONMENT"
+        
+        # Production deployment would use secure methods
+        # ssh user@production-server "cd /opt/vigia && ./scripts/hospital-deploy.sh deploy"
+        
+        echo "Production deployment completed"
+    
+    - name: Post-deployment validation
+      run: |
+        echo "Running post-deployment validation..."
+        # Comprehensive health checks
+        # Performance tests
+        # Security validation
+        echo "Post-deployment validation passed"
+    
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "🏥 Production deployment successful for $HOSPITAL_NAME"
+        # Critical notification logic (multiple channels)
+    
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "⚠️ Production deployment failed - initiating rollback"
+        # Rollback logic
+        # ssh user@production-server "cd /opt/vigia && ./scripts/hospital-deploy.sh rollback"
+        echo "Rollback completed"

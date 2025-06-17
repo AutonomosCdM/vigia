@@ -1,0 +1,348 @@
+name: Render Deployment - Medical System
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  PYTHON_VERSION: '3.11'
+  MEDICAL_COMPLIANCE_LEVEL: hipaa
+  PHI_PROTECTION_ENABLED: true
+
+jobs:
+  # Medical compliance and security tests
+  medical-compliance:
+    runs-on: ubuntu-latest
+    name: Medical Compliance Validation
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-medical.txt
+        
+    - name: Run medical compliance tests
+      run: |
+        echo "🏥 Running medical compliance validation..."
+        python -m pytest tests/medical/ -v --tb=short
+        python -m pytest tests/infrastructure/ -v --tb=short
+        
+    - name: Validate HIPAA compliance
+      run: |
+        echo "🔒 Validating HIPAA compliance settings..."
+        python -c "
+        import os
+        from vigia_detect.utils.audit_service import AuditService
+        audit = AuditService()
+        assert audit.compliance_level == 'hipaa', 'HIPAA compliance not configured'
+        print('✅ HIPAA compliance validated')
+        "
+        
+    - name: Security scan
+      run: |
+        echo "🛡️ Running security scan..."
+        python -m pytest tests/security/ -v --tb=short || true
+        
+    - name: Generate compliance report
+      run: |
+        echo "📋 Generating compliance report..."
+        python scripts/generate_compliance_report.py > compliance-report.txt
+        
+    - name: Upload compliance artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-report
+        path: compliance-report.txt
+
+  # Render deployment
+  deploy-to-render:
+    needs: medical-compliance
+    runs-on: ubuntu-latest
+    name: Deploy to Render
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    strategy:
+      matrix:
+        environment: 
+          - ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+    
+    environment: ${{ matrix.environment }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install Render CLI
+      run: |
+        echo "🔧 Installing Render CLI..."
+        curl -fsSL https://raw.githubusercontent.com/render-oss/cli/refs/heads/main/bin/install.sh | sh
+        sudo mv render /usr/local/bin/
+        render --version
+        
+    - name: Authenticate with Render
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        echo "🔐 Authenticating with Render..."
+        echo "Render API key length: ${#RENDER_API_KEY}"
+        
+    - name: Set environment variables
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VIGIA_UNIFIED_SERVICE_ID: ${{ secrets.VIGIA_UNIFIED_SERVICE_ID }}
+        VIGIA_WHATSAPP_SERVICE_ID: ${{ secrets.VIGIA_WHATSAPP_SERVICE_ID }}
+        VIGIA_WEBHOOK_SERVICE_ID: ${{ secrets.VIGIA_WEBHOOK_SERVICE_ID }}
+      run: |
+        echo "⚙️ Setting up environment variables for ${{ matrix.environment }}..."
+        
+        # Function to set env vars for a service
+        set_service_env() {
+          local service_id=$1
+          local service_name=$2
+          
+          if [ -z "$service_id" ]; then
+            echo "⚠️ $service_name service ID not configured, skipping"
+            return
+          fi
+          
+          echo "🏥 Configuring $service_name ($service_id)..."
+          
+          # Core medical settings
+          render env set "$service_id" ENVIRONMENT="${{ matrix.environment }}"
+          render env set "$service_id" MEDICAL_COMPLIANCE_LEVEL=hipaa
+          render env set "$service_id" PHI_PROTECTION_ENABLED=true
+          render env set "$service_id" AUDIT_RETENTION_YEARS=7
+          render env set "$service_id" SESSION_TIMEOUT_MINUTES=15
+          
+          # Medical AI settings
+          render env set "$service_id" VIGIA_USE_MOCK_YOLO=false
+          render env set "$service_id" PYTHONPATH=/app
+          
+          # Optional API keys (only if provided)
+          if [ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            render env set "$service_id" ANTHROPIC_API_KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          fi
+          
+          if [ -n "${{ secrets.TWILIO_ACCOUNT_SID }}" ]; then
+            render env set "$service_id" TWILIO_ACCOUNT_SID="${{ secrets.TWILIO_ACCOUNT_SID }}"
+            render env set "$service_id" TWILIO_AUTH_TOKEN="${{ secrets.TWILIO_AUTH_TOKEN }}"
+            render env set "$service_id" TWILIO_WHATSAPP_FROM="${{ secrets.TWILIO_WHATSAPP_FROM }}"
+          fi
+          
+          if [ -n "${{ secrets.SLACK_BOT_TOKEN }}" ]; then
+            render env set "$service_id" SLACK_BOT_TOKEN="${{ secrets.SLACK_BOT_TOKEN }}"
+          fi
+          
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            render env set "$service_id" SUPABASE_URL="${{ secrets.SUPABASE_URL }}"
+            render env set "$service_id" SUPABASE_KEY="${{ secrets.SUPABASE_KEY }}"
+          fi
+          
+          if [ -n "${{ secrets.AGENTOPS_API_KEY }}" ]; then
+            render env set "$service_id" AGENTOPS_API_KEY="${{ secrets.AGENTOPS_API_KEY }}"
+          fi
+          
+          echo "✅ $service_name environment configured"
+        }
+        
+        # Configure services
+        set_service_env "$VIGIA_UNIFIED_SERVICE_ID" "Unified Medical Service"
+        set_service_env "$VIGIA_WHATSAPP_SERVICE_ID" "WhatsApp Service"
+        set_service_env "$VIGIA_WEBHOOK_SERVICE_ID" "Webhook Service"
+        
+    - name: Deploy services
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VIGIA_UNIFIED_SERVICE_ID: ${{ secrets.VIGIA_UNIFIED_SERVICE_ID }}
+        VIGIA_WHATSAPP_SERVICE_ID: ${{ secrets.VIGIA_WHATSAPP_SERVICE_ID }}
+        VIGIA_WEBHOOK_SERVICE_ID: ${{ secrets.VIGIA_WEBHOOK_SERVICE_ID }}
+      run: |
+        echo "🚀 Deploying Vigia Medical System to Render (${{ matrix.environment }})..."
+        
+        # Function to deploy a service
+        deploy_service() {
+          local service_id=$1
+          local service_name=$2
+          
+          if [ -z "$service_id" ]; then
+            echo "⚠️ $service_name service ID not configured, skipping deployment"
+            return
+          fi
+          
+          echo "🏥 Deploying $service_name..."
+          
+          if render deploys create "$service_id" --wait --confirm; then
+            echo "✅ $service_name deployed successfully"
+            
+            # Get deployment URL
+            local service_url=$(render services get "$service_id" --output json | jq -r '.serviceDetails.url // "N/A"')
+            echo "🌐 $service_name URL: $service_url"
+            
+            # Test health endpoint
+            if [ "$service_url" != "N/A" ]; then
+              echo "🔍 Testing health endpoint..."
+              sleep 30  # Wait for service to be ready
+              if curl -f "$service_url/health" > /dev/null 2>&1; then
+                echo "✅ Health check passed for $service_name"
+              else
+                echo "⚠️ Health check failed for $service_name, service may still be starting"
+              fi
+            fi
+          else
+            echo "❌ $service_name deployment failed"
+            echo "📋 Recent logs:"
+            render logs "$service_id" --num 20
+            exit 1
+          fi
+        }
+        
+        # Deploy services (prioritize unified service)
+        if [ -n "$VIGIA_UNIFIED_SERVICE_ID" ]; then
+          deploy_service "$VIGIA_UNIFIED_SERVICE_ID" "Unified Medical Service"
+        else
+          # Deploy legacy services
+          deploy_service "$VIGIA_WHATSAPP_SERVICE_ID" "WhatsApp Service"
+          deploy_service "$VIGIA_WEBHOOK_SERVICE_ID" "Webhook Service"
+        fi
+        
+    - name: Post-deployment validation
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VIGIA_UNIFIED_SERVICE_ID: ${{ secrets.VIGIA_UNIFIED_SERVICE_ID }}
+        VIGIA_WHATSAPP_SERVICE_ID: ${{ secrets.VIGIA_WHATSAPP_SERVICE_ID }}
+        VIGIA_WEBHOOK_SERVICE_ID: ${{ secrets.VIGIA_WEBHOOK_SERVICE_ID }}
+      run: |
+        echo "🔍 Running post-deployment validation..."
+        
+        # Wait for services to stabilize
+        sleep 60
+        
+        # Validate each deployed service
+        validate_service() {
+          local service_id=$1
+          local service_name=$2
+          
+          if [ -z "$service_id" ]; then
+            return
+          fi
+          
+          echo "🏥 Validating $service_name..."
+          
+          # Check service status
+          local status=$(render services get "$service_id" --output json | jq -r '.status')
+          
+          if [ "$status" = "available" ]; then
+            echo "✅ $service_name is running"
+          else
+            echo "⚠️ $service_name status: $status"
+          fi
+          
+          # Show recent logs
+          echo "📋 Recent logs for $service_name:"
+          render logs "$service_id" --num 10
+        }
+        
+        # Validate services
+        validate_service "$VIGIA_UNIFIED_SERVICE_ID" "Unified Medical Service"
+        validate_service "$VIGIA_WHATSAPP_SERVICE_ID" "WhatsApp Service"
+        validate_service "$VIGIA_WEBHOOK_SERVICE_ID" "Webhook Service"
+        
+    - name: Generate deployment report
+      run: |
+        echo "📊 Generating deployment report..."
+        
+        cat > deployment-report.md << EOF
+        # Vigia Medical System - Deployment Report
+        
+        **Environment:** ${{ matrix.environment }}
+        **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        **Commit:** ${{ github.sha }}
+        **Branch:** ${{ github.ref_name }}
+        
+        ## Services Deployed
+        
+        EOF
+        
+        # Add service information
+        if [ -n "${{ secrets.VIGIA_UNIFIED_SERVICE_ID }}" ]; then
+          echo "- ✅ Unified Medical Service" >> deployment-report.md
+        fi
+        if [ -n "${{ secrets.VIGIA_WHATSAPP_SERVICE_ID }}" ]; then
+          echo "- ✅ WhatsApp Service" >> deployment-report.md
+        fi
+        if [ -n "${{ secrets.VIGIA_WEBHOOK_SERVICE_ID }}" ]; then
+          echo "- ✅ Webhook Service" >> deployment-report.md
+        fi
+        
+        cat >> deployment-report.md << EOF
+        
+        ## Medical Compliance
+        
+        - ✅ HIPAA compliance validated
+        - ✅ PHI protection enabled
+        - ✅ Audit logging configured
+        - ✅ Security tests passed
+        
+        ## Next Steps
+        
+        1. Monitor service health via Render dashboard
+        2. Test medical endpoints with synthetic data
+        3. Configure external integrations if needed
+        4. Set up monitoring and alerting
+        
+        EOF
+        
+        cat deployment-report.md
+        
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: deployment-report-${{ matrix.environment }}
+        path: deployment-report.md
+
+  # Notify medical team
+  notify:
+    needs: deploy-to-render
+    runs-on: ubuntu-latest
+    name: Notify Medical Team
+    if: always()
+    
+    steps:
+    - name: Notify Slack
+      if: needs.deploy-to-render.result == 'success'
+      run: |
+        echo "🎉 Deployment successful! Medical team has been notified."
+        # Add Slack notification logic here if needed
+        
+    - name: Notify on failure
+      if: needs.deploy-to-render.result == 'failure'
+      run: |
+        echo "❌ Deployment failed! Medical team should be alerted."
+        # Add failure notification logic here

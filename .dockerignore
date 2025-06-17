@@ -1,0 +1,127 @@
+# Vigia .dockerignore - Optimize Docker builds
+# Exclude files that shouldn't be in Docker images
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment files (will be provided via environment variables in production)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Documentation build
+docs/_build/
+docs/build/
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Local data files (images, datasets, models should be separate)
+data/input/
+data/output/
+datasets/
+models/lpp_detection/*.pt
+models/lpp_detection/*.onnx
+
+# Test files and artifacts
+test_*.py
+*_test.py
+tests/test_data/
+tests/fixtures/
+evaluation_data/
+evaluation_results/
+
+# Development scripts
+scripts/test_*.py
+scripts/demo_*.py
+scripts/setup_*.py
+
+# Docker development files
+docker-compose.*.yml
+docker-compose.override.yml
+
+# Monitoring and profiling
+monitoring/
+.agentops/
+
+# Backup files
+*.backup
+*.bak
+
+# Large binary files that should be downloaded at runtime
+*.tar.gz
+*.zip
+*.7z
+
+# Configuration backups
+config/*.backup

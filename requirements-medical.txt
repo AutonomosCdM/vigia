@@ -1,0 +1,44 @@
+# Medical-specific requirements for hospital deployment
+# Minimal dependencies for basic medical compliance
+
+# Medical data validation
+jsonschema>=4.17.0
+
+# Secure medical data handling  
+cryptography>=41.0.0
+
+# Medical compliance and audit
+structlog>=23.1.0
+python-json-logger>=2.0.7
+
+# Medical protocol validation
+marshmallow>=3.19.0
+
+# Healthcare interoperability (lightweight)
+# fhir.resources>=7.0.0  # Large dependency, enable if needed
+# hl7>=0.3.4
+
+# Medical documentation (lightweight)
+reportlab>=4.0.0
+
+# Medical task scheduling
+croniter>=1.3.0
+
+# Medical data anonymization
+faker>=18.0.0
+
+# Medical validation
+python-dateutil>=2.8.0
+email-validator>=2.0.0
+phonenumbers>=8.13.0
+
+# Comment out heavy dependencies for faster builds
+# Enable in production if needed:
+# pydicom>=2.3.0
+# SimpleITK>=2.2.0
+# scikit-image>=0.20.0
+# statsmodels>=0.14.0
+# marshmallow-dataclass>=8.5.0
+# fpdf2>=2.7.0
+# python-crontab>=2.7.0
+# pycryptodome>=3.18.0

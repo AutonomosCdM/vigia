@@ -1,5 +1,61 @@
 services:
-  # WhatsApp Bot Service
+  # Unified Vigia Medical System (Recommended)
+  - type: web
+    name: vigia-unified
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: MEDICAL_COMPLIANCE_LEVEL
+        value: basic
+      - key: PHI_PROTECTION_ENABLED
+        value: true
+      - key: PYTHONPATH
+        value: /app
+      # External services (optional)
+      - key: REDIS_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      # API keys (optional)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_CHANNEL_ID
+        value: C08TJHZFVD1
+      # Webhook settings
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: WEBHOOK_ENABLED
+        value: true
+      # Medical settings
+      - key: VIGIA_USE_MOCK_YOLO
+        value: false
+      # Monitoring (optional)
+      - key: AGENTOPS_API_KEY
+        sync: false
+    buildCommand: ""
+    startCommand: "./render_entrypoint.sh web"
+
+  # WhatsApp Bot Service (Legacy - separate service)
   - type: web
     name: vigia-whatsapp
     runtime: python
@@ -25,7 +81,7 @@ services:
       - key: VIGIA_USE_MOCK_YOLO
         value: false
 
-  # Webhook API Service
+  # Webhook API Service (Legacy - separate service)  
   - type: web
     name: vigia-webhook
     runtime: python

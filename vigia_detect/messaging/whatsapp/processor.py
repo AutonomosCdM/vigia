@@ -246,6 +246,136 @@ def format_detection_results(detection_results: Dict[str, Any]) -> str:
     
     return message
 
+
+class WhatsAppProcessor:
+    """
+    WhatsApp message processor for medical image analysis
+    Provides async processing capabilities for integration with unified server
+    """
+    
+    def __init__(self):
+        """Initialize WhatsApp processor."""
+        self.temp_dir = TEMP_DIR
+        logger.info("WhatsApp processor initialized")
+    
+    async def process_message(self, message_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process incoming WhatsApp message (async wrapper for sync processing)
+        
+        Args:
+            message_data: WhatsApp message data from Twilio
+            
+        Returns:
+            dict: Processing results
+        """
+        try:
+            # Extract message details
+            from_number = message_data.get('From', '')
+            body = message_data.get('Body', '')
+            media_url = message_data.get('MediaUrl0', '')
+            
+            logger.info(f"Processing WhatsApp message from {from_number}")
+            
+            # If message contains media (image)
+            if media_url:
+                # Extract Twilio auth from environment
+                account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+                auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+                auth_credentials = (account_sid, auth_token) if account_sid and auth_token else None
+                
+                # Process the image
+                result = process_whatsapp_image(
+                    media_url, 
+                    auth_credentials=auth_credentials,
+                    patient_code=self._extract_patient_code(body)
+                )
+                
+                return {
+                    "status": "processed",
+                    "type": "image_analysis",
+                    "result": result,
+                    "response_message": result.get("message", "Analysis completed")
+                }
+            
+            # Text-only message
+            else:
+                return {
+                    "status": "received",
+                    "type": "text_message",
+                    "response_message": "Mensaje recibido. Para análisis de LPP, envíe una imagen."
+                }
+                
+        except Exception as e:
+            logger.error(f"Error processing WhatsApp message: {e}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "response_message": "Error procesando el mensaje. Intente nuevamente."
+            }
+    
+    def _extract_patient_code(self, message_body: str) -> Optional[str]:
+        """
+        Extract patient code from message body if present
+        
+        Args:
+            message_body: WhatsApp message text
+            
+        Returns:
+            Patient code if found, None otherwise
+        """
+        try:
+            # Look for patterns like "Paciente: 12345" or "PAC-12345"
+            import re
+            
+            # Sanitize input first
+            if lpp_detect_available:
+                message_body = sanitize_user_input(message_body)
+            
+            patterns = [
+                r'[Pp]aciente:?\s*(\w+)',
+                r'PAC[:-]?\s*(\w+)',
+                r'ID[:-]?\s*(\w+)',
+                r'Código[:-]?\s*(\w+)'
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, message_body)
+                if match:
+                    return match.group(1)
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error extracting patient code: {e}")
+            return None
+    
+    def cleanup_temp_files(self, older_than_hours: int = 24):
+        """
+        Clean up temporary files older than specified hours
+        
+        Args:
+            older_than_hours: Remove files older than this many hours
+        """
+        try:
+            import time
+            from pathlib import Path
+            
+            current_time = time.time()
+            cutoff_time = current_time - (older_than_hours * 3600)
+            
+            for file_path in Path(self.temp_dir).glob('*'):
+                if file_path.is_file() and file_path.stat().st_mtime < cutoff_time:
+                    file_path.unlink()
+                    logger.info(f"Cleaned up temp file: {file_path}")
+                    
+        except Exception as e:
+            logger.error(f"Error cleaning up temp files: {e}")
+
+
+# Default processor instance
+default_processor = WhatsAppProcessor()
+
+
 if __name__ == "__main__":
     # Prueba de ejecución local
     test_url = "https://example.com/sample_image.jpg"  # Reemplazar con URL real

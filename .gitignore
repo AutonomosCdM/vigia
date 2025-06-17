@@ -67,6 +67,15 @@ logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
+
+# Large files and datasets (deployment optimization)
+datasets/
+*.tar.gz
+*_backup_*
+evaluation_data/
+evaluation_results/
+tests/clinical/
+tests/integration/
 yarn-error.log*
 dev-debug.log
 

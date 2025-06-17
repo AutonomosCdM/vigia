@@ -1,0 +1,380 @@
+version: '3.8'
+
+# Custom Medical MCP Services
+# Phase 2: Deploy Vigia-specific medical MCP servers
+
+services:
+  # LPP Detection MCP Server
+  vigia-lpp-detector:
+    build:
+      context: .
+      dockerfile: docker/mcp/lpp-detector.dockerfile
+    image: vigia/mcp-lpp-detector:latest
+    container_name: vigia-mcp-lpp-detector
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - MEDICAL_COMPLIANCE_LEVEL=hipaa
+      - PHI_PROTECTION_ENABLED=true
+      - AUDIT_LOG_ENABLED=true
+      - AI_MODEL_PATH=/app/models/lpp_detection
+      - EVIDENCE_BASED_DECISIONS=true
+    secrets:
+      - medical_encryption_key
+      - vigia_phi_salt
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8085:8080"
+    volumes:
+      - lpp_models:/app/models
+      - medical_images:/app/images
+      - ./vigia_detect:/app/vigia_detect:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    labels:
+      - "vigia.service=mcp-lpp-detector"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=medical-ai"
+      - "vigia.category=custom"
+
+  # FHIR Gateway MCP Server
+  vigia-fhir-gateway:
+    build:
+      context: .
+      dockerfile: docker/mcp/fhir-gateway.dockerfile
+    image: vigia/mcp-fhir-gateway:latest
+    container_name: vigia-mcp-fhir-gateway
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - FHIR_VERSION=R4
+      - HL7_VERSION=2.5
+      - MEDICAL_COMPLIANCE_LEVEL=hipaa
+      - HIS_INTEGRATION_ENABLED=true
+      - PACS_INTEGRATION_ENABLED=true
+      - DICOM_SUPPORT_ENABLED=true
+    secrets:
+      - medical_encryption_key
+      - his_integration_credentials
+    networks:
+      - mcp_network
+      - medical_internal
+      - his_integration
+    ports:
+      - "8086:8080"
+    volumes:
+      - fhir_configs:/app/config
+      - his_mappings:/app/mappings
+      - ./vigia_detect:/app/vigia_detect:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.5'
+        reservations:
+          memory: 512M
+          cpus: '0.75'
+    labels:
+      - "vigia.service=mcp-fhir-gateway"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=integration"
+      - "vigia.category=custom"
+
+  # Medical Knowledge MCP Server
+  vigia-medical-knowledge:
+    build:
+      context: .
+      dockerfile: docker/mcp/medical-knowledge.dockerfile
+    image: vigia/mcp-medical-knowledge:latest
+    container_name: vigia-mcp-medical-knowledge
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - KNOWLEDGE_BASE=npuap_epuap_2019
+      - EVIDENCE_LEVEL_REQUIRED=true
+      - GUIDELINES_VERSION=2019
+      - MEDICAL_COMPLIANCE_LEVEL=hipaa
+      - VECTOR_SEARCH_ENABLED=true
+      - MINSAL_INTEGRATION=true
+    secrets:
+      - medical_encryption_key
+      - knowledge_base_api_key
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8087:8080"
+    volumes:
+      - medical_knowledge:/app/knowledge
+      - medical_protocols:/app/protocols
+      - ./vigia_detect/references:/app/references:ro
+      - ./docs/medical:/app/docs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.5'
+        reservations:
+          memory: 768M
+          cpus: '0.75'
+    labels:
+      - "vigia.service=mcp-medical-knowledge"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=knowledge-base"
+      - "vigia.category=custom"
+
+  # Clinical Processing MCP Server
+  vigia-clinical-processor:
+    build:
+      context: .
+      dockerfile: docker/mcp/clinical-processor.dockerfile
+    image: vigia/mcp-clinical-processor:latest
+    container_name: vigia-mcp-clinical-processor
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - CLINICAL_DECISION_ENGINE=enabled
+      - EVIDENCE_BASED_PROTOCOLS=true
+      - HUMAN_REVIEW_QUEUE=enabled
+      - ESCALATION_ALERTS=true
+      - MEDICAL_COMPLIANCE_LEVEL=hipaa
+      - PDF_REPORT_GENERATION=true
+      - DIGITAL_SIGNATURE_ENABLED=true
+    secrets:
+      - medical_encryption_key
+      - clinical_signing_cert
+      - vigia_cert_password
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8088:8080"
+    volumes:
+      - clinical_reports:/app/reports
+      - clinical_certificates:/app/certificates
+      - ./vigia_detect:/app/vigia_detect:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    labels:
+      - "vigia.service=mcp-clinical-processor"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=clinical-processing"
+      - "vigia.category=custom"
+
+  # MCP Custom Gateway Router
+  vigia-mcp-router:
+    build:
+      context: .
+      dockerfile: docker/mcp/gateway-router.dockerfile
+    image: vigia/mcp-gateway-router:latest
+    container_name: vigia-mcp-router
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - GATEWAY_TYPE=unified
+      - HUB_SERVICES_ENABLED=true
+      - CUSTOM_SERVICES_ENABLED=true
+      - MEDICAL_ROUTING=true
+      - COMPLIANCE_VALIDATION=strict
+      - RATE_LIMITING_ENABLED=true
+      - AUDIT_ALL_REQUESTS=true
+    secrets:
+      - gateway_encryption_key
+      - mcp_router_credentials
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8089:8080"
+      - "8444:8443"
+    depends_on:
+      - vigia-lpp-detector
+      - vigia-fhir-gateway
+      - vigia-medical-knowledge
+      - vigia-clinical-processor
+    volumes:
+      - gateway_configs:/app/config
+      - gateway_logs:/app/logs
+      - ./vigia_detect/mcp:/app/mcp:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    labels:
+      - "vigia.service=mcp-router"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=gateway"
+      - "vigia.category=custom"
+
+  # MCP Monitoring and Metrics
+  vigia-mcp-monitor:
+    image: prom/prometheus:latest
+    container_name: vigia-mcp-monitor
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - mcp_network
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/mcp-prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_mcp_data:/prometheus
+    labels:
+      - "vigia.service=mcp-monitor"
+      - "vigia.type=monitoring"
+
+# Additional Docker Secrets for Custom Services
+secrets:
+  medical_encryption_key:
+    external: true
+    name: vigia_medical_encryption_key
+  vigia_phi_salt:
+    external: true
+    name: vigia_phi_salt
+  vigia_cert_password:
+    external: true
+    name: vigia_cert_password
+  his_integration_credentials:
+    external: true
+    name: vigia_his_integration_credentials
+  knowledge_base_api_key:
+    external: true
+    name: vigia_knowledge_base_api_key
+  clinical_signing_cert:
+    external: true
+    name: vigia_clinical_signing_cert
+  gateway_encryption_key:
+    external: true
+    name: vigia_gateway_encryption_key
+  mcp_router_credentials:
+    external: true
+    name: vigia_mcp_router_credentials
+
+# Additional Networks
+networks:
+  mcp_network:
+    external: true
+    name: vigia_mcp_network
+    
+  medical_internal:
+    external: true
+    name: vigia_medical_internal
+    
+  his_integration:
+    driver: bridge
+    name: vigia_his_integration
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+    labels:
+      - "vigia.network=his-integration"
+      
+  monitoring:
+    driver: bridge
+    name: vigia_monitoring
+    ipam:
+      config:
+        - subnet: 172.24.0.0/24
+    labels:
+      - "vigia.network=monitoring"
+
+# Persistent Volumes for Custom Services
+volumes:
+  lpp_models:
+    driver: local
+    name: vigia_lpp_models
+    
+  medical_images:
+    driver: local
+    name: vigia_medical_images
+    
+  fhir_configs:
+    driver: local
+    name: vigia_fhir_configs
+    
+  his_mappings:
+    driver: local
+    name: vigia_his_mappings
+    
+  medical_knowledge:
+    driver: local
+    name: vigia_medical_knowledge
+    
+  medical_protocols:
+    driver: local
+    name: vigia_medical_protocols
+    
+  clinical_reports:
+    driver: local
+    name: vigia_clinical_reports
+    
+  clinical_certificates:
+    driver: local
+    name: vigia_clinical_certificates
+    
+  gateway_configs:
+    driver: local
+    name: vigia_gateway_configs
+    
+  gateway_logs:
+    driver: local
+    name: vigia_gateway_logs
+    
+  prometheus_mcp_data:
+    driver: local
+    name: vigia_prometheus_mcp_data

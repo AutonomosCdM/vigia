@@ -4,7 +4,7 @@ services:
     name: vigia-unified
     runtime: docker
     dockerfilePath: ./Dockerfile.render
-    plan: free
+    plan: starter
     region: oregon
     branch: main
     healthCheckPath: /health

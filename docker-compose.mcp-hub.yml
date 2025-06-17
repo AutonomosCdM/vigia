@@ -1,0 +1,300 @@
+version: '3.8'
+
+# Docker Hub MCP Services - Standard integrations
+# Phase 1: Deploy ready-to-use MCP servers from Docker Hub
+
+services:
+  # GitHub Integration MCP Server
+  mcp-github:
+    image: mcp/github:latest
+    container_name: vigia-mcp-github
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - GITHUB_ORG=vigia-medical
+      - COMPLIANCE_LEVEL=medical
+      - AUDIT_ENABLED=true
+    secrets:
+      - github_token
+      - github_webhook_secret
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    labels:
+      - "vigia.service=mcp-github"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=integration"
+
+  # Stripe Payment MCP Server  
+  mcp-stripe:
+    image: mcp/stripe:latest
+    container_name: vigia-mcp-stripe
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - STRIPE_MODE=production
+      - MEDICAL_BILLING=enabled
+      - PHI_PROTECTION=strict
+    secrets:
+      - stripe_api_key
+      - stripe_webhook_secret
+    networks:
+      - mcp_network
+      - billing_network
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    labels:
+      - "vigia.service=mcp-stripe"
+      - "vigia.compliance=pci-dss"
+      - "vigia.type=billing"
+
+  # Redis Cache MCP Server
+  mcp-redis:
+    image: mcp/redis:latest
+    container_name: vigia-mcp-redis
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - REDIS_URL=redis://redis-medical:6379
+      - MEDICAL_CACHE=enabled
+      - TTL_MEDICAL_DATA=900  # 15 minutes for PHI
+      - ENCRYPTION_ENABLED=true
+    secrets:
+      - redis_password
+    networks:
+      - mcp_network
+      - medical_internal
+    ports:
+      - "8083:8080"
+    depends_on:
+      - redis-medical
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    labels:
+      - "vigia.service=mcp-redis"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=cache"
+
+  # MongoDB MCP Server for Audit Logs
+  mcp-mongodb:
+    image: mcp/mongodb:latest
+    container_name: vigia-mcp-mongodb
+    restart: unless-stopped
+    environment:
+      - MCP_MODE=production
+      - MONGODB_URL=mongodb://mongodb-audit:27017/vigia_audit
+      - AUDIT_COLLECTION=medical_audit_logs
+      - RETENTION_DAYS=2555  # 7 years HIPAA requirement
+      - ENCRYPTION_AT_REST=true
+    secrets:
+      - mongodb_audit_credentials
+    networks:
+      - mcp_network
+      - audit_network
+    ports:
+      - "8084:8080"
+    depends_on:
+      - mongodb-audit
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.75'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    labels:
+      - "vigia.service=mcp-mongodb"
+      - "vigia.compliance=hipaa"
+      - "vigia.type=audit"
+
+  # Supporting Infrastructure
+  redis-medical:
+    image: redis:7-alpine
+    container_name: vigia-redis-medical
+    restart: unless-stopped
+    command: >
+      redis-server 
+      --requirepass-file /run/secrets/redis_password
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+    secrets:
+      - redis_password
+    networks:
+      - medical_internal
+    volumes:
+      - redis_medical_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+
+  mongodb-audit:
+    image: mongo:7
+    container_name: vigia-mongodb-audit
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongodb_audit_user
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongodb_audit_password
+      - MONGO_INITDB_DATABASE=vigia_audit
+    secrets:
+      - mongodb_audit_user
+      - mongodb_audit_password
+    networks:
+      - audit_network
+    volumes:
+      - mongodb_audit_data:/data/db
+      - ./docker/mongodb/init-audit.js:/docker-entrypoint-initdb.d/init-audit.js:ro
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+
+  # MCP Gateway Load Balancer
+  mcp-gateway-lb:
+    image: nginx:alpine
+    container_name: vigia-mcp-gateway-lb
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./docker/nginx/mcp-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - mcp_network
+    depends_on:
+      - mcp-github
+      - mcp-stripe
+      - mcp-redis
+      - mcp-mongodb
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "vigia.service=mcp-gateway-lb"
+      - "vigia.type=gateway"
+
+# Docker Secrets for MCP Services
+secrets:
+  github_token:
+    external: true
+    name: vigia_github_token
+  github_webhook_secret:
+    external: true
+    name: vigia_github_webhook_secret
+  stripe_api_key:
+    external: true
+    name: vigia_stripe_api_key
+  stripe_webhook_secret:
+    external: true
+    name: vigia_stripe_webhook_secret
+  redis_password:
+    external: true
+    name: vigia_redis_password
+  mongodb_audit_credentials:
+    external: true
+    name: vigia_mongodb_audit_credentials
+  mongodb_audit_user:
+    external: true
+    name: vigia_mongodb_audit_user
+  mongodb_audit_password:
+    external: true
+    name: vigia_mongodb_audit_password
+
+# Networks for MCP Architecture
+networks:
+  mcp_network:
+    driver: bridge
+    name: vigia_mcp_network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+    labels:
+      - "vigia.network=mcp"
+      
+  medical_internal:
+    external: true
+    name: vigia_medical_internal
+    
+  billing_network:
+    driver: bridge
+    name: vigia_billing_network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+    labels:
+      - "vigia.network=billing"
+      
+  audit_network:
+    driver: bridge
+    name: vigia_audit_network
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+    labels:
+      - "vigia.network=audit"
+
+# Persistent Volumes
+volumes:
+  redis_medical_data:
+    driver: local
+    name: vigia_redis_medical_data
+    
+  mongodb_audit_data:
+    driver: local
+    name: vigia_mongodb_audit_data

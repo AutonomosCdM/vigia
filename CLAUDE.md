@@ -62,6 +62,22 @@ The system implements strict separation of concerns across three layers:
 ./scripts/run_tests.sh medical      # Medical/clinical tests
 ./scripts/run_tests.sh quick        # Smoke tests + basic validation
 
+# MCP Test Suite (NEW - v1.3.1+)
+./scripts/run-mcp-tests.sh          # Complete MCP test suite
+./scripts/run-mcp-tests.sh infrastructure  # Infrastructure/DevOps tests
+./scripts/run-mcp-tests.sh integration     # MCP tooling integration tests
+./scripts/run-mcp-tests.sh clinical        # Clinical/medical function tests
+./scripts/run-mcp-tests.sh performance     # Performance tests
+./scripts/run-mcp-tests.sh security        # Security/compliance tests
+./scripts/run-mcp-tests.sh smoke           # Quick smoke tests
+
+# Hospital infrastructure validation tests (NEW - v1.3.1+)
+./scripts/run_infrastructure_tests.sh         # Full infrastructure test suite
+./scripts/run_infrastructure_tests.sh quick   # Quick smoke tests
+./scripts/run_infrastructure_tests.sh docker  # Docker validation only
+./scripts/run_infrastructure_tests.sh security # Security tests only
+./scripts/run_infrastructure_tests.sh compliance # HIPAA compliance tests
+
 # Redis + MedGemma integration tests
 ./scripts/run_redis_medgemma_tests.sh
 
@@ -72,11 +88,13 @@ python -m pytest tests/ -m "medical"        # Medical validation tests (120+ syn
 python -m pytest tests/ -m "smoke"          # Quick smoke tests for basic validation
 python -m pytest tests/e2e/ -v              # E2E with verbose output
 python -m pytest tests/medical/ -v          # Evidence-based medical decisions
+python -m pytest tests/infrastructure/ -v   # Hospital deployment infrastructure tests
 
 # Single test files (commonly used)
 python -m pytest tests/medical/test_evidence_based_decisions.py -v
 python -m pytest tests/medical/test_lpp_medical_simple.py -v
 python -m pytest tests/medical/test_minsal_integration.py -v    # MINSAL integration tests (14/14 PASSED)
+python -m pytest tests/infrastructure/test_hospital_deployment.py -v # Infrastructure validation
 python test_async_simple.py                 # Async pipeline validation (5/5 tests)
 
 # Coverage (webhook module has dedicated pytest.ini)
@@ -104,6 +122,13 @@ python scripts/validate_post_refactor_simple.py --verbose
 ./start_whatsapp_server.sh                    # WhatsApp webhook server
 ./scripts/start_slack_server.sh               # Slack notification server
 
+# Hospital deployment (NEW - v1.3.1+)
+./scripts/hospital-deploy.sh deploy           # Deploy complete hospital system
+./scripts/hospital-deploy.sh status           # Check service status
+./scripts/hospital-deploy.sh logs             # View deployment logs
+./scripts/hospital-deploy.sh backup           # Create manual backup
+docker-compose -f docker-compose.hospital.yml up -d  # Start hospital services
+
 # Async Pipeline (NEW - v1.2.0) ✅ FULLY IMPLEMENTED
 pip install celery==5.3.6 kombu==5.3.5        # Install async dependencies (REQUIRED)
 ./scripts/start_celery_worker.sh               # Start async medical workers
@@ -114,6 +139,11 @@ python test_async_simple.py                   # Test implementation (✅ 5/5 PAS
 python examples/redis_integration_demo.py --quick  # Core system test (✅ WORKING)
 python test_async_simple.py                       # Async structure test (✅ 5/5 PASSED)
 redis-cli ping                                     # Redis backend test (✅ WORKING)
+
+# Hospital Integration Demos (NEW - v1.3.1+)
+python examples/hospital_integration_demo.py  # Complete hospital workflow demo
+python vigia_detect/integrations/his_fhir_gateway.py  # HIS/PACS integration test
+python vigia_detect/reports/clinical_pdf_generator.py # PDF report generation test
 
 # Async Tasks and Components
 vigia_detect/core/async_pipeline.py               # Central orchestrator for async workflows
@@ -167,6 +197,28 @@ python analyze_datasets.py roboflow
 
 # Create unified training dataset
 python integrate_yolo_model.py
+```
+
+# MCP Deployment and Operations (NEW - v1.3.1+)
+```bash
+# Deploy complete hybrid MCP infrastructure
+./scripts/deploy-mcp-hybrid.sh deploy           # Complete deployment
+./scripts/deploy-mcp-hybrid.sh hub-only         # Docker Hub MCP only
+./scripts/deploy-mcp-hybrid.sh custom-only      # Custom medical MCP only
+./scripts/deploy-mcp-hybrid.sh validate         # Validate deployment
+./scripts/deploy-mcp-hybrid.sh status           # Show deployment status
+./scripts/deploy-mcp-hybrid.sh cleanup          # Clean up deployment
+
+# MCP Secret Management
+./scripts/setup-mcp-secrets.sh setup            # Setup all MCP secrets
+./scripts/setup-mcp-secrets.sh verify           # Verify secrets exist
+./scripts/setup-mcp-secrets.sh cleanup          # Remove all secrets
+
+# MCP Testing Framework
+./scripts/run-mcp-tests.sh all                  # Complete test suite
+./scripts/run-mcp-tests.sh infrastructure       # Infrastructure tests
+./scripts/run-mcp-tests.sh integration          # Integration tests
+./scripts/run-mcp-tests.sh clinical             # Clinical tests
 ```
 
 # MedHELM Evaluation Framework (NEW - v1.3.1)
@@ -324,8 +376,8 @@ The system recently implemented a complete 3-layer security architecture to meet
 
 The MedGemma local integration represents a major shift toward fully private medical AI processing, eliminating external API dependencies for core medical analysis while maintaining professional-grade capabilities.
 
-### Project Status (v1.3.1 - Real Medical Detection)
-**✅ PRODUCTION READY** - Real LPP detection capabilities activated with medical datasets:
+### Project Status (v1.3.1 - Hospital Production Ready)
+**🏥 HOSPITAL PRODUCTION READY** - Complete medical-grade infrastructure for hospital deployment:
 
 1. **Evidence-based medical decision system** ensuring all automated clinical decisions include scientific justification and comply with international medical standards.
 2. **Asynchronous medical pipeline** with Celery preventing timeouts in critical medical workflows, featuring specialized task queues, retry policies, and failure escalation for patient safety.
@@ -333,7 +385,10 @@ The MedGemma local integration represents a major shift toward fully private med
 4. **Medical-grade failure handling** with automatic escalation to human review for patient safety and regulatory compliance.
 5. **MINSAL Integration** - Complete integration of Chilean Ministry of Health guidelines for national regulatory compliance.
 6. **Advanced RAG System** - State-of-the-art multimodal embeddings, dynamic clustering, incremental learning, and explainable medical recommendations.
-7. **Real Medical Detection (NEW)** - Transformation from mock simulation to real LPP detection using 2,088+ medical images across 5 datasets.
+7. **Real Medical Detection** - Transformation from mock simulation to real LPP detection using 2,088+ medical images across 5 datasets.
+8. **Hospital Infrastructure (NEW)** - Complete Docker deployment with HIPAA compliance, automated testing, CI/CD pipeline, and production monitoring.
+9. **HIS/PACS Integration (NEW)** - HL7 FHIR R4, DICOM, and legacy system integration framework.
+10. **Clinical PDF Reports (NEW)** - Medical-grade PDF generation with digital signatures and compliance documentation.
 
 **Validation Status:**
 - ✅ Async Pipeline: 5/5 tests PASSED
@@ -344,8 +399,12 @@ The MedGemma local integration represents a major shift toward fully private med
 - ✅ Medical Datasets: 2,088+ real images validated and training-ready
 - ✅ Redis Backend: Active and operational
 - ✅ Compliance: HIPAA/ISO 13485/SOC2 + MINSAL ready
+- ✅ Hospital Infrastructure: Docker deployment with automated testing
+- ✅ CI/CD Pipeline: Automated deployment with security scanning
+- ✅ HIS Integration: HL7 FHIR + DICOM + legacy system support
+- ✅ Clinical Reports: PDF generation with digital signatures
 
-**Medical Dataset Status (NEW - v1.3.1):**
+**Medical Dataset Status:**
 - ✅ **REAL DETECTION ACTIVATED:** 5 medical datasets with 2,088+ real images
 - ✅ AZH Wound Dataset: 1,010 images converted to YOLOv5 format (ACTIVE)
 - ✅ Roboflow LPP Dataset: 1,078 pressure ulcer images (structure ready)
@@ -353,6 +412,19 @@ The MedGemma local integration represents a major shift toward fully private med
 - ✅ Training pipeline: Full YOLOv5 medical training implemented
 - ✅ Validation completed: Real vs mock performance analysis
 - 📄 **Complete Reports:** `IMPLEMENTACION_DATASETS_MEDICOS_COMPLETA.md`, `METRICAS_DETECCION_LPP_REALES.md`
+
+**Hospital Infrastructure Status (NEW - v1.3.1+):**
+- ✅ **Docker Hospital Deployment:** Complete orchestration with 15+ medical services
+- ✅ **PostgreSQL Medical Database:** HIPAA-compliant with Row-Level Security
+- ✅ **NGINX Reverse Proxy:** Enterprise security with ModSecurity WAF
+- ✅ **Celery Async Workers:** Medical task processing with timeout prevention
+- ✅ **Network Segmentation:** 4-layer isolation (DMZ, internal, medical, management)
+- ✅ **Docker Secrets Management:** Secure credential handling for production
+- ✅ **Automated Backup Service:** Encrypted backups with 7-year retention
+- ✅ **Monitoring Stack:** Prometheus + Grafana + Flower for medical operations
+- ✅ **Infrastructure Testing:** Comprehensive validation with automated CI/CD
+- ✅ **HIS/PACS Integration:** HL7 FHIR, DICOM, CSV/FTP gateway
+- ✅ **Clinical PDF Reports:** Medical-grade reports with digital signatures
 
 ### Asynchronous Pipeline Architecture (NEW - v1.2.0)
 The system now implements a fully asynchronous medical pipeline using Celery to prevent timeouts and blocking:
@@ -441,14 +513,18 @@ protocols = vector_service.search_protocols("LPP Grade 3 treatment")
 - **Async Tasks**: `vigia_detect/tasks/` (medical, audit, notifications)
 - **Core Pipeline**: `vigia_detect/core/async_pipeline.py`
 - **AI Integration**: `vigia_detect/ai/medgemma_local_client.py`
+- **Hospital Integration**: `vigia_detect/integrations/` (HIS/PACS, HL7 FHIR, DICOM)
+- **Clinical Reports**: `vigia_detect/reports/` (PDF generation, digital signatures)
 - **MedHELM Evaluation**: `vigia_detect/evaluation/medhelm/` (standardized medical AI evaluation)
-- **Testing**: `tests/medical/` for clinical validation, `test_async_simple.py` for pipeline
+- **Testing**: `tests/medical/` for clinical validation, `tests/infrastructure/` for deployment, `test_async_simple.py` for pipeline
 - **Documentation**: `docs/medical/NPUAP_EPUAP_CLINICAL_DECISIONS.md` for clinical references
 - **Medical Datasets**: `datasets/medical_images/` (AZH, Roboflow, MICCAI, DFU datasets)
 - **Reports**: `INFORME_BASES_DATOS_IMAGENES_MEDICAS.md`, `METRICAS_DETECCION_LPP_REALES.md`
 - **Real Detection**: `models/lpp_detection/` (trained models and configs)
 - **Evaluation Results**: `RESULTADOS_EVALUACION_MEDHELM.md` (100% success rate validation)
 - **AgentOps Integration**: `test_agentops_integration.py` (medical AI monitoring)
+- **Hospital Docker**: `docker-compose.hospital.yml`, `scripts/hospital-deploy.sh` (production deployment)
+- **CI/CD Pipeline**: `.github/workflows/hospital-deployment.yml` (automated testing and deployment)
 
 ## AgentOps Medical AI Monitoring (NEW - v1.3.1+)
 
@@ -493,6 +569,56 @@ The AgentOps monitoring integrates seamlessly with Vigia's 3-layer architecture:
 - **Layer 1**: Input events and session initiation
 - **Layer 2**: Medical orchestration and triage decisions
 - **Layer 3**: Clinical analysis results and escalation patterns
+
+# Render Cloud Deployment Commands (NEW)
+
+## Quick Deploy to Render
+```bash
+# Option 1: One-click deployment (requires GitHub setup)
+# Use render.yaml blueprint deployment
+
+# Option 2: Manual deployment preparation
+python scripts/setup_render_env.py               # Setup environment variables
+./scripts/deploy_with_render.sh --env production # Deploy to production
+
+# Validate deployment readiness
+python scripts/validate_post_refactor_simple.py --render-check
+```
+
+## Render Service Entry Points
+```bash
+# WhatsApp Service
+python render_whatsapp.py                        # Entry point for WhatsApp service
+
+# Webhook API Service  
+python render_webhook.py                         # Entry point for webhook API service
+```
+
+## Cloud Infrastructure Debugging
+```bash
+# Test services locally before deployment
+python vigia_detect/messaging/whatsapp/server.py  # Test WhatsApp server locally
+python vigia_detect/webhook/server.py             # Test webhook server locally
+
+# Health check endpoints (for Render monitoring)
+curl http://localhost:5000/health                 # WhatsApp service health
+curl http://localhost:8000/health                 # Webhook service health
+
+# Production service URLs (after deployment)
+# https://vigia-whatsapp.onrender.com/health
+# https://vigia-webhook.onrender.com/health
+```
+
+## Project Cleanup for Deployment
+```bash
+# Reduce project size for efficient deployment
+python scripts/cleanup_for_deployment.py          # Remove large datasets, backup files
+python scripts/optimize_dependencies.py           # Streamline requirements
+
+# Fix common deployment issues
+python scripts/fix_import_paths.py                # Resolve import dependency conflicts
+python scripts/validate_service_startup.py       # Test all service entry points
+```
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

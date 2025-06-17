@@ -43,8 +43,9 @@ start_web_server() {
     check_redis && export REDIS_AVAILABLE=true || export REDIS_AVAILABLE=false
     check_database && export DATABASE_AVAILABLE=true || export DATABASE_AVAILABLE=false
     
-    # Start the unified web server
-    exec python -m vigia_detect.web.unified_server \
+    # Start the unified web server directly
+    cd /app
+    exec python vigia_detect/web/unified_server.py \
         --port=$PORT \
         --host=0.0.0.0 \
         --redis-available=$REDIS_AVAILABLE \

@@ -14,17 +14,17 @@ from typing import List, Optional
 # Agregar el directorio raíz al path para importaciones
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from core.image_processor import ImageProcessor
-from core.constants import LPP_SEVERITY_ALERTS
-from db.supabase_client_refactored import SupabaseClientRefactored
-from utils.image_utils import list_image_files
-from utils.energy_monitor import track_energy, energy_monitor
-from webhook.client import SyncWebhookClient
-from webhook.models import DetectionPayload, Detection, Severity
-from config.settings import settings
+from vigia_detect.core.image_processor import ImageProcessor
+from vigia_detect.core.constants import LPP_SEVERITY_ALERTS
+from vigia_detect.db.supabase_client_refactored import SupabaseClientRefactored
+from vigia_detect.utils.image_utils import list_image_files
+from vigia_detect.utils.energy_monitor import track_energy, energy_monitor
+from vigia_detect.webhook.client import SyncWebhookClient
+from vigia_detect.webhook.models import DetectionPayload, Detection, Severity
+from vigia_detect.config.settings import settings
 
 # Configurar logging usando el módulo centralizado
-from core.base_client import BaseClient
+from vigia_detect.core.base_client import BaseClient
 
 # Configurar logger
 logger = BaseClient("CLI", {}, {})._setup_logger()

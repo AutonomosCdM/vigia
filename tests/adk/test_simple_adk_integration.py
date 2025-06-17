@@ -14,6 +14,8 @@ import logging
 from datetime import datetime
 import sys
 from pathlib import Path
+import pytest
+import time
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -26,6 +28,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.asyncio
 async def test_basic_import():
     """Test basic imports work"""
     try:
@@ -46,6 +49,7 @@ async def test_basic_import():
         return False
 
 
+@pytest.mark.asyncio
 async def test_orchestrator_initialization():
     """Test orchestrator can be initialized"""
     try:
@@ -69,6 +73,7 @@ async def test_orchestrator_initialization():
         return False
 
 
+@pytest.mark.asyncio
 async def test_mock_case_processing():
     """Test mock medical case processing"""
     try:
@@ -121,6 +126,7 @@ async def test_mock_case_processing():
         return False
 
 
+@pytest.mark.asyncio
 async def test_orchestrator_stats():
     """Test orchestrator statistics"""
     try:

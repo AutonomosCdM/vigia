@@ -21,7 +21,7 @@ import hashlib
 
 from ..core.input_packager import StandardizedInput
 from ..core.medical_dispatcher import TriageDecision
-from ..redis_layer.vector_service import VectorService
+from ..redis_layer.vector_service import VectorService, VectorSearchService
 from ..redis_layer.protocol_indexer import ProtocolIndexer
 from ..utils.secure_logger import SecureLogger
 from ..ai.medgemma_client import MedGemmaClient
@@ -111,7 +111,7 @@ class EnhancedMedicalKnowledgeSystem:
             protocol_indexer: Indexador de protocolos médicos
             medgemma_client: Cliente MedGemma para IA generativa
         """
-        self.vector_service = vector_service or VectorService()
+        self.vector_service = vector_service or VectorSearchService()
         self.protocol_indexer = protocol_indexer or ProtocolIndexer()
         self.medgemma_client = medgemma_client
         
@@ -1382,7 +1382,7 @@ class EnhancedMedicalKnowledgeFactory:
         config = config or {}
         
         # Crear servicios
-        vector_service = VectorService() if config.get("use_vector_search", True) else None
+        vector_service = VectorSearchService() if config.get("use_vector_search", True) else None
         protocol_indexer = ProtocolIndexer() if config.get("use_protocol_indexer", True) else None
         medgemma_client = MedGemmaClient() if config.get("enable_ai_enhancement", True) else None
         

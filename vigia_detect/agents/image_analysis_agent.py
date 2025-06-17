@@ -78,14 +78,7 @@ class ImageAnalysisAgent:
         self.session_manager = SessionManager()
         self.audit_service = AuditService()
         
-        # Initialize CV pipeline components
-        self.preprocessor = ImagePreprocessor()
-        self.yolo_loader = YOLOLoader()
-        
-        # Initialize detectors with fallback chain
-        self._initialize_detectors()
-        
-        # Processing statistics
+        # Processing statistics (initialize early)
         self.stats = {
             'images_processed': 0,
             'lpp_detections': 0,
@@ -94,6 +87,13 @@ class ImageAnalysisAgent:
             'avg_processing_time': 0.0,
             'model_type': 'initializing'
         }
+        
+        # Initialize CV pipeline components
+        self.preprocessor = ImagePreprocessor()
+        self.yolo_loader = YOLOLoader()
+        
+        # Initialize detectors with fallback chain
+        self._initialize_detectors()
         
         # A2A server for distributed communication
         self.a2a_server = None
@@ -803,9 +803,25 @@ image_analysis_agent = Agent(
     ],
 )
 
+# Factory class for backward compatibility
+class ImageAnalysisAgentFactory:
+    """Factory class for creating ImageAnalysisAgent instances."""
+    
+    @staticmethod
+    def create_agent() -> ImageAnalysisAgent:
+        """Create a new ImageAnalysisAgent instance."""
+        return ImageAnalysisAgent()
+    
+    @staticmethod
+    def create_adk_agent() -> Agent:
+        """Create the ADK agent instance."""
+        return image_analysis_agent
+
+
 # Export for use
 __all__ = [
     'ImageAnalysisAgent',
+    'ImageAnalysisAgentFactory',
     'image_analysis_agent', 
     'analyze_medical_image_tool',
     'get_image_analysis_status',

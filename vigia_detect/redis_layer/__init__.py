@@ -13,8 +13,8 @@ Phase 2 Implementation:
 - MedicalEmbeddingService: Specialized embeddings for medical text
 """
 
-from .client_v2 import MedicalRedisClient
-from .cache_service_v2 import MedicalSemanticCache
+from .client import MedicalRedisClient
+from .cache_service import MedicalSemanticCache
 from .protocol_indexer import MedicalProtocolIndexer
 from .embeddings import MedicalEmbeddingService, EmbeddingService
 from .mock_client import MockRedisClient, create_redis_client

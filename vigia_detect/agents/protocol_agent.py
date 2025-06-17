@@ -218,7 +218,7 @@ class ProtocolAgent(BaseAgent):
             )
             
             # Procesar con sistema médico (simulamos triage_decision)
-            from ..core.medical_dispatcher import TriageDecision
+            from ..core.triage_engine import TriageResult as TriageDecision
             mock_triage = TriageDecision(
                 action="knowledge_search",
                 priority="medium",

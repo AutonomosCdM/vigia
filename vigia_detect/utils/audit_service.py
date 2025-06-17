@@ -1065,3 +1065,7 @@ async def audit_log(event_type: AuditEventType,
         action=action,
         **kwargs
     )
+
+
+# Legacy alias for backward compatibility
+AuditLevel = AuditSeverity

@@ -606,4 +606,4 @@ if __name__ == "__main__":
     runner = MedicalCohortTestRunner()
     report = runner.run_comprehensive_cohort_test(120)
     print("Comprehensive medical cohort test completed!")
-    print(f"Report saved to: tests/medical/results/
+    print(f"Report saved to: tests/medical/results/{report['report_file']}")

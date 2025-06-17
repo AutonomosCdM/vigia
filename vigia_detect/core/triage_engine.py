@@ -811,3 +811,8 @@ class TriageEngineFactory:
         engine = MedicalTriageEngine()
         engine.rules = rules
         return engine
+
+
+# Legacy aliases for backward compatibility
+TriageEngine = MedicalTriageEngine
+TriageDecision = TriageResult

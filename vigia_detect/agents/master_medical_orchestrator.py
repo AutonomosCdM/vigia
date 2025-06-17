@@ -23,7 +23,8 @@ from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.tools import FunctionTool
 
 # Import existing tools and functions
-from vigia_detect.agents.lpp_medical_agent import procesar_imagen_lpp, generar_reporte_lpp
+from vigia_detect.agents.image_analysis_agent import analyze_medical_image_tool
+from vigia_detect.agents.clinical_assessment_agent import perform_clinical_assessment_tool
 from vigia_detect.messaging.adk_tools import enviar_alerta_lpp, test_slack_desde_adk
 from vigia_detect.systems.medical_decision_engine import make_evidence_based_decision
 from vigia_detect.core.session_manager import SessionManager
@@ -274,8 +275,16 @@ class MasterMedicalOrchestrator:
             'model_version': 'yolov5s_medical_v1.0'
         }
         
-        # Process with existing LPP medical agent
-        result = procesar_imagen_lpp(image_path, patient_code, mock_cv_results)
+        # Process with consolidated image analysis tool
+        image_data = {
+            'image_path': image_path,
+            'patient_code': patient_code,
+            'session_token': f"orchestrator_{datetime.now().timestamp()}",
+            'medical_context': {
+                'cv_results': mock_cv_results
+            }
+        }
+        result = analyze_medical_image_tool(image_data)
         
         return {
             'success': True,
@@ -890,8 +899,8 @@ master_orchestrator_agent = Agent(
     tools=[
         process_medical_case_orchestrated,
         get_orchestrator_status,
-        procesar_imagen_lpp,
-        generar_reporte_lpp,
+        analyze_medical_image_tool,
+        perform_clinical_assessment_tool,
         enviar_alerta_lpp,
         test_slack_desde_adk,
     ],

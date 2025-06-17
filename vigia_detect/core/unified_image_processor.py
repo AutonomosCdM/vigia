@@ -10,7 +10,7 @@ from datetime import datetime
 import uuid
 
 from config.settings import settings
-from .base_client_v2 import BaseClientV2
+from .base_client import BaseClient
 from ..cv_pipeline import Detector, Preprocessor
 from ..utils.image_utils import (
     is_valid_image, 
@@ -20,7 +20,7 @@ from ..utils.image_utils import (
 from .constants import LPP_SEVERITY_ALERTS
 
 
-class UnifiedImageProcessor(BaseClientV2):
+class UnifiedImageProcessor(BaseClient):
     """
     Unified image processor that combines preprocessing and detection.
     Eliminates code duplication between CLI and WhatsApp processor.

@@ -103,7 +103,7 @@ class ClinicalAssessmentAgent:
         # Initialize clinical processing systems
         self.clinical_processor = ClinicalProcessingSystem()
         self.decision_engine = MedicalDecisionEngine()
-        self.minsal_engine = MinisterioSaludDecisionEngine()
+        self.minsal_engine = MINSALDecisionEngine()
         self.knowledge_system = MedicalKnowledgeSystem()
         self.review_queue = HumanReviewQueue()
         
@@ -1266,9 +1266,25 @@ clinical_assessment_agent = Agent(
     ],
 )
 
+# Factory class for backward compatibility
+class ClinicalAssessmentAgentFactory:
+    """Factory class for creating ClinicalAssessmentAgent instances."""
+    
+    @staticmethod
+    def create_agent() -> ClinicalAssessmentAgent:
+        """Create a new ClinicalAssessmentAgent instance."""
+        return ClinicalAssessmentAgent()
+    
+    @staticmethod
+    def create_adk_agent():
+        """Create the ADK agent instance."""
+        return clinical_assessment_agent
+
+
 # Export for use
 __all__ = [
     'ClinicalAssessmentAgent',
+    'ClinicalAssessmentAgentFactory',
     'clinical_assessment_agent',
     'perform_clinical_assessment_tool',
     'get_clinical_assessment_status',

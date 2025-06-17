@@ -116,11 +116,11 @@ class TestADKA2AFoundation:
             
             # Create individual agents
             logger.info("Creating specialized agents...")
-            self.agents['image_analysis'] = await ImageAnalysisAgentFactory.create_agent()
-            self.agents['clinical_assessment'] = await ClinicalAssessmentAgentFactory.create_agent()
-            self.agents['protocol'] = await ProtocolAgentFactory.create_agent()
-            self.agents['communication'] = await CommunicationAgentFactory.create_agent()
-            self.agents['workflow'] = await WorkflowOrchestrationAgentFactory.create_agent()
+            self.agents['image_analysis'] = ImageAnalysisAgentFactory.create_agent()  # SYNC
+            self.agents['clinical_assessment'] = ClinicalAssessmentAgentFactory.create_agent()  # SYNC
+            self.agents['protocol'] = await ProtocolAgentFactory.create_agent()  # ASYNC
+            self.agents['communication'] = await CommunicationAgentFactory.create_agent()  # ASYNC
+            self.agents['workflow'] = await WorkflowOrchestrationAgentFactory.create_agent()  # ASYNC
             
             # Create master orchestrator with all agents registered
             logger.info("Creating master orchestrator with A2A registration...")

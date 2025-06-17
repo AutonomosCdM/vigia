@@ -94,8 +94,8 @@ class MedicalKnowledgeSystem:
     """
     
     def __init__(self, 
-                 vector_service: Optional[VectorService] = None,
-                 protocol_indexer: Optional[ProtocolIndexer] = None):
+                 vector_service: Optional[Any] = None,
+                 protocol_indexer: Optional[Any] = None):
         """
         Inicializar sistema de conocimiento médico.
         
@@ -143,8 +143,10 @@ class MedicalKnowledgeSystem:
             "vector_service": "active" if self.vector_service else "disabled",
             "protocol_indexer": "active" if self.protocol_indexer else "disabled"
         })
-                     standardized_input: StandardizedInput,
-                     triage_decision: TriageDecision) -> Dict[str, Any]:
+    
+    async def process_medical_query(self,
+                                   standardized_input: StandardizedInput,
+                                   triage_decision: TriageDecision) -> Dict[str, Any]:
         """
         Procesar consulta médica.
         

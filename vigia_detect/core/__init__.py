@@ -2,7 +2,7 @@
 
 from .base_client import BaseClient
 from .constants import *
-from .image_processor import ImageProcessor
+from .unified_image_processor import UnifiedImageProcessor as ImageProcessor
 from .slack_templates import (
     create_detection_blocks,
     create_error_blocks,

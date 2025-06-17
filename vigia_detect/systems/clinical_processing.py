@@ -21,7 +21,7 @@ import tempfile
 import hashlib
 
 from ..core.input_packager import StandardizedInput
-from ..core.medical_dispatcher import TriageDecision
+from ..core.triage_engine import TriageResult as TriageDecision
 from ..cv_pipeline.detector import LPPDetector
 from ..cv_pipeline.preprocessor import ImagePreprocessor
 from ..db.supabase_client_refactored import SupabaseClientRefactored as SupabaseClient

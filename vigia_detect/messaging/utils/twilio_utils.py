@@ -128,3 +128,54 @@ def parse_twilio_error(error_json: str) -> Dict[str, Any]:
             'code': 0,
             'status': 0
         }
+
+
+def validate_media_format(media_url: str, content_type: str = None) -> Dict[str, Any]:
+    """
+    Validate media format for medical image processing.
+    
+    Args:
+        media_url: URL of the media file
+        content_type: MIME type of the media
+        
+    Returns:
+        Dict: Validation result with format info
+    """
+    # Supported medical image formats
+    supported_formats = {
+        'image/jpeg': 'jpeg',
+        'image/jpg': 'jpeg', 
+        'image/png': 'png',
+        'image/tiff': 'tiff',
+        'image/bmp': 'bmp'
+    }
+    
+    # Extract extension from URL
+    parsed_url = urlparse(media_url)
+    file_path = parsed_url.path.lower()
+    
+    if content_type and content_type.lower() in supported_formats:
+        return {
+            'valid': True,
+            'format': supported_formats[content_type.lower()],
+            'content_type': content_type,
+            'medical_compatible': True
+        }
+    
+    # Check by file extension
+    for ext in ['.jpg', '.jpeg', '.png', '.tiff', '.bmp']:
+        if file_path.endswith(ext):
+            return {
+                'valid': True,
+                'format': ext[1:],  # Remove dot
+                'content_type': f'image/{ext[1:]}',
+                'medical_compatible': True
+            }
+    
+    return {
+        'valid': False,
+        'format': 'unknown',
+        'content_type': content_type or 'unknown',
+        'medical_compatible': False,
+        'error': 'Unsupported media format for medical analysis'
+    }

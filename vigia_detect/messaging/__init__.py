@@ -7,12 +7,12 @@ IMPORTANTE: Los módulos son independientes y se importan solo cuando se necesit
 
 # Importaciones opcionales para evitar dependencias circulares
 try:
-    from .slack_notifier_refactored import SlackNotifierRefactored as SlackNotifier
+    from .slack_notifier import SlackNotifierRefactored as SlackNotifier
 except ImportError:
     SlackNotifier = None
 
 try:
-    from .twilio_client_refactored import TwilioClientRefactored as TwilioClient
+    from .twilio_client import TwilioClientRefactored as TwilioClient
 except ImportError:
     TwilioClient = None
 

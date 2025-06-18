@@ -1,163 +1,198 @@
 # CLAUDE.md
 
-Guides Claude Code when working with this medical AI system.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Vigia: Medical-grade pressure injury detection system with ADK architecture for healthcare compliance (HIPAA, ISO 13485, SOC2).
-
-## Core Architecture
-**ADK Medical Agents**
-- Image analysis, clinical assessment, protocols, communication, workflow orchestration
-- Master orchestrator with A2A communication
-- Distributed infrastructure (protocol, discovery, load balancing, monitoring)
-
-**Key Systems**
-- Async medical pipeline with timeout prevention
-- Evidence-based decision engine (NPUAP/EPUAP + MINSAL)
-- Medical AI (MedGemma local) with HIPAA compliance
-
-## Commands & Modes
-
-### Planning Mode
-```bash
-/plan [topic]    # Design and architecture without code execution
-```
-
-### YOLO Mode  
-```bash
-/yolo [task]     # Execute immediately without confirmations
-```
+Vigia is a production-ready medical-grade pressure injury (LPP) detection system using computer vision and local AI. It implements an ADK (Agent Development Kit) architecture for healthcare compliance (HIPAA, ISO 13485, SOC2) with WhatsApp/Slack integration and comprehensive audit trails.
 
 ## Essential Commands
 
-### Testing
+### Testing & Validation
 ```bash
-# Core test suites
+# Core test suites (organized by category)
 python -m pytest tests/unit/ -m unit           # Unit tests
-python -m pytest tests/adk/ -m adk             # ADK agent tests
+python -m pytest tests/adk/ -m adk             # ADK agent tests  
 python -m pytest tests/medical/ -m medical     # Medical validation
 python -m pytest tests/integration/ -m integration  # Integration tests
 
-# Key test files
+# Critical validation tests
 python -m pytest tests/medical/test_minsal_integration.py -v    # Chilean compliance (14/14 PASSED)
-python -m pytest tests/adk/test_simple_adk_integration.py -v    # ADK integration (4/4 PASSED)
+python -m pytest tests/adk/test_simple_adk_integration.py -v    # ADK integration (4/4 PASSED) 
 python -m pytest tests/integration/test_async_simple.py -v     # Async pipeline (5/5 PASSED)
+
+# Skip slow tests during development
+python -m pytest tests/ -m "not slow"
+
+# Configuration: config/pytest.ini with 38 test markers, 300s timeout
 ```
 
-### Services
+### Service Management
 ```bash
-# Start core services
-./scripts/hospital-deploy.sh deploy           # Hospital system
-./scripts/start_celery_worker.sh               # Async workers
-./start_whatsapp_server.sh                    # WhatsApp server
+# Hospital deployment (production)
+./scripts/hospital-deploy.sh deploy           # Full hospital system
+./scripts/hospital-deploy.sh status           # Check services
+./scripts/hospital-deploy.sh logs             # View logs
+
+# Development services
+./scripts/start_celery_worker.sh               # Async medical workers
+./start_whatsapp_server.sh                    # WhatsApp webhook server
+./scripts/start_slack_server.sh               # Slack notification server
 
 # System validation
 python scripts/validate_post_refactor_simple.py --verbose
-redis-cli ping                                # Redis connectivity
+redis-cli ping                                # Redis connectivity check
 ```
 
-### Development
+### Medical AI & Processing
 ```bash
-# Environment setup
-source scripts/quick_env_setup.sh
-
-# Image processing
-python vigia_detect/cli/process_images_refactored.py --input /path/to/images
-
-# Medical AI (local)
-python scripts/setup_medgemma_ollama.py --model 27b --install
-```
-
-### Medical AI & Evaluation
-```bash
-# MedGemma setup (local AI)
+# MedGemma local AI setup (HIPAA-compliant)
+python scripts/setup_medgemma_ollama.py --install-ollama
 python scripts/setup_medgemma_ollama.py --model 27b --install
 ollama run symptoma/medgemma3 "¿Cuáles son los grados de LPP?"
 
-# MedHELM evaluation
-python evaluate_medhelm.py --quick --visualize
-python test_medhelm_basic.py
+# Medical image processing
+python vigia_detect/cli/process_images_refactored.py --input /path/to/images
+python vigia_detect/cli/process_images_refactored.py --webhook --patient-code CD-2025-001
 
-# Medical datasets (2,088+ real images)
-cd datasets/medical_images && python create_azh_yolo_dataset.py
-python quick_train_lpp.py
+# Redis medical protocol setup
+python scripts/setup_redis_simple.py
+python examples/redis_integration_demo.py
 ```
 
-## System Architecture
+### Environment & Configuration
+```bash
+# Environment setup (loads .env files from config/)
+source scripts/quick_env_setup.sh
 
-### Core Components
-- **ADK Agents** (`vigia_detect/agents/`): 5 specialized medical agents with A2A communication
-- **Medical Systems** (`vigia_detect/systems/`): Evidence-based decision engines (NPUAP/EPUAP + MINSAL)
-- **AI Module** (`vigia_detect/ai/`): MedGemma local HIPAA-compliant processing
-- **Async Pipeline** (`vigia_detect/core/async_pipeline.py`): Timeout-resistant medical workflows
-- **A2A Infrastructure** (`vigia_detect/a2a/`): Distributed JSON-RPC 2.0 communication
+# Secure credential management
+python scripts/setup_credentials.py
 
-### Medical Workflow
-1. WhatsApp/Slack input → Medical triage → Clinical analysis → Human escalation → Team notification → Audit trail
+# Docker deployment configurations
+deploy/docker/docker-compose.hospital.yml     # Hospital production
+deploy/docker/docker-compose.render.yml       # Cloud deployment
+```
 
-### Compliance & Security
-- HIPAA/ISO 13485/SOC2 ready
-- Medical data encryption, audit trails, temporal isolation
-- Evidence-based decisions with scientific justification
-- Local AI processing (MedGemma) for privacy
+## Architecture Overview
 
-## Project Status (v1.3.3 - Production Ready)
-**✅ HOSPITAL PRODUCTION READY** - Clean ADK architecture with comprehensive medical compliance:
+### ADK Agent System
+The system uses a clean ADK (Agent Development Kit) architecture with 5 specialized medical agents:
+- **ImageAnalysisAgent** (`vigia_detect/agents/image_analysis_agent.py`): YOLOv5 integration for LPP detection
+- **ClinicalAssessmentAgent** (`vigia_detect/agents/clinical_assessment_agent.py`): Evidence-based NPUAP/EPUAP decisions
+- **ProtocolAgent** (`vigia_detect/agents/protocol_agent.py`): Medical protocol consultation with vector search
+- **CommunicationAgent** (`vigia_detect/agents/communication_agent.py`): WhatsApp/Slack notifications
+- **WorkflowOrchestrationAgent** (`vigia_detect/agents/workflow_orchestration_agent.py`): Medical workflow coordination
 
-**Key Achievements:**
-- Clean ADK-only architecture (5 specialized medical agents)
-- Professional test structure (50+ organized test files)
-- FASE 3 distributed infrastructure (A2A JSON-RPC 2.0)
-- Real medical detection (2,088+ images, 5 datasets)
-- Evidence-based decisions (NPUAP/EPUAP + MINSAL)
-- Async medical pipeline (Celery, timeout prevention)
-- Hospital infrastructure (Docker, HIPAA compliance)
-- Local medical AI (MedGemma, privacy-first)
+All agents inherit from **BaseAgent** with standardized **AgentMessage**/**AgentResponse** patterns and **AgentCapability** enums.
 
-**Validation:**
-- ✅ 4/4 ADK tests, 7/7 infrastructure tests, 14/14 MINSAL tests
-- ✅ 100% medical test coverage with synthetic patients
-- ✅ HIPAA/ISO 13485/SOC2 compliance ready
+### A2A Distributed Infrastructure
+Agent-to-Agent communication via JSON-RPC 2.0 protocol (`vigia_detect/a2a/`):
+- **protocol_layer.py**: JSON-RPC 2.0 with medical extensions and encryption
+- **agent_discovery_service.py**: Service registry with Redis/Consul/ZooKeeper backends
+- **load_balancer.py**: 7 intelligent routing algorithms with health-aware medical priority
+- **health_monitoring.py**: Real-time monitoring with 10 metric types and predictive alerts
+- **message_queuing.py**: 6 queue types with guaranteed delivery and medical compliance
+- **fault_tolerance.py**: Circuit breakers, emergency protocols, automatic recovery
 
-## Development Guidelines
+### Medical Decision Engine
+Evidence-based clinical decisions (`vigia_detect/systems/`):
+- **medical_decision_engine.py**: NPUAP/EPUAP/PPPIA 2019 guidelines with scientific justification
+- **minsal_medical_decision_engine.py**: Chilean Ministry of Health integration for regulatory compliance
+- All decisions include evidence levels (A/B/C), scientific references, and automatic escalation protocols
 
-### Medical Safety Requirements
-- Evidence-based decisions with NPUAP/EPUAP/MINSAL references
-- Scientific justification for all clinical recommendations
-- Human escalation for low-confidence decisions
-- Complete audit trails for compliance
-- Local processing preferred (MedGemma)
-- Synthetic patient testing required
+### Asynchronous Medical Pipeline
+Timeout-resistant medical workflows (`vigia_detect/core/async_pipeline.py`):
+- **Celery-based processing**: 3-5 minute task limits vs 30-60 second blocking operations
+- **Medical task queues**: medical_priority, image_processing, notifications, audit_logging
+- **Retry policies**: Max 3 retries with human escalation for critical medical failures
+- **Task modules**: `vigia_detect/tasks/` (medical.py, audit.py, notifications.py)
 
 ## Development Patterns
 
+### Medical Decision Making
 ```python
-# Medical decision with evidence
+# International evidence-based decisions
 from vigia_detect.systems.medical_decision_engine import MedicalDecisionEngine
 engine = MedicalDecisionEngine()
-decision = engine.make_clinical_decision(lpp_grade=2, confidence=0.85)
+decision = engine.make_clinical_decision(
+    lpp_grade=2, confidence=0.85, anatomical_location="sacrum"
+)
 
-# MINSAL integration (Chilean context)
+# Chilean regulatory compliance (MINSAL)
 from vigia_detect.systems.minsal_medical_decision_engine import make_minsal_clinical_decision
-decision = make_minsal_clinical_decision(lpp_grade=2, confidence=0.75,
-                                       patient_context={'diabetes': True})
-
-# Async medical task
-from vigia_detect.tasks.medical import image_analysis_task
-result = image_analysis_task.delay(image_path, patient_code)
+decision = make_minsal_clinical_decision(
+    lpp_grade=2, confidence=0.75,
+    patient_context={'diabetes': True, 'public_healthcare': True}
+)
 ```
 
-## Key Directories
-- **ADK Agents**: `vigia_detect/agents/` (5 specialized agents)
-- **Medical Systems**: `vigia_detect/systems/` (decision engines)
-- **Tests**: `tests/unit/`, `tests/adk/`, `tests/medical/` (organized structure)
-- **Infrastructure**: `vigia_detect/a2a/` (distributed communication)
-- **Datasets**: `datasets/medical_images/` (2,088+ real images)
+### Asynchronous Medical Tasks
+```python
+# Async medical processing (prevents timeouts)
+from vigia_detect.tasks.medical import image_analysis_task
+result = image_analysis_task.delay(image_path, patient_code, patient_context)
+
+# Medical protocol search with Redis vector storage
+from vigia_detect.redis_layer.vector_service import VectorService
+protocols = vector_service.search_protocols("LPP Grade 3 treatment")
+```
+
+### ADK Agent Communication
+```python
+# Agent-to-Agent messaging
+from vigia_detect.agents.base_agent import AgentMessage, AgentResponse
+message = AgentMessage(
+    message_id="msg_001",
+    sender_id="clinical_agent",
+    recipient_id="protocol_agent",
+    message_type="protocol_query",
+    content={"lpp_grade": 2, "location": "sacrum"}
+)
+```
+
+## Medical Safety Requirements
+
+### Evidence-Based Medicine
+- All clinical logic must reference NPUAP/EPUAP/PPPIA 2019 guidelines
+- Include scientific justification with evidence levels (A/B/C)
+- Low-confidence decisions automatically escalate to human review
+- Complete audit trails required for regulatory compliance
+
+### Local AI Processing
+- Prefer MedGemma local processing over external APIs for medical data
+- HIPAA-compliant medical AI without external dependencies
+- Medical protocol caching with Redis vector search
+- Synthetic patient testing required before production
 
 ## Architecture Rules
-- Single implementations only (no _v2, _adk duplicates)
-- ADK framework for all medical agents
-- Evidence-based medical decisions
-- Async pipeline for timeout prevention
-- Local AI processing (MedGemma)
-- Professional test organization
+
+### Clean Architecture Principles
+- **Single implementations only**: No _v2, _refactored, _adk file duplicates
+- **ADK framework exclusive**: All medical agents use Google ADK with proper tool definitions
+- **Professional test organization**: 50+ test files categorized in tests/unit/, tests/adk/, tests/medical/
+- **Evidence-based decisions**: 100% preservation of medical decision logic through refactoring
+
+### Directory Structure (Post-Organization)
+```
+vigia/
+├── vigia_detect/          # Core medical system
+│   ├── agents/           # 5 ADK medical agents
+│   ├── systems/          # Evidence-based decision engines
+│   ├── a2a/             # Distributed infrastructure
+│   ├── core/            # Async pipeline orchestrator
+│   ├── ai/              # MedGemma local client
+│   └── tasks/           # Celery async tasks
+├── config/               # Centralized configuration (.env, requirements, pytest.ini)
+├── deploy/               # Docker deployment (hospital, render)
+├── docs/                 # Essential documentation (medical, deployment, setup)
+├── tests/                # Organized test structure (unit, adk, medical, integration)
+├── dev/                  # Development files (demos, evaluations, renders)
+└── scripts/              # Utility scripts (50+ medical operations)
+```
+
+## Production Status
+✅ **Hospital Production Ready** - v1.3.3 Clean Architecture:
+- 4/4 ADK tests, 7/7 infrastructure tests, 14/14 MINSAL tests
+- Real medical detection with 2,088+ validated images across 5 datasets
+- HIPAA/ISO 13485/SOC2 compliance ready
+- Evidence-based decisions with complete scientific justification
+- Local medical AI processing with MedGemma (privacy-first)

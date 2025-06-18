@@ -6,7 +6,7 @@ Este documento sirve como punto central de referencia para acceder a toda la doc
 
 ## Proyecto Supabase
 
-- **Nombre del Proyecto**: lpp_detect
+- **Nombre del Proyecto**: vigia_detect
 - **ID de Referencia**: jfcwziciqdmhodozowhv
 - **Región**: South America (São Paulo)
 - **URL del Proyecto**: https://jfcwziciqdmhodozowhv.supabase.co

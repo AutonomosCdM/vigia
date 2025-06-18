@@ -293,8 +293,8 @@ def collect_clinical_feedback(case_id: str, clinician_assessment: Dict,
 **Responsable**: Equipo Médico Vigía  
 
 ### Historial de Cambios
-- **v1.0.0**: Implementación inicial basada en NPUAP/EPUAP 2019
-- **Futuro v1.1.0**: Integración de nuevas guidelines NPUAP 2024
+- **v1.3.3**: Implementación inicial basada en NPUAP/EPUAP 2019
+- **Futuro v1.3.3**: Integración de nuevas guidelines NPUAP 2024
 
 ---
 

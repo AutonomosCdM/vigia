@@ -1,10 +1,10 @@
-# LPP-Detect CV Pipeline Module
+# Vigia CV Pipeline Module
 
 ## Overview
-This module implements the computer vision pipeline for processing images and detecting Lesiones por Presión (LPP). It includes components for image preprocessing and YOLOv5-based detection.
+This module implements the computer vision pipeline for processing images and detecting Lesiones por Presión (LPP) within the ADK (Agent Development Kit) architecture. It includes components for image preprocessing and YOLOv5-based detection integrated with the ImageAnalysisAgent.
 
 ## Project Structure
-The `cv_pipeline` module is located in `lpp_detect/cv_pipeline/`.
+The `cv_pipeline` module is located in `vigia_detect/cv_pipeline/`.
 - `__init__.py`: Initializes the module and exposes key classes.
 - `detector.py`: Implements the `LPPDetector` class for YOLOv5 inference.
 - `preprocessor.py`: Implements the `ImagePreprocessor` class for image transformations.
@@ -27,18 +27,18 @@ The `cv_pipeline` module is located in `lpp_detect/cv_pipeline/`.
     - Extracts bounding boxes, confidence scores, and stage classifications (0-4).
 
 ## Installation
-The core dependencies for this module are included in the project's `requirements.txt`.
+The core dependencies for this module are included in the project's centralized requirements.
 ```bash
-pip install -r requirements.txt
+pip install -r config/requirements.txt
 ```
 Note: The YOLOv5 model itself is loaded via `torch.hub`. For the specific YOLOv5-Wound model, manual download or cloning as a submodule might be required in a production setup (currently uses a generic model as a placeholder).
 
 ## Usage
-The `cv_pipeline` module is typically used by the CLI (`lpp_detect/cli/process_images.py`) or other parts of the LPP-Detect system.
+The `cv_pipeline` module is typically used by the ImageAnalysisAgent within the ADK architecture or the CLI (`vigia_detect/cli/process_images_refactored.py`).
 
-### Example Usage (within another Python script):
+### Example Usage (within ADK Agent):
 ```python
-from lpp_detect.cv_pipeline import ImagePreprocessor, LPPDetector
+from vigia_detect.cv_pipeline import ImagePreprocessor, LPPDetector
 import cv2
 
 # Initialize preprocessor and detector
@@ -61,7 +61,7 @@ else:
     print("No LPPs detected.")
 
 # You can also visualize results using image_utils
-# from lpp_detect.utils.image_utils import save_detection_result
+# from vigia_detect.utils.image_utils import save_detection_result
 # output_path = 'path/to/save/annotated_image.jpg'
 # save_detection_result(processed_image, detection_results, output_path)
 ```
@@ -71,7 +71,10 @@ else:
 - **Face Detection:** The face detection feature relies on OpenCV's Haar Cascades. Ensure OpenCV is installed with the necessary data files.
 - **Testing:** Comprehensive unit tests are provided in the `tests/` subdirectory. Run them frequently during development.
 
+## ADK Integration
+This module integrates with the ImageAnalysisAgent (`vigia_detect/agents/image_analysis_agent.py`) for medical image processing within the agent-based architecture.
+
 ## See Also
-- [CV Pipeline API Reference](api_reference.md)
-- [CV Pipeline Developer Guide](developer_guide.md)
-- [CLI README](../cli/README.md)
+- [ADK Agents Documentation](../architecture/)
+- [Medical Decision Engine](../medical/)
+- [CLI Documentation](../setup/)

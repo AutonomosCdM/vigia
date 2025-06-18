@@ -99,7 +99,7 @@ SELECT
   p.patient_code,
   m.staff_code as validator
 FROM
-  ml_operations.lpp_detections d
+  ml_operations.vigia_detections d
 JOIN
   ml_operations.lpp_images i ON d.image_id = i.id
 LEFT JOIN
@@ -149,7 +149,7 @@ SELECT
   COUNT(CASE WHEN v.validated_stage = d.lpp_stage THEN 1 END)::float / 
     NULLIF(COUNT(v.id), 0) as accuracy
 FROM
-  ml_operations.lpp_detections d
+  ml_operations.vigia_detections d
 LEFT JOIN
   ml_operations.medical_validations v ON d.id = v.detection_id
 GROUP BY

@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 ## Usage
 ```bash
-python lpp_detect/cli/process_images.py \
+python vigia_detect/cli/process_images.py \
   --input /path/to/images \
   --output /path/to/results \
   [--patient-code PATIENT_ID] \
@@ -71,7 +71,7 @@ When saving to Supabase, results include:
 - Requires Python 3.8+
 - Uses PyTorch for YOLOv5 inference
 - Supabase integration requires valid `.env` configuration
-- Test images available in `lpp_detect/data/input`
+- Test images available in `vigia_detect/data/input`
 
 ## See Also
 - [API Reference](api_reference.md)

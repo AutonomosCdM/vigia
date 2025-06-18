@@ -260,7 +260,7 @@ sudo ufw enable
 
 ```bash
 # Medical-specific metrics
-curl -s https://vigia.hospital.local/api/metrics | grep lpp_detection_
+curl -s https://vigia.hospital.local/api/metrics | grep vigia_detection_
 curl -s https://vigia.hospital.local/api/metrics | grep medical_session_
 curl -s https://vigia.hospital.local/api/metrics | grep audit_events_
 ```
@@ -280,7 +280,7 @@ groups:
 - name: vigia_medical
   rules:
   - alert: CriticalLPPDetection
-    expr: lpp_detection_grade >= 3
+    expr: vigia_detection_grade >= 3
     for: 0s
     labels:
       severity: critical
@@ -352,7 +352,7 @@ docker-compose -f docker-compose.hospital.yml pull
 
 ```bash
 # Download new model version
-wget https://models.vigia.ai/lpp_detection_v2024.2.pt -O models/lpp_detection/
+wget https://models.vigia.ai/vigia_detection_v2024.2.pt -O models/vigia_detection/
 
 # Update model version in environment
 sed -i 's/LPP_MODEL_VERSION=2024.1/LPP_MODEL_VERSION=2024.2/' .env.hospital
@@ -471,7 +471,7 @@ curl -s https://vigia.hospital.local/api/metrics | grep -E "(processing_time|que
 grep "patient_code:JC-2025-001" /var/lib/vigia/audit/medical_audit.log
 
 # Find LPP detections
-grep "lpp_detection" /var/lib/vigia/audit/medical_audit.log | jq .
+grep "vigia_detection" /var/lib/vigia/audit/medical_audit.log | jq .
 
 # Security events
 grep "security_event" /var/lib/vigia/audit/system_events.log

@@ -1,7 +1,7 @@
-# LPP-Detect Messaging Module Documentation
+# Vigia Messaging Module Documentation
 
 ## Overview
-Este módulo proporciona la integración de LPP-Detect con sistemas de mensajería, específicamente WhatsApp vía Twilio, para permitir a los usuarios enviar imágenes de lesiones por presión y recibir análisis automatizados. Su propósito principal es facilitar la comunicación bidireccional entre el sistema y los pacientes, así como integrar las notificaciones y resultados con plataformas internas como Slack. La arquitectura se basa en un cliente Twilio para la interacción con la API, un servidor de webhooks para recibir mensajes entrantes, procesadores dedicados para manejar el contenido (especialmente imágenes), y un sistema de plantillas para mensajes salientes.
+Este módulo proporciona la integración de Vigia con sistemas de mensajería, específicamente WhatsApp vía Twilio, para permitir a los usuarios enviar imágenes de lesiones por presión y recibir análisis automatizados basados en la arquitectura ADK. Su propósito principal es facilitar la comunicación bidireccional entre el sistema y los pacientes, así como integrar las notificaciones y resultados con plataformas internas como Slack. La arquitectura se basa en un cliente Twilio para la interacción con la API, un servidor de webhooks para recibir mensajes entrantes, procesadores dedicados para manejar el contenido (especialmente imágenes), y un sistema de plantillas para mensajes salientes.
 
 ## Key Features
 - **Integración con WhatsApp**: Comunicación directa con usuarios a través de la plataforma WhatsApp.
@@ -30,10 +30,10 @@ El flujo típico de integración es:
 WhatsApp (Usuario) → Twilio Webhook → `whatsapp/server.py` → `whatsapp/processor.py` → `cv_pipeline` / Agentes ADK / `db` / Slack → `whatsapp/processor.py` → `twilio_client.py` → WhatsApp (Usuario).
 
 ## Installation & Configuration
-1. Clonar el repositorio LPP-Detect.
+1. Clonar el repositorio Vigia.
 2. Instalar las dependencias de Python, incluyendo `flask`, `twilio`, `requests`, `python-dotenv`. Se recomienda usar un entorno virtual.
    ```bash
-   pip install -r requirements.txt
+   pip install -r config/requirements.txt
    ```
 3. Configurar las variables de entorno requeridas:
    - `TWILIO_ACCOUNT_SID`: SID de tu cuenta Twilio.
@@ -46,13 +46,13 @@ WhatsApp (Usuario) → Twilio Webhook → `whatsapp/server.py` → `whatsapp/pro
 Para iniciar el servidor de WhatsApp:
 ```bash
 # Desde el directorio raíz del proyecto
-python lpp_detect/run_whatsapp.py
+./start_whatsapp_server.sh
 ```
 Esto iniciará el servidor Flask que escucha los webhooks de Twilio.
 
 Para enviar un mensaje saliente (usando el cliente Twilio directamente):
 ```python
-from lpp_detect.messaging import TwilioClient
+from vigia_detect.messaging import TwilioClient
 
 client = TwilioClient()
 to_number = "+56912345678" # Número del destinatario en formato E.164

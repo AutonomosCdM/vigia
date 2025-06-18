@@ -2,7 +2,7 @@
 
 ## Información General
 
-- **Proyecto**: lpp_detect
+- **Proyecto**: vigia_detect
 - **Referencia ID**: jfcwziciqdmhodozowhv
 - **Región**: South America (São Paulo)
 - **Fecha de creación**: 2025-05-21
@@ -58,7 +58,7 @@ La base de datos está estructurada en cuatro esquemas separados, cada uno con u
 |---------|------|-------------|---------------|
 | id | UUID | Identificador único | PRIMARY KEY, DEFAULT gen_random_uuid() |
 | patient_id | UUID | Referencia al paciente | NOT NULL, REFERENCES patients(id) ON DELETE CASCADE |
-| detection_id | UUID | Referencia a la detección que originó el plan | REFERENCES lpp_detections(id) |
+| detection_id | UUID | Referencia a la detección que originó el plan | REFERENCES vigia_detections(id) |
 | intervention_type | TEXT | Tipo de intervención | NOT NULL |
 | recommendations | TEXT | Recomendaciones específicas | NOT NULL |
 | follow_up_days | SMALLINT | Días para seguimiento | |
@@ -113,7 +113,7 @@ La base de datos está estructurada en cuatro esquemas separados, cada uno con u
 | created_at | TIMESTAMPTZ | Fecha de creación | DEFAULT NOW() |
 | | | | UNIQUE (model_name, model_version) |
 
-#### Tabla: lpp_detections
+#### Tabla: vigia_detections
 **Descripción**: Detecciones de LPP realizadas por modelos de ML
 
 | Columna | Tipo | Descripción | Restricciones |
@@ -133,7 +133,7 @@ La base de datos está estructurada en cuatro esquemas separados, cada uno con u
 | Columna | Tipo | Descripción | Restricciones |
 |---------|------|-------------|---------------|
 | id | UUID | Identificador único | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| detection_id | UUID | Referencia a la detección | NOT NULL, REFERENCES lpp_detections(id) ON DELETE CASCADE |
+| detection_id | UUID | Referencia a la detección | NOT NULL, REFERENCES vigia_detections(id) ON DELETE CASCADE |
 | validator_id | UUID | Referencia al validador | NOT NULL, REFERENCES medical_staff(id) |
 | validated_stage | SMALLINT | Etapa confirmada por médico | CHECK (validated_stage BETWEEN 0 AND 4) |
 | validation_notes | TEXT | Notas adicionales | |
@@ -181,8 +181,8 @@ $$ LANGUAGE plpgsql;
 1. **idx_patient_code**: clinical_data.patients(patient_code)
 2. **idx_patient_assessments_patient_id**: clinical_data.patient_assessments(patient_id)
 3. **idx_lpp_images_patient_id**: ml_operations.lpp_images(patient_id)
-4. **idx_lpp_detections_image_id**: ml_operations.lpp_detections(image_id)
-5. **idx_lpp_detections_model_id**: ml_operations.lpp_detections(model_id)
+4. **idx_vigia_detections_image_id**: ml_operations.vigia_detections(image_id)
+5. **idx_vigia_detections_model_id**: ml_operations.vigia_detections(model_id)
 6. **idx_medical_validations_detection_id**: ml_operations.medical_validations(detection_id)
 7. **idx_care_plans_patient_id**: clinical_data.care_plans(patient_id)
 8. **idx_care_plans_detection_id**: clinical_data.care_plans(detection_id)
@@ -200,7 +200,7 @@ ALTER TABLE clinical_data.care_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff_data.medical_staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ml_operations.lpp_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ml_operations.models ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ml_operations.lpp_detections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ml_operations.vigia_detections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ml_operations.medical_validations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs.system_logs ENABLE ROW LEVEL SECURITY;
 ```
@@ -213,10 +213,10 @@ Los siguientes comandos fueron utilizados para implementar la base de datos:
 
 ```bash
 # Crear proyecto Supabase
-supabase projects create lpp_detect --org-id cklrbqpounsoeajoxigh
+supabase projects create vigia_detect --org-id cklrbqpounsoeajoxigh
 
 # Vincular proyecto local con Supabase
-cd /Users/autonomos_dev/Projects/pressure/lpp_detect
+cd /Users/autonomos_dev/Projects/pressure/vigia_detect
 supabase link --project-ref jfcwziciqdmhodozowhv
 
 # Crear archivo de migración para el esquema
@@ -237,7 +237,7 @@ supabase db dump -f dump.sql --schema clinical_data,staff_data,ml_operations,aud
 +---------------------+       +----------------------+       +-------------------+
 | patients            |<--+   | lpp_images           |       | medical_staff     |
 | patient_assessments |   |   | models               |       +-------------------+
-| care_plans          |   |   | lpp_detections       |               ^
+| care_plans          |   |   | vigia_detections       |               ^
 +---------------------+   |   | medical_validations  |               |
                           |   +----------------------+               |
                           |             ^                            |

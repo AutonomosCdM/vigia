@@ -4,7 +4,7 @@
 This guide provides instructions for developers working on the LPP-Detect computer vision pipeline module.
 
 ## Project Structure
-The `cv_pipeline` module is located in `lpp_detect/cv_pipeline/`.
+The `cv_pipeline` module is located in `vigia_detect/cv_pipeline/`.
 - `__init__.py`: Module initialization.
 - `detector.py`: Contains the `LPPDetector` class.
 - `preprocessor.py`: Contains the `ImagePreprocessor` class.
@@ -26,10 +26,10 @@ Ensure these dependencies are installed as specified in `requirements.txt`.
 2.  **Locate relevant method:** Find the method in `preprocessor.py` responsible for that step (`_remove_exif_data`, `_detect_and_blur_faces`, `_enhance_image_contrast`, or the main `preprocess` method).
 3.  **Implement changes:** Modify the code, ensuring it handles various image formats (NumPy arrays, file paths) and integrates correctly with other steps.
 4.  **Update `__init__`:** If the new feature requires configuration options, add parameters to the `__init__` method and store them as instance variables.
-5.  **Update tests:** Add new test cases or modify existing ones in `lpp_detect/cv_pipeline/tests/test_preprocessor.py` to verify the changes. Ensure edge cases are covered.
+5.  **Update tests:** Add new test cases or modify existing ones in `vigia_detect/cv_pipeline/tests/test_preprocessor.py` to verify the changes. Ensure edge cases are covered.
 6.  **Update documentation:**
-    *   Modify `lpp_detect_docs/cv_pipeline/README.md` to describe the new feature or changes.
-    *   Update `lpp_detect_docs/cv_pipeline/api_reference.md` with any changes to method signatures, parameters, or behavior.
+    *   Modify `vigia_detect_docs/cv_pipeline/README.md` to describe the new feature or changes.
+    *   Update `vigia_detect_docs/cv_pipeline/api_reference.md` with any changes to method signatures, parameters, or behavior.
     *   Consider if changes are needed in the main `info.md` or sprint documentation.
 
 ### Modifying `LPPDetector`
@@ -37,10 +37,10 @@ Ensure these dependencies are installed as specified in `requirements.txt`.
 2.  **Locate relevant method:** Find the method in `detector.py` responsible for the change (`_load_model`, `detect`, or `get_model_info`).
 3.  **Implement changes:** Modify the code. Pay close attention to model loading paths, device handling (CPU/GPU), confidence thresholds, and how detection results are parsed and structured.
 4.  **Update `__init__`:** If the change requires new configuration (e.g., a new model path parameter), add it to the `__init__` method.
-5.  **Update tests:** Add new test cases or modify existing ones in `lpp_detect/cv_pipeline/tests/test_detector.py` to verify the changes. Use sample images in `tests/data/` or add new ones as needed.
+5.  **Update tests:** Add new test cases or modify existing ones in `vigia_detect/cv_pipeline/tests/test_detector.py` to verify the changes. Use sample images in `tests/data/` or add new ones as needed.
 6.  **Update documentation:**
-    *   Modify `lpp_detect_docs/cv_pipeline/README.md` to describe the changes, especially regarding model requirements or usage.
-    *   Update `lpp_detect_docs/cv_pipeline/api_reference.md` with any changes to method signatures, parameters, or the structure of detection results.
+    *   Modify `vigia_detect_docs/cv_pipeline/README.md` to describe the changes, especially regarding model requirements or usage.
+    *   Update `vigia_detect_docs/cv_pipeline/api_reference.md` with any changes to method signatures, parameters, or the structure of detection results.
     *   Consider if changes are needed in the main `info.md` or sprint documentation.
 
 ## Integrating a New YOLOv5-Wound Model
@@ -54,13 +54,13 @@ Ensure these dependencies are installed as specified in `requirements.txt`.
 ## Testing
 Run tests for the CV pipeline module using `pytest`:
 ```bash
-pytest lpp_detect/cv_pipeline/tests/
+pytest vigia_detect/cv_pipeline/tests/
 ```
 Or use the project's test runner:
 ```bash
 python run_tests.py
 ```
-Ensure all tests pass before submitting changes. Add new test images to `lpp_detect/cv_pipeline/tests/data/` as needed.
+Ensure all tests pass before submitting changes. Add new test images to `vigia_detect/cv_pipeline/tests/data/` as needed.
 
 ## Code Style and Best Practices
 - Follow PEP 8 guidelines.

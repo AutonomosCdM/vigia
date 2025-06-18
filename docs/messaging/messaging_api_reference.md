@@ -6,7 +6,7 @@ Este documento detalla las interfaces de programación (API) de los componentes 
 
 Clase principal para interactuar con la API de Twilio para enviar y recibir mensajes de WhatsApp.
 
-**Ubicación:** `lpp_detect/messaging/twilio_client.py`
+**Ubicación:** `vigia_detect/messaging/twilio_client.py`
 
 ```python
 class TwilioClient:
@@ -100,7 +100,7 @@ class TwilioClient:
 
 Funciones y/o clases encargadas de procesar los mensajes entrantes de WhatsApp, manejar la lógica de negocio, interactuar con otros módulos y coordinar las respuestas.
 
-**Ubicación:** `lpp_detect/messaging/whatsapp/processor.py`
+**Ubicación:** `vigia_detect/messaging/whatsapp/processor.py`
 
 ```python
 # Ejemplo de función principal (la implementación exacta puede variar)
@@ -139,15 +139,15 @@ def process_whatsapp_message(webhook_data: Dict[str, Any]) -> Optional[Dict[str,
 
 Módulo que implementa el servidor web para recibir las solicitudes de webhook de Twilio.
 
-**Ubicación:** `lpp_detect/messaging/whatsapp/server.py`
+**Ubicación:** `vigia_detect/messaging/whatsapp/server.py`
 
 ```python
 # Ejemplo de estructura (usando Flask)
 # from flask import Flask, request, Response
 # from twilio.twiml.messaging_response import MessagingResponse
-# from lpp_detect.messaging.twilio_client import TwilioClient
-# from lpp_detect.messaging.whatsapp.processor import process_whatsapp_message
-# from lpp_detect.messaging.utils.twilio_utils import validate_twilio_request
+# from vigia_detect.messaging.twilio_client import TwilioClient
+# from vigia_detect.messaging.whatsapp.processor import process_whatsapp_message
+# from vigia_detect.messaging.utils.twilio_utils import validate_twilio_request
 
 # app = Flask(__name__)
 # twilio_client = TwilioClient()
@@ -190,7 +190,7 @@ Módulo que implementa el servidor web para recibir las solicitudes de webhook d
 
 Módulo que contiene las definiciones y la lógica para usar plantillas de mensajes de WhatsApp pre-aprobadas por Twilio.
 
-**Ubicación:** `lpp_detect/messaging/templates/whatsapp_templates.py`
+**Ubicación:** `vigia_detect/messaging/templates/whatsapp_templates.py`
 
 ```python
 # Ejemplo de estructura
@@ -249,7 +249,7 @@ Módulo que contiene las definiciones y la lógica para usar plantillas de mensa
 
 Funciones auxiliares para tareas comunes relacionadas con la integración de Twilio y WhatsApp.
 
-**Ubicación:** `lpp_detect/messaging/utils/twilio_utils.py`
+**Ubicación:** `vigia_detect/messaging/utils/twilio_utils.py`
 
 ```python
 # Ejemplo de funciones

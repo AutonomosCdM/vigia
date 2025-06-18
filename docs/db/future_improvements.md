@@ -102,7 +102,7 @@ SELECT
   COUNT(CASE WHEN v.validated_stage = d.lpp_stage THEN 1 END)::float / 
     NULLIF(COUNT(v.id), 0) as accuracy
 FROM
-  ml_operations.lpp_detections d
+  ml_operations.vigia_detections d
 LEFT JOIN
   ml_operations.medical_validations v ON d.id = v.detection_id
 GROUP BY
@@ -230,7 +230,7 @@ CREATE INDEX idx_care_plans_active ON clinical_data.care_plans(patient_id, creat
 WHERE status = 'active';
 
 -- Índice para detecciones de alta confianza
-CREATE INDEX idx_high_confidence_detections ON ml_operations.lpp_detections(lpp_stage, image_id)
+CREATE INDEX idx_high_confidence_detections ON ml_operations.vigia_detections(lpp_stage, image_id)
 WHERE confidence_score > 0.8;
 ```
 

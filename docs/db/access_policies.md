@@ -217,35 +217,35 @@ CREATE POLICY all_read_models ON ml_operations.models
     USING (true);
 ```
 
-#### Tabla: lpp_detections
+#### Tabla: vigia_detections
 
 ```sql
 -- Para acceso de administrador
-CREATE POLICY admin_all_detections ON ml_operations.lpp_detections
+CREATE POLICY admin_all_detections ON ml_operations.vigia_detections
     FOR ALL
     TO lpp_admin
     USING (true);
 
 -- Para médicos - todas las detecciones
-CREATE POLICY doctor_all_detections ON ml_operations.lpp_detections
+CREATE POLICY doctor_all_detections ON ml_operations.vigia_detections
     FOR ALL
     TO lpp_doctor
     USING (true);
 
 -- Para enfermeros - solo ver detecciones
-CREATE POLICY nurse_view_detections ON ml_operations.lpp_detections
+CREATE POLICY nurse_view_detections ON ml_operations.vigia_detections
     FOR SELECT
     TO lpp_nurse
     USING (true);
 
 -- Para analistas - solo lectura con análisis estadístico
-CREATE POLICY analyst_view_detections ON ml_operations.lpp_detections
+CREATE POLICY analyst_view_detections ON ml_operations.vigia_detections
     FOR SELECT
     TO lpp_analyst
     USING (true);
 
 -- Para la aplicación - lectura y escritura
-CREATE POLICY app_detections ON ml_operations.lpp_detections
+CREATE POLICY app_detections ON ml_operations.vigia_detections
     FOR ALL
     TO lpp_app
     USING (true);

@@ -36,7 +36,7 @@ Este CLI permite procesar imágenes de lesiones por presión mediante un pipelin
 ### Procesar imágenes
 
 ```bash
-python -m lpp_detect.cli.process_images --input ./data/input --output ./data/output
+python -m vigia_detect.cli.process_images --input ./data/input --output ./data/output
 ```
 
 ### Opciones
@@ -52,23 +52,23 @@ python -m lpp_detect.cli.process_images --input ./data/input --output ./data/out
 
 1. Procesar directorio con configuración básica:
    ```
-   python -m lpp_detect.cli.process_images
+   python -m vigia_detect.cli.process_images
    ```
 
 2. Procesar con paciente específico y guardar en BD:
    ```
-   python -m lpp_detect.cli.process_images --patient-code PAT001 --save-db
+   python -m vigia_detect.cli.process_images --patient-code PAT001 --save-db
    ```
 
 3. Usar modelo más grande para mayor precisión:
    ```
-   python -m lpp_detect.cli.process_images --model yolov5m --confidence 0.3
+   python -m vigia_detect.cli.process_images --model yolov5m --confidence 0.3
    ```
 
 ## Estructura de archivos
 
 ```
-lpp_detect/
+vigia_detect/
 ├── cli/
 │   └── process_images.py      # CLI principal
 ├── cv_pipeline/

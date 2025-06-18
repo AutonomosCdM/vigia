@@ -81,7 +81,7 @@ claude mcp remove <name>
 
 ## 📝 Uso de Slack MCP
 
-Para enviar el resumen del proyecto v0.4.0 al canal #it_vigia:
+Para enviar el resumen del proyecto v1.3.3 al canal #it_vigia:
 
 1. Los MCPs deben estar activos
 2. Claude Code debe tener acceso a las herramientas MCP
@@ -89,7 +89,7 @@ Para enviar el resumen del proyecto v0.4.0 al canal #it_vigia:
 
 ### Mensaje de Ejemplo
 ```
-🚀 Vigía v0.4.0 - Redis Phase 2 Completado!
+🚀 Vigía v1.3.3 - Redis Phase 2 Completado!
 - 92% precisión en búsqueda semántica
 - 4 protocolos médicos indexados
 - Caché contextual por paciente

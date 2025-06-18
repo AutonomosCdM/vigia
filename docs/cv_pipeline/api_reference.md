@@ -1,6 +1,6 @@
 # CV Pipeline API Reference
 
-## Module: `lpp_detect.cv_pipeline`
+## Module: `vigia_detect.cv_pipeline`
 
 This module provides the core components for image preprocessing and LPP detection.
 

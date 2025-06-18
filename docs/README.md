@@ -20,11 +20,11 @@ Medical-grade pressure injury detection system with clean ADK architecture.
 - [Credentials Management](setup/CREDENTIALS_MANAGEMENT.md) - Security setup
 - [MCP Setup](setup/MCP_SETUP.md) - Model Context Protocol
 
-### 🔧 Module Documentation
-- [Database](db/) - Supabase integration and policies
-- [CV Pipeline](cv_pipeline/) - YOLOv5 medical image processing
-- [Messaging](messaging/) - WhatsApp/Slack integration
-- [CLI Tools](cli/) - Command-line utilities
+### 🔧 Core Documentation
+- [Developer Guide](DEVELOPER_GUIDE.md) - Complete development documentation
+- [API Reference](API_REFERENCE.md) - Medical API documentation
+- [Setup Guide](SETUP_GUIDE.md) - Installation and configuration
+- [Database](database/) - Medical database schema and operations
 
 ## Project Status
 

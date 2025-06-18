@@ -42,11 +42,9 @@ async def test_basic_import():
         from vigia_detect.agents.master_medical_orchestrator import MasterMedicalOrchestrator
         logger.info("✅ MasterMedicalOrchestrator imported successfully")
         
-        return True
-        
     except Exception as e:
         logger.error(f"❌ Import failed: {str(e)}")
-        return False
+        pytest.fail(f"Import failed: {str(e)}")
 
 
 @pytest.mark.asyncio
@@ -66,11 +64,9 @@ async def test_orchestrator_initialization():
         assert isinstance(orchestrator.registered_agents, dict)
         logger.info("✅ Orchestrator basic properties validated")
         
-        return True
-        
     except Exception as e:
         logger.error(f"❌ Orchestrator initialization failed: {str(e)}")
-        return False
+        pytest.fail(f"Orchestrator initialization failed: {str(e)}")
 
 
 @pytest.mark.asyncio
@@ -118,12 +114,10 @@ async def test_mock_case_processing():
             agent_used = agent_info.get('agent_used', 'unknown')
             logger.info(f"   {agent_type}: {agent_used}")
         
-        return True
-        
     except Exception as e:
         logger.error(f"❌ Mock case processing failed: {str(e)}")
         logger.exception("Full stacktrace:")
-        return False
+        pytest.fail(f"Mock case processing failed: {str(e)}")
 
 
 @pytest.mark.asyncio
@@ -149,11 +143,9 @@ async def test_orchestrator_stats():
         logger.info(f"✅ Stats retrieved: {stats['stats']}")
         logger.info(f"   Registered agents: {stats['registered_agents']}")
         
-        return True
-        
     except Exception as e:
         logger.error(f"❌ Stats test failed: {str(e)}")
-        return False
+        pytest.fail(f"Stats test failed: {str(e)}")
 
 
 async def run_simple_test_suite():
@@ -164,16 +156,32 @@ async def run_simple_test_suite():
     test_results = {}
     
     # Test 1: Basic imports
-    test_results['imports'] = await test_basic_import()
+    try:
+        await test_basic_import()
+        test_results['imports'] = True
+    except Exception:
+        test_results['imports'] = False
     
     # Test 2: Orchestrator initialization
-    test_results['initialization'] = await test_orchestrator_initialization()
+    try:
+        await test_orchestrator_initialization()
+        test_results['initialization'] = True
+    except Exception:
+        test_results['initialization'] = False
     
     # Test 3: Mock case processing
-    test_results['case_processing'] = await test_mock_case_processing()
+    try:
+        await test_mock_case_processing()
+        test_results['case_processing'] = True
+    except Exception:
+        test_results['case_processing'] = False
     
     # Test 4: Orchestrator stats
-    test_results['stats'] = await test_orchestrator_stats()
+    try:
+        await test_orchestrator_stats()
+        test_results['stats'] = True
+    except Exception:
+        test_results['stats'] = False
     
     # Summary
     logger.info("=" * 60)

@@ -46,14 +46,13 @@ class TestMedCLIPMultimodalService:
             assert not np.allclose(embedding, 0)  # No debe ser vector cero
             
             print("✅ MedCLIP text encoding funcionando")
-            return True
             
         except ImportError:
             print("⚠️ MedCLIP no disponible - usando fallback")
-            return True
+            # This is acceptable - fallback case
         except Exception as e:
             print(f"❌ Error en MedCLIP text encoding: {e}")
-            return False
+            pytest.fail(f"MedCLIP text encoding failed: {e}")
     
     @pytest.mark.asyncio
     async def test_multimodal_query_encoding(self):
@@ -78,11 +77,10 @@ class TestMedCLIPMultimodalService:
             assert np.linalg.norm(embedding) > 0.9  # Debe estar normalizado
             
             print("✅ Multimodal query encoding funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en multimodal query encoding: {e}")
-            return False
+            pytest.fail(f"Multimodal query encoding failed: {e}")
 
 
 # Pruebas para Dynamic Clustering Service
@@ -126,11 +124,10 @@ class TestDynamicClusteringService:
             assert len(service.queries_buffer) == 2
             
             print("✅ Dynamic clustering query addition funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en dynamic clustering: {e}")
-            return False
+            pytest.fail(f"Dynamic clustering failed: {e}")
     
     @pytest.mark.asyncio
     async def test_cluster_similarity_search(self):
@@ -154,11 +151,10 @@ class TestDynamicClusteringService:
             assert len(similar_clusters) == 0  # No hay clusters activos inicialmente
             
             print("✅ Cluster similarity search funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en cluster similarity search: {e}")
-            return False
+            pytest.fail(f"Cluster similarity search failed: {e}")
 
 
 # Pruebas para Incremental Training Pipeline
@@ -191,11 +187,10 @@ class TestIncrementalTrainingPipeline:
             assert len(pipeline.training_data_buffer) == 1
             
             print("✅ Incremental training data addition funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en incremental training: {e}")
-            return False
+            pytest.fail(f"Incremental training failed: {e}")
     
     @pytest.mark.asyncio
     async def test_training_statistics(self):
@@ -215,11 +210,10 @@ class TestIncrementalTrainingPipeline:
             assert 'device' in stats
             
             print("✅ Training statistics funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en training statistics: {e}")
-            return False
+            pytest.fail(f"Training statistics failed: {e}")
 
 
 # Pruebas para Medical Explainability Service
@@ -277,11 +271,10 @@ class TestMedicalExplainabilityService:
             assert explanation.overall_confidence > 0
             
             print("✅ Medical explainability generation funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en medical explainability: {e}")
-            return False
+            pytest.fail(f"Medical explainability failed: {e}")
     
     @pytest.mark.asyncio
     async def test_explanation_statistics(self):
@@ -301,11 +294,10 @@ class TestMedicalExplainabilityService:
             assert 'evidence_levels' in stats
             
             print("✅ Explanation statistics funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en explanation statistics: {e}")
-            return False
+            pytest.fail(f"Explanation statistics failed: {e}")
 
 
 # Pruebas para Advanced RAG Integration
@@ -326,11 +318,10 @@ class TestAdvancedRAGIntegration:
             assert orchestrator.metrics['total_queries_processed'] == 0
             
             print("✅ Advanced RAG orchestrator initialization funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en RAG orchestrator initialization: {e}")
-            return False
+            pytest.fail(f"RAG orchestrator initialization failed: {e}")
     
     @pytest.mark.asyncio
     async def test_orchestrator_status(self):
@@ -350,11 +341,10 @@ class TestAdvancedRAGIntegration:
             assert 'service_status' in status
             
             print("✅ RAG orchestrator status funcionando")
-            return True
             
         except Exception as e:
             print(f"❌ Error en RAG orchestrator status: {e}")
-            return False
+            pytest.fail(f"RAG orchestrator status failed: {e}")
 
 
 # Función principal de pruebas
@@ -362,57 +352,49 @@ async def run_advanced_rag_tests():
     """Ejecutar todas las pruebas de componentes RAG avanzados."""
     print("🧪 Iniciando pruebas de componentes RAG avanzados...\n")
     
-    results = []
-    
-    # Test MedCLIP Multimodal Service
-    print("📊 Probando MedCLIP Multimodal Service...")
-    medclip_tests = TestMedCLIPMultimodalService()
-    results.append(await medclip_tests.test_medclip_text_encoding())
-    results.append(await medclip_tests.test_multimodal_query_encoding())
-    
-    # Test Dynamic Clustering Service
-    print("\n🔍 Probando Dynamic Clustering Service...")
-    clustering_tests = TestDynamicClusteringService()
-    results.append(await clustering_tests.test_medical_query_addition())
-    results.append(await clustering_tests.test_cluster_similarity_search())
-    
-    # Test Incremental Training Pipeline
-    print("\n🎯 Probando Incremental Training Pipeline...")
-    training_tests = TestIncrementalTrainingPipeline()
-    results.append(await training_tests.test_training_data_addition())
-    results.append(await training_tests.test_training_statistics())
-    
-    # Test Medical Explainability Service
-    print("\n💡 Probando Medical Explainability Service...")
-    explainability_tests = TestMedicalExplainabilityService()
-    results.append(await explainability_tests.test_comprehensive_explanation_generation())
-    results.append(await explainability_tests.test_explanation_statistics())
-    
-    # Test Advanced RAG Integration
-    print("\n🚀 Probando Advanced RAG Integration...")
-    integration_tests = TestAdvancedRAGIntegration()
-    results.append(await integration_tests.test_advanced_rag_orchestrator_initialization())
-    results.append(await integration_tests.test_orchestrator_status())
-    
-    # Resumen de resultados
-    print("\n" + "="*60)
-    print("📋 RESUMEN DE PRUEBAS RAG AVANZADAS")
-    print("="*60)
-    
-    passed = sum(results)
-    total = len(results)
-    
-    print(f"✅ Pruebas exitosas: {passed}/{total}")
-    print(f"❌ Pruebas fallidas: {total - passed}/{total}")
-    print(f"📊 Tasa de éxito: {(passed/total)*100:.1f}%")
-    
-    if passed == total:
-        print("\n🎉 ¡Todas las pruebas RAG avanzadas pasaron exitosamente!")
+    try:
+        # Test MedCLIP Multimodal Service
+        print("📊 Probando MedCLIP Multimodal Service...")
+        medclip_tests = TestMedCLIPMultimodalService()
+        await medclip_tests.test_medclip_text_encoding()
+        await medclip_tests.test_multimodal_query_encoding()
+        
+        # Test Dynamic Clustering Service
+        print("\n🔍 Probando Dynamic Clustering Service...")
+        clustering_tests = TestDynamicClusteringService()
+        await clustering_tests.test_medical_query_addition()
+        await clustering_tests.test_cluster_similarity_search()
+        
+        # Test Incremental Training Pipeline
+        print("\n🎯 Probando Incremental Training Pipeline...")
+        training_tests = TestIncrementalTrainingPipeline()
+        await training_tests.test_training_data_addition()
+        await training_tests.test_training_statistics()
+        
+        # Test Medical Explainability Service
+        print("\n💡 Probando Medical Explainability Service...")
+        explainability_tests = TestMedicalExplainabilityService()
+        await explainability_tests.test_comprehensive_explanation_generation()
+        await explainability_tests.test_explanation_statistics()
+        
+        # Test Advanced RAG Integration
+        print("\n🚀 Probando Advanced RAG Integration...")
+        integration_tests = TestAdvancedRAGIntegration()
+        await integration_tests.test_advanced_rag_orchestrator_initialization()
+        await integration_tests.test_orchestrator_status()
+        
+        # Resumen de resultados
+        print("\n" + "="*60)
+        print("📋 RESUMEN DE PRUEBAS RAG AVANZADAS")
+        print("="*60)
+        print("✅ ¡Todas las pruebas RAG avanzadas pasaron exitosamente!")
         print("🚀 Sistema RAG listo para uso en producción")
-    else:
-        print(f"\n⚠️ {total - passed} pruebas fallaron - revisar implementación")
-    
-    return passed == total
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n⚠️ Error en pruebas RAG: {e}")
+        return False
 
 
 if __name__ == "__main__":

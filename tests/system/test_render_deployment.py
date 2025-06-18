@@ -10,6 +10,7 @@ import subprocess
 import sys
 import os
 from pathlib import Path
+import pytest
 
 def test_health_endpoint(base_url="http://localhost:8000"):
     """Test the health endpoint."""
@@ -20,14 +21,14 @@ def test_health_endpoint(base_url="http://localhost:8000"):
         if response.status_code == 200:
             data = response.json()
             print(f"Health data: {data}")
-            return True
+            assert True  # Success case
         else:
             print(f"Health check failed: {response.text}")
-            return False
+            pytest.fail(f"Health check failed with status {response.status_code}: {response.text}")
             
     except requests.exceptions.RequestException as e:
         print(f"Health check failed with exception: {e}")
-        return False
+        pytest.fail(f"Health check failed with exception: {e}")
 
 def test_root_endpoint(base_url="http://localhost:8000"):
     """Test the root endpoint."""
@@ -37,14 +38,14 @@ def test_root_endpoint(base_url="http://localhost:8000"):
         
         if response.status_code == 200:
             print("Root endpoint working correctly")
-            return True
+            assert True  # Success case
         else:
             print(f"Root endpoint failed: {response.text}")
-            return False
+            pytest.fail(f"Root endpoint failed with status {response.status_code}: {response.text}")
             
     except requests.exceptions.RequestException as e:
         print(f"Root endpoint failed with exception: {e}")
-        return False
+        pytest.fail(f"Root endpoint failed with exception: {e}")
 
 def test_api_endpoints(base_url="http://localhost:8000"):
     """Test various API endpoints."""
@@ -75,19 +76,19 @@ def test_docker_build():
         
         if result.returncode == 0:
             print("✅ Docker build successful")
-            return True
+            assert True  # Success case
         else:
             print(f"❌ Docker build failed:")
             print(f"STDOUT: {result.stdout}")
             print(f"STDERR: {result.stderr}")
-            return False
+            pytest.fail(f"Docker build failed with return code {result.returncode}")
             
     except subprocess.TimeoutExpired:
         print("❌ Docker build timed out (>10 minutes)")
-        return False
+        pytest.fail("Docker build timed out (>10 minutes)")
     except Exception as e:
         print(f"❌ Docker build error: {e}")
-        return False
+        pytest.fail(f"Docker build error: {e}")
 
 def test_docker_run():
     """Test running the Docker container."""
@@ -123,15 +124,16 @@ def test_docker_run():
             subprocess.run(["docker", "stop", "vigia-test"], capture_output=True)
             subprocess.run(["docker", "rm", "vigia-test"], capture_output=True)
             
-            return success
+            if not success:
+                pytest.fail("Docker container health check failed")
         else:
             print(f"❌ Docker container failed to start:")
             print(f"STDERR: {result.stderr}")
-            return False
+            pytest.fail(f"Docker container failed to start: {result.stderr}")
             
     except Exception as e:
         print(f"❌ Docker run error: {e}")
-        return False
+        pytest.fail(f"Docker run error: {e}")
 
 def test_unified_server_direct():
     """Test the unified server directly without Docker."""
@@ -151,14 +153,12 @@ def test_unified_server_direct():
         server = UnifiedServer(port=8001, redis_available=False, database_available=False)
         print("✅ Unified server instance created successfully")
         
-        return True
-        
     except ImportError as e:
         print(f"❌ Failed to import unified server: {e}")
-        return False
+        pytest.fail(f"Failed to import unified server: {e}")
     except Exception as e:
         print(f"❌ Failed to create unified server: {e}")
-        return False
+        pytest.fail(f"Failed to create unified server: {e}")
 
 def main():
     """Run all tests."""
@@ -181,9 +181,9 @@ def main():
         print("-" * 30)
         
         try:
-            result = test_func()
-            results[test_name] = result
-            status = "✅ PASS" if result else "❌ FAIL"
+            test_func()
+            results[test_name] = True
+            status = "✅ PASS"
             print(f"{status}: {test_name}")
         except Exception as e:
             print(f"❌ ERROR in {test_name}: {e}")

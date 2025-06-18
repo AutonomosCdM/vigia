@@ -13,6 +13,7 @@ from datetime import datetime
 import sys
 import os
 from pathlib import Path
+import pytest
 
 # Agregar vigia_detect al path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -53,11 +54,10 @@ def test_incremental_training_basic():
         assert training_data.data_type == TrainingDataType.QUERY_RESPONSE_PAIR
         
         print("✅ Incremental Training Pipeline básico funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en incremental training básico: {e}")
-        return False
+        pytest.fail(f"Incremental training basic test failed: {e}")
 
 
 def test_clustering_basic():
@@ -96,11 +96,10 @@ def test_clustering_basic():
         assert ClusterType.TREATMENT_PATTERNS.value == "treatment_patterns"
         
         print("✅ Dynamic Clustering Service básico funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en clustering básico: {e}")
-        return False
+        pytest.fail(f"Dynamic clustering basic test failed: {e}")
 
 
 def test_explainability_basic():
@@ -136,11 +135,10 @@ def test_explainability_basic():
         assert ExplanationType.SIMILARITY_ANALYSIS.value == "similarity_analysis"
         
         print("✅ Medical Explainability Service básico funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en explainability básico: {e}")
-        return False
+        pytest.fail(f"Medical explainability basic test failed: {e}")
 
 
 def test_medclip_basic():
@@ -170,11 +168,10 @@ def test_medclip_basic():
         assert "sacro" in enhanced_text
         
         print("✅ MedCLIP Multimodal Service básico funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en MedCLIP básico: {e}")
-        return False
+        pytest.fail(f"MedCLIP basic test failed: {e}")
 
 
 def test_advanced_rag_integration_basic():
@@ -206,11 +203,10 @@ def test_advanced_rag_integration_basic():
         assert orchestrator.metrics['multimodal_queries'] == 0
         
         print("✅ Advanced RAG Integration básico funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en RAG integration básico: {e}")
-        return False
+        pytest.fail(f"RAG integration basic test failed: {e}")
 
 
 async def test_async_functionality():
@@ -230,82 +226,55 @@ async def test_async_functionality():
         assert 'is_initialized' in status
         
         print("✅ Funcionalidad asíncrona básica funcionando")
-        return True
         
     except Exception as e:
         print(f"❌ Error en funcionalidad asíncrona: {e}")
-        return False
+        pytest.fail(f"Async functionality test failed: {e}")
 
 
 def run_basic_rag_tests():
     """Ejecutar todas las pruebas básicas de componentes RAG."""
     print("🧪 Iniciando pruebas básicas de componentes RAG avanzados...\n")
     
-    results = []
+    # Pruebas síncronas - now they use assertions instead of returning values
+    test_incremental_training_basic()
+    test_clustering_basic()
+    test_explainability_basic()
+    test_medclip_basic()
+    test_advanced_rag_integration_basic()
     
-    # Pruebas síncronas
-    results.append(test_incremental_training_basic())
-    results.append(test_clustering_basic())
-    results.append(test_explainability_basic())
-    results.append(test_medclip_basic())
-    results.append(test_advanced_rag_integration_basic())
-    
-    return results
+    print("All basic RAG tests completed successfully")
 
 
 async def run_async_tests():
     """Ejecutar pruebas asíncronas."""
     print("\n⚡ Ejecutando pruebas asíncronas...")
-    result = await test_async_functionality()
-    return [result]
+    await test_async_functionality()
+    print("Async tests completed successfully")
 
 
 def main():
     """Función principal."""
-    # Pruebas síncronas
-    sync_results = run_basic_rag_tests()
-    
-    # Pruebas asíncronas
-    async_results = asyncio.run(run_async_tests())
-    
-    # Combinar resultados
-    all_results = sync_results + async_results
-    
-    # Resumen de resultados
-    print("\n" + "="*60)
-    print("📋 RESUMEN DE PRUEBAS RAG BÁSICAS")
-    print("="*60)
-    
-    passed = sum(all_results)
-    total = len(all_results)
-    
-    print(f"✅ Pruebas exitosas: {passed}/{total}")
-    print(f"❌ Pruebas fallidas: {total - passed}/{total}")
-    print(f"📊 Tasa de éxito: {(passed/total)*100:.1f}%")
-    
-    component_status = {
-        "Incremental Training": sync_results[0],
-        "Dynamic Clustering": sync_results[1], 
-        "Medical Explainability": sync_results[2],
-        "MedCLIP Multimodal": sync_results[3],
-        "Advanced RAG Integration": sync_results[4],
-        "Async Functionality": async_results[0]
-    }
-    
-    print("\n📊 Estado por componente:")
-    for component, status in component_status.items():
-        status_icon = "✅" if status else "❌"
-        print(f"  {status_icon} {component}")
-    
-    if passed == total:
-        print("\n🎉 ¡Todas las pruebas básicas RAG pasaron exitosamente!")
+    try:
+        # Pruebas síncronas
+        run_basic_rag_tests()
+        
+        # Pruebas asíncronas
+        asyncio.run(run_async_tests())
+        
+        # Resumen de resultados
+        print("\n" + "="*60)
+        print("📋 RESUMEN DE PRUEBAS RAG BÁSICAS")
+        print("="*60)
+        print("✅ Todas las pruebas RAG básicas pasaron exitosamente!")
         print("🚀 Componentes core implementados correctamente")
         print("💡 Sistema listo para pruebas de integración completa")
-    else:
-        print(f"\n⚠️ {total - passed} pruebas fallaron - revisar implementación")
+        return True
+        
+    except Exception as e:
+        print(f"\n⚠️ Error en pruebas RAG: {e}")
         print("🔧 Algunos componentes necesitan ajustes")
-    
-    return passed == total
+        return False
 
 
 if __name__ == "__main__":

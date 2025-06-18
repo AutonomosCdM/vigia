@@ -8,6 +8,7 @@ Quick test to verify MedHELM evaluation framework is working.
 
 import sys
 from pathlib import Path
+import pytest
 
 # Add vigia_detect to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -27,8 +28,6 @@ def test_taxonomy():
     
     for cat, count in summary['tasks_per_category'].items():
         print(f"  - {cat}: {count} tasks")
-    
-    return True
 
 def test_mapper():
     """Test Vigía capability mapper."""
@@ -51,8 +50,6 @@ def test_mapper():
     
     for cap in strong[:3]:
         print(f"  - {cap.task_id}: {cap.evidence[:50]}...")
-    
-    return True
 
 def test_metrics():
     """Test MedHELM metrics."""
@@ -81,8 +78,6 @@ def test_metrics():
     
     result = metrics.clinical_relevance(predictions, ground_truth)
     print(f"✅ Clinical relevance: {result.value:.2f}")
-    
-    return True
 
 def test_visualization():
     """Test visualization capabilities."""
@@ -101,8 +96,6 @@ def test_visualization():
     # Test capability summary
     summary = mapper.get_capability_summary()
     print(f"✅ Capability summary ready for visualization")
-    
-    return True
 
 def main():
     """Run all tests."""
@@ -121,8 +114,7 @@ def main():
     
     for test in tests:
         try:
-            if not test():
-                failed += 1
+            test()
         except Exception as e:
             print(f"❌ {test.__name__} failed: {e}")
             failed += 1

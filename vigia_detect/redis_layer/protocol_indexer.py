@@ -22,7 +22,26 @@ from pathlib import Path
 import logging
 
 # Document processing
-import fitz  # PyMuPDF for PDF processing
+try:
+    import fitz  # PyMuPDF for PDF processing
+except ImportError:
+    # Mock para desarrollo sin PyMuPDF
+    class MockFitz:
+        def open(self, *args, **kwargs):
+            return MockDocument()
+    
+    class MockDocument:
+        def load_page(self, page_num):
+            return MockPage()
+        
+        def close(self):
+            pass
+    
+    class MockPage:
+        def get_text(self):
+            return "Mock medical protocol text for testing"
+    
+    fitz = MockFitz()
 from docx import Document  # python-docx for Word documents
 
 # Redis imports

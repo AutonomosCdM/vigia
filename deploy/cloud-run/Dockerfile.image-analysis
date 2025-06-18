@@ -1,0 +1,62 @@
+# Dockerfile for Image Analysis Agent
+# ===================================
+# ADK Native Image Analysis Agent with YOLOv5
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgcc-s1 \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install ADK and medical dependencies
+RUN pip install \
+    google-adk==1.0.0 \
+    torch \
+    torchvision \
+    ultralytics \
+    opencv-python-headless \
+    numpy \
+    Pillow
+
+# Copy application code
+COPY vigia_detect/ ./vigia_detect/
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+
+# Copy ADK agent entry point
+COPY deploy/cloud-run/entrypoints/image_analysis_agent.py ./app.py
+
+# Create models directory
+RUN mkdir -p /models
+
+# Download YOLOv5 model (if not using custom model)
+RUN python -c "import torch; torch.hub.load('ultralytics/yolov5', 'yolov5s')"
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV AGENT_ID=vigia-image-analysis
+ENV AGENT_TYPE=BaseAgent
+ENV PORT=8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Run the agent
+CMD ["python", "app.py"]

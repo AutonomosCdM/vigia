@@ -1,0 +1,49 @@
+# Dockerfile for Clinical Assessment Agent
+# =======================================
+# ADK Native LLMAgent with Gemini Integration
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install ADK and medical dependencies
+RUN pip install \
+    google-adk==1.0.0 \
+    google-cloud-aiplatform \
+    google-genai \
+    vertexai
+
+# Copy application code
+COPY vigia_detect/ ./vigia_detect/
+COPY scripts/ ./scripts/
+COPY config/ ./config/
+
+# Copy ADK agent entry point
+COPY deploy/cloud-run/entrypoints/clinical_assessment_agent.py ./app.py
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV AGENT_ID=vigia-clinical-assessment
+ENV AGENT_TYPE=LLMAgent
+ENV LLM_MODEL=gemini-2.0-flash
+ENV TEMPERATURE=0.1
+ENV MAX_TOKENS=2048
+ENV PORT=8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+# Run the agent
+CMD ["python", "app.py"]

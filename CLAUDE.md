@@ -75,7 +75,6 @@ python scripts/setup/setup_credentials.py
 # Docker deployment configurations
 deploy/docker/docker-compose.hospital.yml     # Hospital production
 deploy/docker/docker-compose.render.yml       # Cloud deployment
-deploy/cloud-run/deploy.sh                    # Google Cloud Run deployment
 ```
 
 ## Architecture Overview
@@ -173,7 +172,7 @@ from vigia_detect.ai.medgemma_adk import MedGemmaADKTool, MedicalReasoningType
 
 medgemma_tool = MedGemmaADKTool(
     model_type=MedGemmaModelType.MEDGEMMA_9B,
-    deployment_mode="ollama"  # Local HIPAA-compliant processing (recommended for medical data)
+    deployment_mode="vertex"  # or "ollama" for local HIPAA-compliant processing
 )
 
 # Medical reasoning with evidence levels
@@ -219,9 +218,8 @@ vigia/
 │   ├── ai/              # MedGemma ADK Tool integration
 │   └── tasks/           # Celery async medical tasks
 ├── config/               # Centralized configuration (.env, requirements, pytest.ini)
-├── deploy/               # Docker + Cloud Run deployment configurations
-│   ├── docker/          # Hospital production deployment
-│   └── cloud-run/       # Google Cloud Run ADK services
+├── deploy/               # Docker deployment configurations
+│   └── docker/          # Hospital production deployment
 ├── docs/                 # Essential documentation (medical, deployment, setup)
 ├── tests/                # 50+ test files with 14,340+ lines (unit, adk, medical, integration)
 ├── dev/                  # Development files (demos, evaluations, renders)
@@ -234,10 +232,9 @@ vigia/
 
 ## Production Status
 ✅ **Production-Ready ADK Implementation** - v1.4.0 Native Architecture:
-- **Google ADK Hackathon Submission**: 5 native ADK agents with complete A2A protocol and Agent Cards
+- **Google ADK Hackathon Ready**: 5 native ADK agents with complete A2A protocol and Agent Cards
 - **Medical AI Excellence**: Evidence-based decision engine with NPUAP/EPUAP/MINSAL compliance
 - **Comprehensive Testing**: 50+ test files with 14,340+ lines across unit/adk/medical/integration categories
 - **Real Medical Validation**: 2,088+ validated images across 5 datasets with evidence-based decisions
 - **Privacy-First Architecture**: Local MedGemma processing via Ollama, comprehensive audit trails
-- **Cloud-Ready Deployment**: Google Cloud Run configurations with Docker containerization
 - **Deployment-Ready**: Complete infrastructure for hospital environments with secure medical workflows

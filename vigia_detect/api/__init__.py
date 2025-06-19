@@ -25,21 +25,56 @@ gateway = ServerlessMCPGateway()
 await gateway.medical_workflow(lpp_detection_data)
 """
 
-from .mcp_gateway import ServerlessMCPGateway, create_mcp_gateway
-from .mcp_slack import slack_server
-from .mcp_twilio import twilio_server
-from .mcp_supabase import supabase_server
-from .mcp_redis import redis_server
+# Optional imports for deployment compatibility
+try:
+    from .mcp_gateway import ServerlessMCPGateway, create_mcp_gateway
+    mcp_gateway_available = True
+except ImportError as e:
+    print(f"Warning: MCP Gateway not available: {e}")
+    mcp_gateway_available = False
+
+try:
+    from .mcp_slack import slack_server
+    mcp_slack_available = True
+except ImportError as e:
+    print(f"Warning: MCP Slack not available: {e}")
+    mcp_slack_available = False
+
+try:
+    from .mcp_twilio import twilio_server
+    mcp_twilio_available = True
+except ImportError as e:
+    print(f"Warning: MCP Twilio not available: {e}")
+    mcp_twilio_available = False
+
+try:
+    from .mcp_supabase import supabase_server
+    mcp_supabase_available = True
+except ImportError as e:
+    print(f"Warning: MCP Supabase not available: {e}")
+    mcp_supabase_available = False
+
+try:
+    from .mcp_redis import redis_server
+    mcp_redis_available = True
+except ImportError as e:
+    print(f"Warning: MCP Redis not available: {e}")
+    mcp_redis_available = False
 
 __version__ = "1.0.0"
 __author__ = "Vigia Medical Team"
 __description__ = "Serverless MCP implementation for medical systems"
 
-__all__ = [
-    "ServerlessMCPGateway",
-    "create_mcp_gateway",
-    "slack_server",
-    "twilio_server", 
-    "supabase_server",
-    "redis_server"
-]
+# Dynamic __all__ based on available imports
+__all__ = []
+
+if mcp_gateway_available:
+    __all__.extend(["ServerlessMCPGateway", "create_mcp_gateway"])
+if mcp_slack_available:
+    __all__.append("slack_server")
+if mcp_twilio_available:
+    __all__.append("twilio_server")
+if mcp_supabase_available:
+    __all__.append("supabase_server")
+if mcp_redis_available:
+    __all__.append("redis_server")

@@ -42,8 +42,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy application code
 COPY --chown=vigia:vigia vigia_detect/ ./vigia_detect/
 COPY --chown=vigia:vigia config/ ./config/
-COPY --chown=vigia:vigia models/ ./models/
 COPY --chown=vigia:vigia scripts/render_entrypoint.sh ./render_entrypoint.sh
+
+# Copy models if they exist (optional)
+COPY --chown=vigia:vigia dev/models/ ./models/ 2>/dev/null || echo "No models directory found, using mock models"
+
+# Copy additional resources
+COPY --chown=vigia:vigia requirements*.txt ./
 
 # Make entrypoint executable
 RUN chmod +x ./render_entrypoint.sh

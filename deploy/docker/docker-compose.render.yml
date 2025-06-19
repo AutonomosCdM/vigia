@@ -8,8 +8,8 @@ services:
   # Main Vigia service (single container)
   vigia-web:
     build:
-      context: .
-      dockerfile: Dockerfile.render
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile.render
     container_name: vigia-web
     restart: unless-stopped
     ports:

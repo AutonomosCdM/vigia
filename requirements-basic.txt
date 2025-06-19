@@ -1,17 +1,4 @@
-# Básico para API sin Rust
+# Ultra minimal para deployment exitoso
 python-dotenv==1.0.1
-
-# Web framework sin pydantic
 flask==3.0.3
-gunicorn==21.2.0
-
-# Básicos
 requests==2.31.0
-redis==5.0.4
-
-# Communication
-twilio==9.0.4
-slack-sdk==3.27.1
-
-# Monitoring
-sentry-sdk==2.0.1

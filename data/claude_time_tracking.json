@@ -1,0 +1,56 @@
+{
+  "tasks": {
+    "task_1750303675": {
+      "task_id": "task_1750303675",
+      "task_name": "Vig\u00eda MCP Integration - Claude Code Migration",
+      "description": "",
+      "priority": "medium",
+      "human_estimate_hours": 4.5,
+      "start_time": "2025-06-18T23:27:55.592894",
+      "end_time": null,
+      "claude_actual_hours": null,
+      "efficiency_ratio": null,
+      "status": "in_progress",
+      "checkpoints": [],
+      "notes": []
+    },
+    "task_1750303690": {
+      "task_id": "task_1750303690",
+      "task_name": "Vig\u00eda MCP Integration - Claude Code Migration",
+      "description": "",
+      "priority": "medium",
+      "human_estimate_hours": 4.5,
+      "start_time": "2025-06-18T23:28:10.912769",
+      "end_time": null,
+      "claude_actual_hours": null,
+      "efficiency_ratio": null,
+      "status": "in_progress",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-18T23:29:13.548108",
+          "message": "Template y scripts deployment creados",
+          "elapsed_minutes": 1.0439228999999999
+        },
+        {
+          "timestamp": "2025-06-18T23:30:24.826003",
+          "message": "Documentaci\u00f3n CLAUDE.md actualizada con MCPs",
+          "elapsed_minutes": 2.23188785
+        },
+        {
+          "timestamp": "2025-06-18T23:31:36.243044",
+          "message": "Tests MCP creados - integraci\u00f3n completa",
+          "elapsed_minutes": 3.422171833333333
+        }
+      ],
+      "notes": []
+    }
+  },
+  "stats": {
+    "total_tasks": 2,
+    "completed_tasks": 0,
+    "failed_tasks": 0,
+    "active_tasks": 2,
+    "total_claude_hours": 0.0,
+    "total_human_estimate_hours": 0.0
+  }
+}

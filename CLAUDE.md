@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
-Vigia is a production-ready medical-grade pressure injury (LPP) detection system using computer vision and local AI. It implements an ADK (Agent Development Kit) architecture for healthcare compliance (HIPAA, ISO 13485, SOC2) with WhatsApp/Slack integration and comprehensive audit trails.
+Vigia is a production-ready medical-grade pressure injury (LPP) detection system using computer vision and local AI. It implements an ADK (Agent Development Kit) architecture for healthcare compliance (HIPAA, ISO 13485, SOC2) with MCP (Model Context Protocol) integration for WhatsApp/Slack and comprehensive audit trails.
 
 ## Essential Commands
 
@@ -75,6 +75,24 @@ python scripts/setup/setup_credentials.py
 # Docker deployment configurations
 deploy/docker/docker-compose.hospital.yml     # Hospital production
 deploy/docker/docker-compose.render.yml       # Cloud deployment
+deploy/docker/docker-compose.mcp-hub.yml      # MCP services deployment
+```
+
+### MCP (Model Context Protocol) Integration
+```bash
+# MCP messaging services deployment
+./scripts/deployment/deploy-mcp-messaging.sh deploy    # Deploy all MCP services
+./scripts/deployment/deploy-mcp-messaging.sh status    # Check MCP services status
+./scripts/deployment/deploy-mcp-messaging.sh test      # Run MCP integration tests
+
+# Time tracking and productivity
+python scripts/utilities/claude_time_tracker.py start --task-name "Task Name" --estimate 2.5
+python scripts/utilities/claude_time_tracker.py checkpoint --message "Checkpoint message"
+python scripts/utilities/claude_time_tracker.py finish --notes "Task completed"
+python scripts/utilities/claude_time_tracker.py dashboard  # Productivity dashboard
+
+# MCP configuration validation
+python -c "import json; print(json.dumps(json.load(open('.mcp.json')), indent=2))"
 ```
 
 ## Architecture Overview
@@ -111,6 +129,15 @@ Timeout-resistant medical workflows (`vigia_detect/core/async_pipeline.py`):
 - **Medical task queues**: medical_priority, image_processing, notifications, audit_logging
 - **Retry policies**: Max 3 retries with human escalation for critical medical failures
 - **Task modules**: `vigia_detect/tasks/` (medical.py, audit.py, notifications.py)
+
+### MCP Integration Layer
+Professional MCP (Model Context Protocol) integration (`vigia_detect/mcp/`):
+- **gateway.py**: Unified MCP router with medical compliance and HIPAA audit trails
+- **Twilio WhatsApp MCP**: Official @twilio-alpha/mcp with 1,400+ endpoints (100% success rate, +27.5% cost trade-off)
+- **Slack MCP**: @avimbu/slack-mcp-server for medical team communication and escalation
+- **Docker MCP**: Container management with mcp-server-docker for service orchestration
+- **WhatsApp Direct MCP**: Local WhatsApp Web integration for HIPAA-compliant messaging
+- **Medical Alert System**: Automated LPP detection notifications with severity-based routing
 
 ## Development Patterns
 
@@ -181,6 +208,53 @@ result = await medgemma_tool.medical_reasoning(
     patient_context={"age": 75, "diabetes": True, "mobility": "limited"},
     clinical_question="Assess pressure injury risk and recommend preventive measures"
 )
+```
+
+### MCP Integration Examples
+```python
+# MCP Gateway for medical messaging
+from vigia_detect.mcp.gateway import create_mcp_gateway
+
+async with create_mcp_gateway({'medical_compliance': 'hipaa'}) as gateway:
+    # WhatsApp medical alerts via Twilio MCP
+    response = await gateway.whatsapp_operation(
+        'send_message',
+        patient_context={'patient_id': 'PAT-001', 'phi_protection': True},
+        to='whatsapp:+1234567890',
+        message='LPP Grade 2 detected - requires medical review'
+    )
+    
+    # Slack team notifications  
+    await gateway.slack_operation(
+        'send_message',
+        channel='#medical-alerts',
+        message='Emergency: LPP Grade 3 detected in ICU'
+    )
+    
+    # Automated LPP detection notifications
+    await gateway.notify_lpp_detection(
+        lpp_grade=2, confidence=0.85,
+        patient_context={'patient_id': 'PAT-001'},
+        platform='slack'  # or 'whatsapp'
+    )
+    
+    # Docker container management
+    docker_response = await gateway.call_service(
+        'docker-server', 'list_containers', {}
+    )
+```
+
+### Claude Time Tracking Integration
+```python
+# Automatic time tracking for Claude vs Human productivity
+from scripts.utilities.claude_time_tracker import ClaudeTimeTracker
+
+tracker = ClaudeTimeTracker()
+task_id = tracker.start_task("MCP Integration", human_estimate_hours=4.5)
+tracker.add_checkpoint("MCP configuration completed")
+tracker.add_checkpoint("Gateway integration finished")
+tracker.finish_task(task_id, success=True, notes="All MCPs working")
+tracker.print_dashboard()  # Shows Claude vs Human productivity metrics
 ```
 
 ## Medical Safety Requirements

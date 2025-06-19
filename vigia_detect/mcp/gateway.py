@@ -14,11 +14,10 @@ from datetime import datetime
 import aiohttp
 from urllib.parse import urljoin
 
-from ..utils.logger import get_logger
-from ..utils.encryption import encrypt_phi, decrypt_phi
+from ..utils.shared_utilities import VigiaLogger
 from ..systems.medical_decision_engine import MedicalDecisionEngine
 
-logger = get_logger(__name__)
+logger = VigiaLogger.get_logger(__name__)
 
 
 @dataclass
@@ -126,6 +125,30 @@ class MCPRouter:
                 compliance_level='hipaa',
                 timeout=30,
                 rate_limit=20
+            ),
+            'twilio_whatsapp': MCPServiceConfig(
+                name='mcp-twilio-whatsapp',
+                endpoint='http://mcp-twilio-whatsapp:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=45,
+                rate_limit=8  # Conservative rate limit for WhatsApp
+            ),
+            'whatsapp_direct': MCPServiceConfig(
+                name='mcp-whatsapp-direct',
+                endpoint='http://mcp-whatsapp-direct:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=60,
+                rate_limit=5  # Very conservative for direct WhatsApp Web
+            ),
+            'slack': MCPServiceConfig(
+                name='mcp-slack',
+                endpoint='http://mcp-slack:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=15
             )
         }
         
@@ -504,6 +527,115 @@ class MCPGateway:
             'fhir_gateway',
             operation,
             fhir_data
+        )
+    
+    async def whatsapp_operation(self, operation: str, patient_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """WhatsApp operations via Twilio integration"""
+        medical_context = patient_context or {}
+        medical_context.update({
+            'platform': 'whatsapp',
+            'phi_protection': True,
+            'message_encryption': True
+        })
+        
+        return await self.call_service(
+            'twilio_whatsapp',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def whatsapp_direct_operation(self, operation: str, patient_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Direct WhatsApp Web operations"""
+        medical_context = patient_context or {}
+        medical_context.update({
+            'platform': 'whatsapp_direct',
+            'phi_protection': True,
+            'local_processing': True,
+            'audit_required': True
+        })
+        
+        return await self.call_service(
+            'whatsapp_direct',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def slack_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Slack operations for medical team communication"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'slack',
+            'team_communication': True,
+            'phi_protection': True,
+            'escalation_capable': True
+        })
+        
+        return await self.call_service(
+            'slack',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def send_medical_alert(self, alert_type: str, patient_id: str, severity: str, 
+                                platform: str = 'slack', message: str = None) -> MCPResponse:
+        """Send medical alerts via messaging platforms"""
+        alert_data = {
+            'alert_type': alert_type,
+            'patient_id': patient_id,
+            'severity': severity,
+            'message': message,
+            'timestamp': datetime.now().isoformat(),
+            'requires_acknowledgment': severity in ['high', 'critical']
+        }
+        
+        medical_context = {
+            'alert_system': True,
+            'phi_protection': True,
+            'audit_required': True,
+            'emergency_escalation': severity == 'critical'
+        }
+        
+        if platform == 'slack':
+            return await self.slack_operation('send_alert', medical_context, **alert_data)
+        elif platform == 'whatsapp':
+            return await self.whatsapp_operation('send_alert', medical_context, **alert_data)
+        else:
+            raise ValueError(f"Unsupported platform for medical alerts: {platform}")
+    
+    async def notify_lpp_detection(self, lpp_grade: int, confidence: float, patient_context: Dict[str, Any],
+                                  image_path: str = None, platform: str = 'slack') -> MCPResponse:
+        """Notify medical team of LPP detection"""
+        # Determine severity based on LPP grade and confidence
+        if lpp_grade >= 3 or (lpp_grade >= 2 and confidence > 0.9):
+            severity = 'high'
+        elif lpp_grade >= 2 or confidence > 0.8:
+            severity = 'medium'
+        else:
+            severity = 'low'
+        
+        message = f"LPP Grade {lpp_grade} detected (conf: {confidence:.2f})"
+        if patient_context.get('patient_id'):
+            message += f" for patient {patient_context['patient_id']}"
+        
+        notification_data = {
+            'lpp_grade': lpp_grade,
+            'confidence': confidence,
+            'severity': severity,
+            'message': message,
+            'image_path': image_path,
+            'patient_context': patient_context,
+            'requires_review': lpp_grade >= 2 or confidence < 0.7
+        }
+        
+        return await self.send_medical_alert(
+            'lpp_detection',
+            patient_context.get('patient_id', 'unknown'),
+            severity,
+            platform,
+            message
         )
     
     async def get_service_status(self) -> Dict[str, Any]:

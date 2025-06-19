@@ -150,6 +150,84 @@ EOF
     success "MongoDB MCP secrets configured"
 }
 
+# Setup Twilio WhatsApp secrets
+setup_twilio_secrets() {
+    log "Setting up Twilio WhatsApp MCP secrets..."
+    
+    # Prompt for Twilio credentials or use environment variables
+    if [[ -z "${TWILIO_ACCOUNT_SID:-}" ]]; then
+        echo -n "Enter Twilio Account SID: "
+        read twilio_account_sid
+    else
+        twilio_account_sid="$TWILIO_ACCOUNT_SID"
+    fi
+    
+    if [[ -z "${TWILIO_API_KEY:-}" ]]; then
+        echo -n "Enter Twilio API Key: "
+        read twilio_api_key
+    else
+        twilio_api_key="$TWILIO_API_KEY"
+    fi
+    
+    if [[ -z "${TWILIO_API_SECRET:-}" ]]; then
+        echo -n "Enter Twilio API Secret: "
+        read -s twilio_api_secret
+        echo
+    else
+        twilio_api_secret="$TWILIO_API_SECRET"
+    fi
+    
+    if [[ -z "${TWILIO_WHATSAPP_PHONE:-}" ]]; then
+        echo -n "Enter Twilio WhatsApp Phone Number (whatsapp:+1234567890): "
+        read twilio_whatsapp_phone
+    else
+        twilio_whatsapp_phone="$TWILIO_WHATSAPP_PHONE"
+    fi
+    
+    create_secret "vigia_twilio_account_sid" "$twilio_account_sid" "(Twilio Account SID)"
+    create_secret "vigia_twilio_api_key" "$twilio_api_key" "(Twilio API Key)"
+    create_secret "vigia_twilio_api_secret" "$twilio_api_secret" "(Twilio API Secret)"
+    create_secret "vigia_twilio_whatsapp_phone" "$twilio_whatsapp_phone" "(Twilio WhatsApp Phone)"
+    
+    success "Twilio WhatsApp MCP secrets configured"
+}
+
+# Setup Slack secrets
+setup_slack_secrets() {
+    log "Setting up Slack MCP secrets..."
+    
+    # Prompt for Slack credentials or use environment variables
+    if [[ -z "${SLACK_BOT_TOKEN:-}" ]]; then
+        echo -n "Enter Slack Bot User OAuth Token (xoxb-...): "
+        read -s slack_bot_token
+        echo
+    else
+        slack_bot_token="$SLACK_BOT_TOKEN"
+    fi
+    
+    if [[ -z "${SLACK_APP_TOKEN:-}" ]]; then
+        echo -n "Enter Slack App-Level Token (xapp-...): "
+        read -s slack_app_token
+        echo
+    else
+        slack_app_token="$SLACK_APP_TOKEN"
+    fi
+    
+    if [[ -z "${SLACK_SIGNING_SECRET:-}" ]]; then
+        echo -n "Enter Slack Signing Secret: "
+        read -s slack_signing_secret
+        echo
+    else
+        slack_signing_secret="$SLACK_SIGNING_SECRET"
+    fi
+    
+    create_secret "vigia_slack_bot_token" "$slack_bot_token" "(Slack Bot Token)"
+    create_secret "vigia_slack_app_token" "$slack_app_token" "(Slack App Token)"
+    create_secret "vigia_slack_signing_secret" "$slack_signing_secret" "(Slack Signing Secret)"
+    
+    success "Slack MCP secrets configured"
+}
+
 # Setup medical-specific secrets
 setup_medical_secrets() {
     log "Setting up medical compliance secrets..."
@@ -183,6 +261,13 @@ verify_secrets() {
         "vigia_mongodb_audit_user"
         "vigia_mongodb_audit_password"
         "vigia_mongodb_audit_credentials"
+        "vigia_twilio_account_sid"
+        "vigia_twilio_api_key"
+        "vigia_twilio_api_secret"
+        "vigia_twilio_whatsapp_phone"
+        "vigia_slack_bot_token"
+        "vigia_slack_app_token"
+        "vigia_slack_signing_secret"
         "vigia_medical_encryption_key"
         "vigia_cert_password"
         "vigia_phi_salt"
@@ -280,6 +365,13 @@ cleanup_secrets() {
         "vigia_mongodb_audit_user"
         "vigia_mongodb_audit_password"
         "vigia_mongodb_audit_credentials"
+        "vigia_twilio_account_sid"
+        "vigia_twilio_api_key"
+        "vigia_twilio_api_secret"
+        "vigia_twilio_whatsapp_phone"
+        "vigia_slack_bot_token"
+        "vigia_slack_app_token"
+        "vigia_slack_signing_secret"
         "vigia_medical_encryption_key"
         "vigia_cert_password"
         "vigia_phi_salt"
@@ -304,10 +396,31 @@ main() {
             setup_stripe_secrets
             setup_redis_secrets
             setup_mongodb_secrets
+            setup_twilio_secrets
+            setup_slack_secrets
             setup_medical_secrets
             verify_secrets
             generate_env_reference
             success "MCP secrets setup completed successfully!"
+            ;;
+        "messaging")
+            log "Setting up messaging MCP secrets (Twilio + Slack)..."
+            check_docker
+            setup_twilio_secrets
+            setup_slack_secrets
+            success "Messaging MCP secrets setup completed!"
+            ;;
+        "twilio")
+            log "Setting up Twilio WhatsApp MCP secrets..."
+            check_docker
+            setup_twilio_secrets
+            success "Twilio MCP secrets setup completed!"
+            ;;
+        "slack")
+            log "Setting up Slack MCP secrets..."
+            check_docker
+            setup_slack_secrets
+            success "Slack MCP secrets setup completed!"
             ;;
         "verify")
             log "Verifying MCP secrets..."
@@ -325,16 +438,26 @@ main() {
             echo "Usage: $0 [command]"
             echo ""
             echo "Commands:"
-            echo "  setup    - Create all MCP secrets (default)"
-            echo "  create   - Alias for setup"
-            echo "  verify   - Verify secrets exist"
-            echo "  cleanup  - Remove all MCP secrets"
-            echo "  remove   - Alias for cleanup"
-            echo "  help     - Show this help message"
+            echo "  setup      - Create all MCP secrets (default)"
+            echo "  create     - Alias for setup"
+            echo "  messaging  - Setup only messaging secrets (Twilio + Slack)"
+            echo "  twilio     - Setup only Twilio WhatsApp secrets"
+            echo "  slack      - Setup only Slack secrets"
+            echo "  verify     - Verify secrets exist"
+            echo "  cleanup    - Remove all MCP secrets"
+            echo "  remove     - Alias for cleanup"
+            echo "  help       - Show this help message"
             echo ""
             echo "Environment Variables:"
-            echo "  GITHUB_TOKEN    - GitHub Personal Access Token"
-            echo "  STRIPE_API_KEY  - Stripe API Key (production or test)"
+            echo "  GITHUB_TOKEN          - GitHub Personal Access Token"
+            echo "  STRIPE_API_KEY        - Stripe API Key (production or test)"
+            echo "  TWILIO_ACCOUNT_SID    - Twilio Account SID"
+            echo "  TWILIO_API_KEY        - Twilio API Key"
+            echo "  TWILIO_API_SECRET     - Twilio API Secret"
+            echo "  TWILIO_WHATSAPP_PHONE - Twilio WhatsApp Phone Number"
+            echo "  SLACK_BOT_TOKEN       - Slack Bot User OAuth Token"
+            echo "  SLACK_APP_TOKEN       - Slack App-Level Token"
+            echo "  SLACK_SIGNING_SECRET  - Slack Signing Secret"
             ;;
         *)
             error "Unknown command: $1"

@@ -198,6 +198,15 @@ class MCPRouter:
                 compliance_level='hipaa',
                 timeout=30,
                 rate_limit=15
+            ),
+            'hume_ai': MCPServiceConfig(
+                name='mcp-hume-ai',
+                endpoint='http://mcp-hume-ai:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=60,  # Voice analysis can take longer
+                rate_limit=20,  # Reasonable for voice processing
+                enabled=True
             )
         }
         

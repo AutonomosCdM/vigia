@@ -17,6 +17,8 @@ A2A Protocol:
 """
 
 from .base import VigiaBaseAgent
+from .voice_analysis import VoiceAnalysisAgent, create_voice_analysis_agent
+from .slack_block_kit import SlackBlockKitAgent, create_slack_block_kit_agent
 # Temporarily comment out other agents until they are updated for simplified ADK
 # from .image_analysis import ImageAnalysisAgent
 # from .clinical_assessment import ClinicalAssessmentAgent
@@ -25,7 +27,11 @@ from .base import VigiaBaseAgent
 # from .workflow_orchestration import WorkflowOrchestrationAgent
 
 __all__ = [
-    "VigiaBaseAgent"
+    "VigiaBaseAgent",
+    "VoiceAnalysisAgent",
+    "create_voice_analysis_agent", 
+    "SlackBlockKitAgent",
+    "create_slack_block_kit_agent"
     # Temporarily removed until ADK simplified:
     # "ImageAnalysisAgent", 
     # "ClinicalAssessmentAgent",

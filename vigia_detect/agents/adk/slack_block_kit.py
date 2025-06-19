@@ -48,6 +48,7 @@ class SlackBlockKitAgent(VigiaBaseAgent):
             medical_specialties=[
                 "pressure_injury_detection",
                 "medical_communication",
+                "voice_analysis",
                 "emergency_escalation",
                 "clinical_workflows"
             ]
@@ -756,6 +757,278 @@ class SlackBlockKitAgent(VigiaBaseAgent):
                 ]
             }
         ]
+        
+        # Voice Analysis Alert Tool
+        def generate_voice_analysis_alert_blocks(
+            voice_analysis_result: Dict[str, Any],
+            patient_context: Optional[Dict[str, Any]] = None
+        ) -> Dict[str, Any]:
+            """Generate voice analysis alert with Block Kit interface.
+            
+            Args:
+                voice_analysis_result: Voice analysis results from Hume AI
+                patient_context: Optional patient context
+                
+            Returns:
+                Dict containing Block Kit blocks for voice analysis alert
+            """
+            
+            # Extract key information
+            analysis_id = voice_analysis_result.get('analysis_id', 'UNKNOWN')
+            timestamp = voice_analysis_result.get('timestamp', datetime.now().isoformat())
+            
+            technical_analysis = voice_analysis_result.get('technical_analysis', {})
+            clinical_interpretation = voice_analysis_result.get('clinical_interpretation', {})
+            
+            # Anonymize patient data
+            patient_id = voice_analysis_result.get('patient_id', 'UNKNOWN')
+            anon_patient_id = patient_id[:3] + "***" if len(patient_id) > 3 else "PAT***"
+            
+            # Determine alert color and urgency
+            alert_level = clinical_interpretation.get('alert_level', 'normal')
+            alert_configs = {
+                'critical': {'color': '#FF0000', 'emoji': '🚨', 'style': 'danger', 'urgency': 'CRÍTICA'},
+                'high': {'color': '#FF8C00', 'emoji': '⚠️', 'style': 'danger', 'urgency': 'ALTA'},
+                'elevated': {'color': '#FFD700', 'emoji': '⚡', 'style': 'primary', 'urgency': 'ELEVADA'},
+                'normal': {'color': '#28A745', 'emoji': '✅', 'style': 'primary', 'urgency': 'NORMAL'}
+            }
+            
+            config = alert_configs.get(alert_level, alert_configs['normal'])
+            
+            # Extract medical indicators
+            medical_indicators = technical_analysis.get('medical_indicators', {})
+            pain_score = medical_indicators.get('pain_score', 0.0)
+            stress_level = medical_indicators.get('stress_level', 0.0)
+            emotional_distress = medical_indicators.get('emotional_distress', 0.0)
+            
+            blocks = [
+                # Header
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"{config['emoji']} Alerta de Análisis de Voz - Paciente {anon_patient_id}"
+                    }
+                },
+                
+                # Alert summary
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*🎤 Análisis de Voz Completado*\n"
+                               f"*📊 Nivel de Alerta:* {config['urgency']}\n"
+                               f"*⏰ Timestamp:* {timestamp}\n"
+                               f"*🆔 ID Análisis:* {analysis_id}"
+                    }
+                },
+                
+                # Medical indicators
+                {
+                    "type": "section",
+                    "fields": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*😣 Indicadores de Dolor*\n{self._format_score_bar(pain_score)} ({pain_score:.2f})"
+                        },
+                        {
+                            "type": "mrkdwn", 
+                            "text": f"*😰 Nivel de Estrés*\n{self._format_score_bar(stress_level)} ({stress_level:.2f})"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*💔 Distress Emocional*\n{self._format_score_bar(emotional_distress)} ({emotional_distress:.2f})"
+                        },
+                        {
+                            "type": "mrkdwn",
+                            "text": f"*📈 Confianza del Análisis*\n{clinical_interpretation.get('confidence_level', 0.0):.2f}"
+                        }
+                    ]
+                },
+                
+                # Clinical recommendations
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*🏥 Recomendaciones Médicas:*\n" + 
+                               "\n".join([f"• {rec}" for rec in clinical_interpretation.get('recommendations', ['No hay recomendaciones específicas'])])
+                    }
+                },
+                
+                # Actions
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "👩‍⚕️ Evaluar Paciente"
+                            },
+                            "style": config["style"],
+                            "action_id": f"voice_evaluation_{analysis_id}",
+                            "value": analysis_id
+                        },
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text", 
+                                "text": "🎤 Ver Análisis Completo"
+                            },
+                            "action_id": f"view_voice_analysis_{analysis_id}",
+                            "value": analysis_id
+                        },
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "📊 Historial de Voz"
+                            },
+                            "action_id": f"voice_history_{patient_id}",
+                            "value": patient_id
+                        }
+                    ]
+                },
+                
+                # Footer
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"🏥 Sistema Vigía | 🎤 Análisis de Voz Hume AI | 🔒 HIPAA Compliant | ⚡ Urgencia: {config['urgency']}"
+                        }
+                    ]
+                }
+            ]
+            
+            return {
+                "blocks": blocks,
+                "analysis_id": analysis_id,
+                "alert_level": alert_level,
+                "anonymized": True,
+                "hipaa_compliant": True,
+                "voice_analysis": True
+            }
+        
+        tools["generate_voice_analysis_alert_blocks"] = generate_voice_analysis_alert_blocks
+        
+        # Voice Trend Analysis Tool
+        def generate_voice_trend_blocks(
+            trend_analysis: Dict[str, Any],
+            patient_id: str
+        ) -> Dict[str, Any]:
+            """Generate voice trend analysis with Block Kit interface.
+            
+            Args:
+                trend_analysis: Voice trend analysis results
+                patient_id: Patient identifier
+                
+            Returns:
+                Dict containing Block Kit blocks for voice trend analysis
+            """
+            
+            # Anonymize patient ID
+            anon_patient_id = patient_id[:3] + "***" if len(patient_id) > 3 else "PAT***"
+            
+            data_points = trend_analysis.get('data_points', 0)
+            pain_trend = trend_analysis.get('pain_trend', 'stable')
+            stress_trend = trend_analysis.get('stress_trend', 'stable')
+            
+            # Trend emojis
+            trend_emojis = {
+                'increasing': '📈',
+                'decreasing': '📉',
+                'stable': '➡️'
+            }
+            
+            blocks = [
+                # Header
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"📊 Análisis de Tendencias de Voz - {anon_patient_id}"
+                    }
+                },
+                
+                # Trend summary
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*📈 Resumen de Tendencias*\n"
+                               f"*📊 Puntos de Datos:* {data_points}\n"
+                               f"*😣 Tendencia de Dolor:* {trend_emojis.get(pain_trend, '❓')} {pain_trend.title()}\n"
+                               f"*😰 Tendencia de Estrés:* {trend_emojis.get(stress_trend, '❓')} {stress_trend.title()}"
+                    }
+                },
+                
+                # Clinical interpretation
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*🏥 Interpretación Clínica:*\n{trend_analysis.get('trend_analysis', 'No hay datos suficientes para análisis de tendencias')}"
+                    }
+                },
+                
+                # Actions
+                {
+                    "type": "actions",
+                    "elements": [
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "🎤 Nuevo Análisis de Voz"
+                            },
+                            "style": "primary",
+                            "action_id": f"new_voice_analysis_{patient_id}",
+                            "value": patient_id
+                        },
+                        {
+                            "type": "button",
+                            "text": {
+                                "type": "plain_text",
+                                "text": "📋 Ver Historial Completo"
+                            },
+                            "action_id": f"full_voice_history_{patient_id}",
+                            "value": patient_id
+                        }
+                    ]
+                }
+            ]
+            
+            return {
+                "blocks": blocks,
+                "patient_id": patient_id,
+                "trend_analysis": True,
+                "anonymized": True,
+                "hipaa_compliant": True
+            }
+        
+        tools["generate_voice_trend_blocks"] = generate_voice_trend_blocks
+        
+        return tools
+    
+    def _format_score_bar(self, score: float) -> str:
+        """Format score as visual bar for Slack display"""
+        # Convert score to bar representation
+        filled_bars = int(score * 10)
+        empty_bars = 10 - filled_bars
+        
+        bar = "█" * filled_bars + "░" * empty_bars
+        
+        if score >= 0.8:
+            return f"🔴 {bar}"
+        elif score >= 0.6:
+            return f"🟡 {bar}"
+        elif score >= 0.4:
+            return f"🟠 {bar}"
+        else:
+            return f"🟢 {bar}"
 
 
 # Factory function for ADK agent creation

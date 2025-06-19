@@ -1,0 +1,7 @@
+# Render deployment requirements
+# Include base requirements
+-r requirements.txt
+
+# Build dependencies for Render
+wheel>=0.42.0
+setuptools>=69.0.0

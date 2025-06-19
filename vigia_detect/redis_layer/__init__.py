@@ -15,7 +15,7 @@ Phase 2 Implementation:
 
 from .client import MedicalRedisClient
 from .cache_service import MedicalSemanticCache
-from .protocol_indexer import MedicalProtocolIndexer
+from .protocol_indexer import EnhancedProtocolIndexer as MedicalProtocolIndexer
 from .embeddings import MedicalEmbeddingService, EmbeddingService
 from .mock_client import MockRedisClient, create_redis_client
 

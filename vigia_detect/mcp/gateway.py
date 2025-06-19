@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 
 from ..utils.shared_utilities import VigiaLogger
 from ..systems.medical_decision_engine import MedicalDecisionEngine
-from ..slack.block_kit_medical import BlockKitMedical, BlockKitInteractions
+from ..agents.adk.slack_block_kit import create_slack_block_kit_agent
 
 logger = VigiaLogger.get_logger(__name__)
 
@@ -605,52 +605,104 @@ class MCPGateway:
     async def send_lpp_alert_slack(self, case_id: str, patient_code: str, lpp_grade: int,
                                   confidence: float, location: str, service: str, bed: str,
                                   channel: str = '#medical-alerts') -> MCPResponse:
-        """Send LPP alert using Block Kit format"""
-        blocks = BlockKitMedical.lpp_alert_blocks(
-            case_id=case_id,
-            patient_code=patient_code,
-            lpp_grade=lpp_grade,
-            confidence=confidence,
-            location=location,
-            service=service,
-            bed=bed
-        )
-        
-        return await self.send_slack_block_kit(
-            channel=channel,
-            blocks=blocks,
-            text=f"LPP Grade {lpp_grade} Alert - Case {case_id}"
-        )
+        """Send LPP alert using Block Kit format via ADK agent"""
+        try:
+            # Create ADK agent and generate blocks using ADK tools
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            # Use ADK tool to generate LPP alert blocks
+            blocks_result = await block_kit_agent.tools["generate_lpp_alert_blocks"](
+                case_id=case_id,
+                patient_code=patient_code,
+                lpp_grade=lpp_grade,
+                confidence=confidence,
+                location=location,
+                service=service,
+                bed=bed
+            )
+            
+            return await self.send_slack_block_kit(
+                channel=channel,
+                blocks=blocks_result["blocks"],
+                text=f"LPP Grade {lpp_grade} Alert - Case {case_id}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending LPP alert via ADK: {e}")
+            return MCPResponse(
+                status="error",
+                error=str(e),
+                message="Failed to send LPP alert via ADK agent"
+            )
     
     async def send_patient_history_slack(self, patient_data: Dict[str, Any],
                                         channel: str = '#medical-team') -> MCPResponse:
-        """Send patient history using Block Kit format"""
-        blocks = BlockKitMedical.patient_history_blocks(patient_data)
-        
-        return await self.send_slack_block_kit(
-            channel=channel,
-            blocks=blocks,
-            text=f"Patient History - {patient_data.get('name', 'Unknown')[:3]}***"
-        )
+        """Send patient history using Block Kit format via ADK agent"""
+        try:
+            # Create ADK agent and generate blocks using ADK tools
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            # Use ADK tool to generate patient history blocks
+            blocks_result = await block_kit_agent.tools["generate_patient_history_blocks"](patient_data)
+            
+            patient_id = patient_data.get('id', 'Unknown')
+            return await self.send_slack_block_kit(
+                channel=channel,
+                blocks=blocks_result["blocks"],
+                text=f"Patient History - {patient_id}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending patient history via ADK: {e}")
+            return MCPResponse(
+                status="error",
+                error=str(e),
+                message="Failed to send patient history via ADK agent"
+            )
     
     async def handle_slack_interaction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle Slack interactive components (buttons, modals, etc.)"""
-        if payload.get('type') == 'block_actions':
-            # Handle button clicks
-            actions = payload.get('actions', [])
-            if actions:
-                action = actions[0]
-                action_id = action.get('action_id')
-                value = action.get('value')
-                user_id = payload.get('user', {}).get('id')
-                
-                return BlockKitInteractions.handle_action(action_id, value, user_id)
-                
-        elif payload.get('type') == 'view_submission':
-            # Handle modal submissions
-            return BlockKitInteractions.handle_modal_submission(payload.get('view', {}))
-        
-        return {"response_type": "ephemeral", "text": "Acción no reconocida"}
+        """Handle Slack interactive components via ADK agent"""
+        try:
+            # Create ADK agent for interaction handling
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            if payload.get('type') == 'block_actions':
+                # Handle button clicks
+                actions = payload.get('actions', [])
+                if actions:
+                    action = actions[0]
+                    action_id = action.get('action_id')
+                    value = action.get('value')
+                    user_id = payload.get('user', {}).get('id')
+                    
+                    # Use ADK agent to handle the interaction
+                    agent_response = await block_kit_agent.handle_slack_interaction(
+                        action_id=action_id,
+                        value=value,
+                        user_id=user_id
+                    )
+                    
+                    if agent_response.success:
+                        return agent_response.data
+                    else:
+                        return {
+                            "response_type": "ephemeral",
+                            "text": f"Error: {agent_response.error}"
+                        }
+                    
+            elif payload.get('type') == 'view_submission':
+                # Handle modal submissions (keeping original for now)
+                from ..slack.block_kit_medical import BlockKitInteractions
+                return BlockKitInteractions.handle_modal_submission(payload.get('view', {}))
+            
+            return {"response_type": "ephemeral", "text": "Acción no reconocida"}
+            
+        except Exception as e:
+            logger.error(f"Error handling Slack interaction via ADK: {e}")
+            return {
+                "response_type": "ephemeral",
+                "text": f"Error processing interaction: {str(e)}"
+            }
     
     async def lpp_detection(self, image_path: str, patient_context: Dict[str, Any]) -> MCPResponse:
         """LPP detection via custom medical service"""

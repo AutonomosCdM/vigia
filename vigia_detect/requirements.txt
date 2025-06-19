@@ -38,6 +38,10 @@ slack-sdk>=3.27.0
 # Web (para fases posteriores)
 fastapi>=0.70.0
 uvicorn>=0.15.0
+
+# MCP Serverless dependencies
+aiohttp>=3.8.0
+redis>=4.5.0
 python-multipart>=0.0.5
 
 # Redis and Vector Search

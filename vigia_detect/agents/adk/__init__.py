@@ -17,19 +17,21 @@ A2A Protocol:
 """
 
 from .base import VigiaBaseAgent
-from .image_analysis import ImageAnalysisAgent
-from .clinical_assessment import ClinicalAssessmentAgent
-from .protocol import ProtocolAgent
-from .communication import CommunicationAgent
-from .workflow_orchestration import WorkflowOrchestrationAgent
+# Temporarily comment out other agents until they are updated for simplified ADK
+# from .image_analysis import ImageAnalysisAgent
+# from .clinical_assessment import ClinicalAssessmentAgent
+# from .protocol import ProtocolAgent
+# from .communication import CommunicationAgent
+# from .workflow_orchestration import WorkflowOrchestrationAgent
 
 __all__ = [
-    "VigiaBaseAgent",
-    "ImageAnalysisAgent", 
-    "ClinicalAssessmentAgent",
-    "ProtocolAgent",
-    "CommunicationAgent",
-    "WorkflowOrchestrationAgent"
+    "VigiaBaseAgent"
+    # Temporarily removed until ADK simplified:
+    # "ImageAnalysisAgent", 
+    # "ClinicalAssessmentAgent",
+    # "ProtocolAgent",
+    # "CommunicationAgent",
+    # "WorkflowOrchestrationAgent"
 ]
 
 # Version info

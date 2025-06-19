@@ -2,8 +2,8 @@
 import logging
 from typing import Optional, Dict, Any, List
 
-from .cache_service_v2 import MedicalSemanticCache
-from .protocol_indexer import MedicalProtocolIndexer
+from .cache_service import MedicalSemanticCache
+from .protocol_indexer import EnhancedProtocolIndexer as MedicalProtocolIndexer
 from .config import get_redis_config
 
 logger = logging.getLogger(__name__)

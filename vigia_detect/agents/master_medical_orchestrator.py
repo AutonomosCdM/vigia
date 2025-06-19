@@ -892,7 +892,7 @@ async def register_all_agents() -> MasterMedicalOrchestrator:
 
 # Create Master Orchestrator Agent
 master_orchestrator_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-1.5-pro",
     global_instruction=MASTER_ORCHESTRATOR_INSTRUCTION,
     instruction="Coordina todos los agentes médicos especializados para procesamiento completo de casos clínicos LPP.",
     name="master_medical_orchestrator",

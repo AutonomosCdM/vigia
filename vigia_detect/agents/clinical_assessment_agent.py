@@ -1255,7 +1255,7 @@ def make_evidence_based_decision_tool(lpp_grade: int, confidence: float,
 
 # Create Clinical Assessment ADK Agent
 clinical_assessment_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-1.5-pro",
     global_instruction=CLINICAL_ASSESSMENT_INSTRUCTION,
     instruction="Especialista en evaluación clínica médica basada en evidencia NPUAP/EPUAP y protocolos MINSAL.",
     name="clinical_assessment_agent",

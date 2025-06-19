@@ -36,7 +36,7 @@ COPY deploy/cloud-run/entrypoints/clinical_assessment_agent.py ./app.py
 ENV PYTHONPATH=/app
 ENV AGENT_ID=vigia-clinical-assessment
 ENV AGENT_TYPE=LLMAgent
-ENV LLM_MODEL=gemini-2.0-flash
+ENV LLM_MODEL=gemini-1.5-pro
 ENV TEMPERATURE=0.1
 ENV MAX_TOKENS=2048
 ENV PORT=8080

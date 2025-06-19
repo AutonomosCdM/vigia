@@ -56,7 +56,7 @@ class ProtocolAgent(VigiaBaseAgent, LLMAgent):
         
         # Configure LLM for protocol analysis
         model_config = ModelConfig(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-1.5-flash",
             temperature=0.2,  # Slightly higher for protocol interpretation
             max_tokens=3072,
             system_prompt=self._get_protocol_system_prompt()

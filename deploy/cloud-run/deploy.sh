@@ -206,7 +206,7 @@ deploy_clinical_assessment_agent() {
         --max-instances=20 \
         --concurrency=20 \
         --service-account=vigia-adk@$PROJECT_ID.iam.gserviceaccount.com \
-        --set-env-vars="AGENT_ID=vigia-clinical-assessment,AGENT_TYPE=LLMAgent,LLM_MODEL=gemini-2.0-flash" \
+        --set-env-vars="AGENT_ID=vigia-clinical-assessment,AGENT_TYPE=LLMAgent,LLM_MODEL=gemini-1.5-pro" \
         --set-secrets="VERTEX_AI_PROJECT=vertex-ai-project:latest" \
         --no-allow-unauthenticated
 }

@@ -792,7 +792,7 @@ def validate_image_for_analysis(image_path: str) -> Dict[str, Any]:
 
 # Create Image Analysis ADK Agent
 image_analysis_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-1.5-flash",
     global_instruction=IMAGE_ANALYSIS_INSTRUCTION,
     instruction="Especialista en análisis de imágenes médicas con YOLOv5 para detección LPP y preprocesamiento clínico.",
     name="image_analysis_agent",

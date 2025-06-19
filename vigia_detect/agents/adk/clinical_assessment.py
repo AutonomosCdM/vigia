@@ -54,7 +54,7 @@ class ClinicalAssessmentAgent(VigiaBaseAgent, LLMAgent):
         
         # Configure LLM for medical reasoning
         model_config = ModelConfig(
-            model_name="gemini-2.0-flash",  # Use Gemini for medical reasoning
+            model_name="gemini-1.5-pro",  # Use Gemini 1.5 Pro for complex medical reasoning
             temperature=0.1,  # Low temperature for consistent medical decisions
             max_tokens=2048,
             system_prompt=self._get_medical_system_prompt()

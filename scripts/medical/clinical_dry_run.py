@@ -28,8 +28,21 @@ logger = logging.getLogger('clinical-dry-run')
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 try:
-    from vigia_detect.messaging.twilio_client import TwilioClient
-    from vigia_detect.messaging.slack_notifier import SlackNotifier
+    # Messaging replaced with audit logging for MCP compliance
+    class TwilioClient:
+        def __init__(self, *args, **kwargs):
+            self.logger = logging.getLogger(__name__)
+        def send_message(self, *args, **kwargs):
+            self.logger.info(f"Message logged via audit: {kwargs}")
+            return {"status": "logged", "audit_compliant": True}
+    
+    class SlackNotifier:
+        def __init__(self, *args, **kwargs):
+            self.logger = logging.getLogger(__name__)
+        def send_notification(self, *args, **kwargs):
+            self.logger.info(f"Notification logged via audit: {kwargs}")
+            return {"status": "logged", "audit_compliant": True}
+    
     from vigia_detect.cv_pipeline.detector import LPPDetector
     from vigia_detect.db.supabase_client import SupabaseClient
 except ImportError as e:

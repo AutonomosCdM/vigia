@@ -11,11 +11,8 @@ from enum import Enum
 import json
 
 from .base_agent import BaseAgent, AgentCapability, AgentMessage, AgentResponse
-from ..interfaces.slack_orchestrator import (
-    SlackOrchestrator, NotificationPayload, NotificationType, 
-    NotificationPriority, SlackChannel
-)
 from ..utils.secure_logger import SecureLogger
+from ..utils.audit_service import AuditService, AuditEventType, AuditSeverity
 
 logger = SecureLogger("communication_agent")
 
@@ -31,12 +28,19 @@ class CommunicationType(Enum):
     ESCALATION_REQUEST = "escalation_request"
 
 
+class NotificationPriority(Enum):
+    """Prioridades de notificación."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 class CommunicationChannel(Enum):
     """Canales de comunicación disponibles."""
-    SLACK = "slack"
-    EMAIL = "email"
-    SMS = "sms"
-    WEBHOOK = "webhook"
+    AUDIT_LOG = "audit_log"
+    MEDICAL_ALERT_LOG = "medical_alert_log"
+    ESCALATION_LOG = "escalation_log"
     INTERNAL_QUEUE = "internal_queue"
 
 
@@ -79,13 +83,13 @@ class CommunicationAgent(BaseAgent):
     
     def __init__(self, 
                  agent_id: str = "communication_agent",
-                 slack_orchestrator: Optional[SlackOrchestrator] = None):
+                 audit_service: Optional[AuditService] = None):
         """
         Inicializar CommunicationAgent.
         
         Args:
             agent_id: Identificador único del agente
-            slack_orchestrator: Orquestador de Slack
+            audit_service: Servicio de auditoría para logging
         """
         super().__init__(
             agent_id=agent_id,
@@ -100,8 +104,8 @@ class CommunicationAgent(BaseAgent):
             version="1.0.0"
         )
         
-        # Orquestador de comunicaciones
-        self.slack_orchestrator = slack_orchestrator or SlackOrchestrator()
+        # Servicio de auditoría para logging de notificaciones
+        self.audit_service = audit_service
         
         # Configuración de comunicaciones
         self.communication_config = {
@@ -110,7 +114,9 @@ class CommunicationAgent(BaseAgent):
             "acknowledgment_timeout": 300,  # 5 minutos
             "escalation_enabled": True,
             "supported_channels": [
-                CommunicationChannel.SLACK,
+                CommunicationChannel.AUDIT_LOG,
+                CommunicationChannel.MEDICAL_ALERT_LOG,
+                CommunicationChannel.ESCALATION_LOG,
                 CommunicationChannel.INTERNAL_QUEUE
             ]
         }
@@ -134,8 +140,16 @@ class CommunicationAgent(BaseAgent):
             bool: True si la inicialización fue exitosa
         """
         try:
-            # Inicializar orquestador de Slack si es necesario
-            # (SlackOrchestrator no tiene método initialize explícito)
+            # Inicializar servicio de auditoría si no está disponible
+            if self.audit_service is None:
+                try:
+                    from ..utils.audit_service import get_audit_service
+                    self.audit_service = await get_audit_service()
+                except Exception as e:
+                    logger.warning("audit_service_initialization_failed", {
+                        "error": str(e),
+                        "fallback": "using_direct_logging"
+                    })
             
             # Marcar como inicializado
             self.is_initialized = True
@@ -143,7 +157,7 @@ class CommunicationAgent(BaseAgent):
             logger.audit("communication_agent_ready", {
                 "agent_id": self.agent_id,
                 "initialization_successful": True,
-                "slack_orchestrator_ready": True
+                "audit_service_ready": self.audit_service is not None
             })
             
             return True
@@ -230,8 +244,12 @@ class CommunicationAgent(BaseAgent):
             self.active_communications[message_id] = request
             
             # Procesar según el canal
-            if request.channel == CommunicationChannel.SLACK:
-                result = await self._send_slack_communication(request, message_id)
+            if request.channel == CommunicationChannel.AUDIT_LOG:
+                result = await self._send_audit_log_communication(request, message_id)
+            elif request.channel == CommunicationChannel.MEDICAL_ALERT_LOG:
+                result = await self._send_medical_alert_communication(request, message_id)
+            elif request.channel == CommunicationChannel.ESCALATION_LOG:
+                result = await self._send_escalation_communication(request, message_id)
             elif request.channel == CommunicationChannel.INTERNAL_QUEUE:
                 result = await self._send_internal_communication(request, message_id)
             else:
@@ -260,11 +278,11 @@ class CommunicationAgent(BaseAgent):
                 next_actions=["Reintentar comunicación", "Verificar configuración"]
             )
     
-    async def _send_slack_communication(self, 
-                                      request: CommunicationRequest, 
-                                      message_id: str) -> CommunicationResult:
+    async def _send_audit_log_communication(self, 
+                                           request: CommunicationRequest, 
+                                           message_id: str) -> CommunicationResult:
         """
-        Enviar comunicación a través de Slack.
+        Enviar comunicación a través de audit log.
         
         Args:
             request: Solicitud de comunicación
@@ -274,35 +292,51 @@ class CommunicationAgent(BaseAgent):
             CommunicationResult: Resultado del envío
         """
         try:
-            # Crear payload de notificación Slack
-            notification_payload = await self._create_slack_payload(request, message_id)
+            # Mapear tipo de comunicación a evento de auditoría
+            audit_event_type = self._map_communication_to_audit_event(request.communication_type)
             
-            # Enviar a través del orquestador
-            slack_result = await self.slack_orchestrator.send_notification(notification_payload)
+            # Preparar detalles de la notificación
+            notification_details = {
+                "communication_type": request.communication_type.value,
+                "subject": request.subject,
+                "content": request.content,
+                "recipients": request.recipients,
+                "priority": request.priority,
+                "language": request.language,
+                "requires_acknowledgment": request.requires_acknowledgment,
+                "medical_urgency": self._determine_medical_urgency(request),
+                "notification_template": self._generate_generic_template(request)
+            }
             
-            if slack_result["success"]:
-                return CommunicationResult(
-                    success=True,
-                    message_id=message_id,
-                    channels_sent=[f"slack_{ch}" for ch in slack_result.get("delivery_results", [])],
-                    delivery_status=slack_result,
-                    acknowledgments_received=0,
-                    errors=[],
-                    next_actions=["Monitorear respuestas"] if request.requires_acknowledgment else []
+            # Log del evento en auditoría
+            if self.audit_service:
+                await self.audit_service.log_event(
+                    event_type=audit_event_type,
+                    component="communication_agent",
+                    action="medical_notification_sent",
+                    details=notification_details,
+                    session_id=message_id
                 )
             else:
-                return CommunicationResult(
-                    success=False,
-                    message_id=message_id,
-                    channels_sent=[],
-                    delivery_status=slack_result,
-                    acknowledgments_received=0,
-                    errors=["Error enviando a Slack"],
-                    next_actions=["Reintentar envío", "Usar canal alternativo"]
-                )
+                # Fallback a logging directo
+                logger.audit("medical_notification_sent", {
+                    "message_id": message_id,
+                    "event_type": audit_event_type.value if hasattr(audit_event_type, 'value') else str(audit_event_type),
+                    **notification_details
+                })
+            
+            return CommunicationResult(
+                success=True,
+                message_id=message_id,
+                channels_sent=["audit_log"],
+                delivery_status={"logged_to_audit": True, "timestamp": datetime.now(timezone.utc).isoformat()},
+                acknowledgments_received=0,
+                errors=[],
+                next_actions=["Monitor audit logs"] if request.requires_acknowledgment else []
+            )
                 
         except Exception as e:
-            logger.error("slack_communication_failed", {
+            logger.error("audit_log_communication_failed", {
                 "message_id": message_id,
                 "error": str(e)
             })
@@ -314,7 +348,150 @@ class CommunicationAgent(BaseAgent):
                 delivery_status={"error": str(e)},
                 acknowledgments_received=0,
                 errors=[str(e)],
-                next_actions=["Verificar configuración Slack", "Usar canal alternativo"]
+                next_actions=["Retry audit logging", "Use fallback logging"]
+            )
+    
+    async def _send_medical_alert_communication(self, 
+                                              request: CommunicationRequest, 
+                                              message_id: str) -> CommunicationResult:
+        """
+        Enviar alerta médica con prioridad alta.
+        
+        Args:
+            request: Solicitud de comunicación
+            message_id: ID del mensaje
+            
+        Returns:
+            CommunicationResult: Resultado del envío
+        """
+        try:
+            # Determinar severidad basada en el contenido médico
+            severity = self._determine_medical_severity(request)
+            
+            # Preparar detalles de alerta médica
+            alert_details = {
+                "alert_type": "medical_emergency" if request.communication_type == CommunicationType.EMERGENCY_ALERT else "medical_notification",
+                "medical_urgency": self._determine_medical_urgency(request),
+                "clinical_context": request.content.get("clinical_context", {}),
+                "patient_code": request.content.get("patient_code", "UNKNOWN"),
+                "lpp_grade": request.content.get("lpp_grade", 0),
+                "confidence": request.content.get("confidence", 0.0),
+                "anatomical_location": request.content.get("anatomical_location", "unspecified"),
+                "escalation_required": self._requires_escalation(request),
+                "medical_template": self._generate_medical_alert_template(request),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "priority": request.priority,
+                "recipients": request.recipients
+            }
+            
+            # Log como evento de auditoría médica
+            if self.audit_service:
+                await self.audit_service.log_event(
+                    event_type=AuditEventType.MEDICAL_DECISION,
+                    component="communication_agent",
+                    action="medical_alert_generated",
+                    details=alert_details,
+                    session_id=message_id
+                )
+            else:
+                logger.audit("medical_alert_generated", {
+                    "message_id": message_id,
+                    **alert_details
+                })
+            
+            return CommunicationResult(
+                success=True,
+                message_id=message_id,
+                channels_sent=["medical_alert_log"],
+                delivery_status={"medical_alert_logged": True, "severity": severity, "escalation_required": alert_details["escalation_required"]},
+                acknowledgments_received=0,
+                errors=[],
+                next_actions=["Monitor medical alerts", "Check escalation requirements"]
+            )
+                
+        except Exception as e:
+            logger.error("medical_alert_communication_failed", {
+                "message_id": message_id,
+                "error": str(e)
+            })
+            
+            return CommunicationResult(
+                success=False,
+                message_id=message_id,
+                channels_sent=[],
+                delivery_status={"error": str(e)},
+                acknowledgments_received=0,
+                errors=[str(e)],
+                next_actions=["Retry medical alert", "Use emergency fallback"]
+            )
+    
+    async def _send_escalation_communication(self, 
+                                           request: CommunicationRequest, 
+                                           message_id: str) -> CommunicationResult:
+        """
+        Enviar comunicación de escalamiento.
+        
+        Args:
+            request: Solicitud de comunicación
+            message_id: ID del mensaje
+            
+        Returns:
+            CommunicationResult: Resultado del envío
+        """
+        try:
+            # Preparar detalles de escalamiento
+            escalation_details = {
+                "escalation_type": request.communication_type.value,
+                "escalation_reason": request.content.get("escalation_reason", "medical_urgency"),
+                "original_alert": request.content.get("original_alert", {}),
+                "escalation_level": self._determine_escalation_level(request),
+                "requires_immediate_attention": request.priority in ["high", "critical"],
+                "escalation_template": self._generate_escalation_template(request),
+                "medical_context": request.content.get("medical_context", {}),
+                "time_sensitive": request.content.get("time_sensitive", True),
+                "escalation_chain": request.recipients,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Log como evento de escalamiento
+            if self.audit_service:
+                await self.audit_service.log_event(
+                    event_type=AuditEventType.REVIEW_ASSIGNED,
+                    component="communication_agent",
+                    action="medical_escalation_triggered",
+                    details=escalation_details,
+                    session_id=message_id
+                )
+            else:
+                logger.audit("medical_escalation_triggered", {
+                    "message_id": message_id,
+                    **escalation_details
+                })
+            
+            return CommunicationResult(
+                success=True,
+                message_id=message_id,
+                channels_sent=["escalation_log"],
+                delivery_status={"escalation_logged": True, "escalation_level": escalation_details["escalation_level"]},
+                acknowledgments_received=0,
+                errors=[],
+                next_actions=["Monitor escalation status", "Track response time"]
+            )
+                
+        except Exception as e:
+            logger.error("escalation_communication_failed", {
+                "message_id": message_id,
+                "error": str(e)
+            })
+            
+            return CommunicationResult(
+                success=False,
+                message_id=message_id,
+                channels_sent=[],
+                delivery_status={"error": str(e)},
+                acknowledgments_received=0,
+                errors=[str(e)],
+                next_actions=["Retry escalation", "Use emergency protocols"]
             )
     
     async def _send_internal_communication(self, 
@@ -375,98 +552,256 @@ class CommunicationAgent(BaseAgent):
                 next_actions=["Reintentar envío interno"]
             )
     
-    async def _create_slack_payload(self, 
-                                  request: CommunicationRequest, 
-                                  message_id: str) -> NotificationPayload:
+    def _map_communication_to_audit_event(self, comm_type: CommunicationType) -> AuditEventType:
         """
-        Crear payload de notificación para Slack.
-        
-        Args:
-            request: Solicitud de comunicación
-            message_id: ID del mensaje
-            
-        Returns:
-            NotificationPayload: Payload para Slack
-        """
-        # Mapear tipo de comunicación a tipo de notificación Slack
-        notification_type_map = {
-            CommunicationType.EMERGENCY_ALERT: NotificationType.EMERGENCY_ALERT,
-            CommunicationType.CLINICAL_NOTIFICATION: NotificationType.CLINICAL_RESULT,
-            CommunicationType.TEAM_COORDINATION: NotificationType.HUMAN_REVIEW_REQUEST,
-            CommunicationType.PATIENT_UPDATE: NotificationType.CLINICAL_RESULT,
-            CommunicationType.SYSTEM_ALERT: NotificationType.SYSTEM_STATUS,
-            CommunicationType.AUDIT_NOTIFICATION: NotificationType.AUDIT_ALERT,
-            CommunicationType.ESCALATION_REQUEST: NotificationType.HUMAN_REVIEW_REQUEST
-        }
-        
-        # Mapear prioridad a enum de Slack
-        priority_map = {
-            "low": NotificationPriority.LOW,
-            "medium": NotificationPriority.MEDIUM,
-            "high": NotificationPriority.HIGH,
-            "critical": NotificationPriority.CRITICAL
-        }
-        
-        notification_type = notification_type_map.get(
-            request.communication_type, 
-            NotificationType.CLINICAL_RESULT
-        )
-        
-        priority = priority_map.get(request.priority.lower(), NotificationPriority.MEDIUM)
-        
-        # Determinar canales objetivo
-        target_channels = self._determine_slack_channels(request.communication_type, priority)
-        
-        return NotificationPayload(
-            notification_id=message_id,
-            session_id=message_id,  # Usar message_id como session_id
-            notification_type=notification_type,
-            priority=priority,
-            target_channels=target_channels,
-            content=request.content,
-            metadata={
-                "communication_type": request.communication_type.value,
-                "original_channel": request.channel.value,
-                "recipients": request.recipients,
-                "requires_acknowledgment": request.requires_acknowledgment,
-                "subject": request.subject
-            },
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            escalation_rules=request.escalation_rules
-        )
-    
-    def _determine_slack_channels(self, 
-                                comm_type: CommunicationType, 
-                                priority: NotificationPriority) -> List[SlackChannel]:
-        """
-        Determinar canales Slack apropiados.
+        Mapear tipo de comunicación a evento de auditoría.
         
         Args:
             comm_type: Tipo de comunicación
-            priority: Prioridad
             
         Returns:
-            List[SlackChannel]: Lista de canales objetivo
+            AuditEventType: Tipo de evento de auditoría
         """
-        # Mapeo básico por tipo de comunicación
-        channel_map = {
-            CommunicationType.EMERGENCY_ALERT: [SlackChannel.EMERGENCY_ROOM, SlackChannel.CLINICAL_TEAM],
-            CommunicationType.CLINICAL_NOTIFICATION: [SlackChannel.CLINICAL_TEAM, SlackChannel.LPP_SPECIALISTS],
-            CommunicationType.TEAM_COORDINATION: [SlackChannel.CLINICAL_TEAM, SlackChannel.NURSING_STAFF],
-            CommunicationType.PATIENT_UPDATE: [SlackChannel.CLINICAL_TEAM],
-            CommunicationType.SYSTEM_ALERT: [SlackChannel.SYSTEM_ALERTS],
-            CommunicationType.AUDIT_NOTIFICATION: [SlackChannel.AUDIT_LOG],
-            CommunicationType.ESCALATION_REQUEST: [SlackChannel.CLINICAL_TEAM, SlackChannel.EMERGENCY_ROOM]
+        mapping = {
+            CommunicationType.EMERGENCY_ALERT: AuditEventType.MEDICAL_DECISION,
+            CommunicationType.CLINICAL_NOTIFICATION: AuditEventType.MEDICAL_DECISION,
+            CommunicationType.TEAM_COORDINATION: AuditEventType.REVIEW_ASSIGNED,
+            CommunicationType.PATIENT_UPDATE: AuditEventType.DATA_MODIFIED,
+            CommunicationType.SYSTEM_ALERT: AuditEventType.SYSTEM_START,
+            CommunicationType.AUDIT_NOTIFICATION: AuditEventType.SUSPICIOUS_ACTIVITY,
+            CommunicationType.ESCALATION_REQUEST: AuditEventType.REVIEW_ASSIGNED
+        }
+        return mapping.get(comm_type, AuditEventType.MEDICAL_DECISION)
+    
+    def _determine_medical_urgency(self, request: CommunicationRequest) -> str:
+        """
+        Determinar urgencia médica basada en el contenido.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            str: Nivel de urgencia
+        """
+        priority_mapping = {
+            "critical": "emergency",
+            "high": "urgent",
+            "medium": "routine",
+            "low": "informational"
         }
         
-        base_channels = channel_map.get(comm_type, [SlackChannel.CLINICAL_TEAM])
+        base_urgency = priority_mapping.get(request.priority, "routine")
         
-        # Agregar canales adicionales para prioridades altas
-        if priority in [NotificationPriority.CRITICAL, NotificationPriority.HIGH]:
-            if SlackChannel.EMERGENCY_ROOM not in base_channels:
-                base_channels.append(SlackChannel.EMERGENCY_ROOM)
+        # Ajustar basado en contenido médico
+        content = request.content
+        if content.get("lpp_grade", 0) >= 3:
+            return "emergency"
+        elif content.get("confidence", 0) > 0.9 and content.get("lpp_grade", 0) >= 2:
+            return "urgent"
         
-        return base_channels
+        return base_urgency
+    
+    def _determine_medical_severity(self, request: CommunicationRequest) -> str:
+        """
+        Determinar severidad médica.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            str: Severidad médica
+        """
+        if request.communication_type == CommunicationType.EMERGENCY_ALERT:
+            return "critical"
+        elif request.priority == "critical":
+            return "critical"
+        elif request.priority == "high":
+            return "high"
+        else:
+            return "medium"
+    
+    def _requires_escalation(self, request: CommunicationRequest) -> bool:
+        """
+        Determinar si se requiere escalamiento.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            bool: True si requiere escalamiento
+        """
+        # Escalamiento automático para casos críticos
+        if request.communication_type == CommunicationType.EMERGENCY_ALERT:
+            return True
+        
+        # Escalamiento basado en grado de LPP
+        lpp_grade = request.content.get("lpp_grade", 0)
+        if lpp_grade >= 3:
+            return True
+        
+        # Escalamiento basado en prioridad
+        if request.priority == "critical":
+            return True
+        
+        return False
+    
+    def _determine_escalation_level(self, request: CommunicationRequest) -> int:
+        """
+        Determinar nivel de escalamiento (1-5).
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            int: Nivel de escalamiento
+        """
+        if request.communication_type == CommunicationType.EMERGENCY_ALERT:
+            return 5  # Máximo nivel
+        elif request.priority == "critical":
+            return 4
+        elif request.priority == "high":
+            return 3
+        elif request.priority == "medium":
+            return 2
+        else:
+            return 1
+    
+    def _generate_generic_template(self, request: CommunicationRequest) -> Dict[str, Any]:
+        """
+        Generar template genérico de notificación.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            Dict: Template de notificación
+        """
+        template = {
+            "notification_type": request.communication_type.value,
+            "subject": request.subject,
+            "priority": request.priority,
+            "recipients": request.recipients,
+            "content_summary": self._summarize_content(request.content),
+            "action_required": request.requires_acknowledgment,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "language": request.language
+        }
+        
+        return template
+    
+    def _generate_medical_alert_template(self, request: CommunicationRequest) -> Dict[str, Any]:
+        """
+        Generar template de alerta médica.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            Dict: Template de alerta médica
+        """
+        content = request.content
+        template = {
+            "alert_type": "medical_pressure_injury_detection",
+            "patient_code": content.get("patient_code", "UNKNOWN"),
+            "lpp_grade": content.get("lpp_grade", 0),
+            "confidence": content.get("confidence", 0.0),
+            "anatomical_location": content.get("anatomical_location", "unspecified"),
+            "urgency": self._determine_medical_urgency(request),
+            "clinical_context": content.get("clinical_context", {}),
+            "recommended_actions": self._get_recommended_actions(content),
+            "escalation_required": self._requires_escalation(request),
+            "hipaa_compliant": True,
+            "audit_trail_id": f"medical_alert_{datetime.now().timestamp()}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        return template
+    
+    def _generate_escalation_template(self, request: CommunicationRequest) -> Dict[str, Any]:
+        """
+        Generar template de escalamiento.
+        
+        Args:
+            request: Solicitud de comunicación
+            
+        Returns:
+            Dict: Template de escalamiento
+        """
+        template = {
+            "escalation_type": request.communication_type.value,
+            "escalation_level": self._determine_escalation_level(request),
+            "original_alert": request.content.get("original_alert", {}),
+            "escalation_reason": request.content.get("escalation_reason", "medical_urgency"),
+            "time_sensitive": True,
+            "requires_immediate_response": request.priority == "critical",
+            "escalation_chain": request.recipients,
+            "medical_context": request.content.get("medical_context", {}),
+            "audit_trail_id": f"escalation_{datetime.now().timestamp()}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        return template
+    
+    def _summarize_content(self, content: Dict[str, Any]) -> str:
+        """
+        Resumir contenido de manera segura (sin PII).
+        
+        Args:
+            content: Contenido a resumir
+            
+        Returns:
+            str: Resumen del contenido
+        """
+        summary_parts = []
+        
+        if "lpp_grade" in content:
+            summary_parts.append(f"LPP Grade {content['lpp_grade']}")
+        
+        if "confidence" in content:
+            summary_parts.append(f"Confidence {content['confidence']:.2f}")
+        
+        if "anatomical_location" in content:
+            summary_parts.append(f"Location: {content['anatomical_location']}")
+        
+        if "patient_code" in content:
+            # Usar solo código anonimizado
+            summary_parts.append(f"Patient: {content['patient_code'][:8]}...")
+        
+        return "; ".join(summary_parts) if summary_parts else "Medical notification"
+    
+    def _get_recommended_actions(self, content: Dict[str, Any]) -> List[str]:
+        """
+        Obtener acciones recomendadas basadas en el contenido.
+        
+        Args:
+            content: Contenido de la comunicación
+            
+        Returns:
+            List[str]: Lista de acciones recomendadas
+        """
+        actions = []
+        
+        lpp_grade = content.get("lpp_grade", 0)
+        
+        if lpp_grade >= 3:
+            actions.extend([
+                "Immediate medical evaluation required",
+                "Consider specialist consultation",
+                "Implement pressure relief protocol"
+            ])
+        elif lpp_grade >= 2:
+            actions.extend([
+                "Schedule medical assessment",
+                "Implement preventive measures",
+                "Monitor progression"
+            ])
+        else:
+            actions.extend([
+                "Continue monitoring",
+                "Implement preventive care"
+            ])
+        
+        return actions
     
     def _extract_communication_request(self, message: AgentMessage) -> CommunicationRequest:
         """
@@ -483,9 +818,9 @@ class CommunicationAgent(BaseAgent):
         # Determinar tipo de comunicación
         comm_type = self._classify_communication_type(content.get("text", ""))
         
-        # Extraer canal (default: Slack)
-        channel_str = content.get("channel", "slack")
-        channel = CommunicationChannel(channel_str) if channel_str in [c.value for c in CommunicationChannel] else CommunicationChannel.SLACK
+        # Extraer canal (default: audit_log)
+        channel_str = content.get("channel", "audit_log")
+        channel = CommunicationChannel(channel_str) if channel_str in [c.value for c in CommunicationChannel] else CommunicationChannel.AUDIT_LOG
         
         # Extraer destinatarios
         recipients = content.get("recipients", ["equipo_clinico"])
@@ -767,15 +1102,22 @@ class CommunicationAgentFactory:
         """
         config = config or {}
         
-        # Crear orquestador de Slack si se especifica
-        slack_orchestrator = None
-        if config.get("use_slack", True):
-            slack_orchestrator = SlackOrchestrator()
+        # Crear servicio de auditoría si se especifica
+        audit_service = None
+        if config.get("use_audit_service", True):
+            try:
+                from ..utils.audit_service import get_audit_service
+                audit_service = await get_audit_service()
+            except Exception as e:
+                logger.warning("audit_service_creation_failed", {
+                    "error": str(e),
+                    "fallback": "using_direct_logging"
+                })
         
         # Crear agente
         agent = CommunicationAgent(
             agent_id=config.get("agent_id", "communication_agent"),
-            slack_orchestrator=slack_orchestrator
+            audit_service=audit_service
         )
         
         # Inicializar

@@ -288,10 +288,16 @@ class WebhookHandlers:
             
             await self.slack.send_notification(message, details)
         
-        # WhatsApp notification for critical cases
-        if self.twilio and risk_level == 'CRITICAL':
-            message = f"🚨 CRITICAL: Patient {patient_code} requires immediate attention. Multiple stage 3+ pressure injuries detected."
-            await self.twilio.send_whatsapp_alert(message)
+        # Log critical cases for audit trail
+        if risk_level == 'CRITICAL':
+            logger.audit("critical_medical_alert", {
+                "patient_code": patient_code[:8] + "***",  # Anonymized
+                "risk_level": risk_level,
+                "alert_type": "critical_pressure_injury_detection",
+                "requires_immediate_attention": True,
+                "escalation_required": True,
+                "timestamp": datetime.now().isoformat()
+            })
     
     async def _store_detection_results(self, payload: Dict[str, Any]):
         """Store detection results in database."""
@@ -315,10 +321,28 @@ class WebhookHandlers:
         pass
     
     async def _notify_care_team(self, patient_code: str, update_type: str, changes: Dict[str, Any]):
-        """Notify care team about patient updates."""
+        """Log care team notifications for audit trail."""
+        # Anonymize patient code for logging
+        anonymized_patient = patient_code[:8] + "***"
+        
+        logger.audit("care_team_notification", {
+            "anonymized_patient": anonymized_patient,
+            "update_type": update_type,
+            "changes_count": len(changes) if isinstance(changes, dict) else 1,
+            "notification_type": "patient_update",
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Also log to slack if available (audit purposes)
         if self.slack:
-            message = f"Patient {patient_code} - {update_type.replace('_', ' ').title()}"
-            await self.slack.send_notification(message, str(changes))
+            try:
+                message = f"Patient {anonymized_patient} - {update_type.replace('_', ' ').title()}"
+                await self.slack.send_notification(message, str(changes))
+            except Exception as e:
+                logger.error("slack_care_team_notification_failed", {
+                    "update_type": update_type,
+                    "error": str(e)
+                })
     
     async def _invalidate_patient_cache(self, patient_code: str):
         """Invalidate patient cache entries."""
@@ -327,22 +351,31 @@ class WebhookHandlers:
             await self.redis.delete_pattern(pattern)
     
     async def _send_protocol_notifications(self, protocol_name: str, patient_code: str, reason: str):
-        """Send notifications about protocol activation."""
-        message = f"🚨 Medical Protocol Activated: {protocol_name}"
-        details = f"Patient: {patient_code}\nReason: {reason}"
+        """Log protocol activation for audit trail."""
+        # Log protocol activation with anonymized patient data
+        anonymized_patient = patient_code[:8] + "***"
         
-        # Send to all channels
-        tasks = []
+        logger.audit("medical_protocol_activated", {
+            "protocol_name": protocol_name,
+            "anonymized_patient": anonymized_patient,
+            "activation_reason": reason,
+            "urgency_level": "high",
+            "requires_immediate_response": True,
+            "escalation_triggered": True,
+            "timestamp": datetime.now().isoformat()
+        })
         
+        # Also log to slack if available (audit purposes)
         if self.slack:
-            tasks.append(self.slack.send_urgent_notification(message, details))
-        
-        if self.twilio:
-            sms_message = f"URGENT: {protocol_name} activated for patient {patient_code}. {reason}"
-            tasks.append(self.twilio.send_sms_alert(sms_message))
-        
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            try:
+                message = f"🚨 Medical Protocol Activated: {protocol_name}"
+                details = f"Patient: {anonymized_patient}\nReason: {reason}"
+                await self.slack.send_urgent_notification(message, details)
+            except Exception as e:
+                logger.error("slack_notification_failed", {
+                    "protocol": protocol_name,
+                    "error": str(e)
+                })
     
     async def _create_protocol_task(self, patient_code: str, protocol_name: str, action: str) -> Optional[str]:
         """Create a task for protocol action."""
@@ -391,11 +424,9 @@ def create_default_handlers(config: Optional[Dict[str, Any]] = None) -> WebhookH
         except Exception as e:
             logger.warning(f"Failed to initialize Slack: {e}")
     
-    if config.get('enable_twilio') and TwilioClient:
-        try:
-            twilio = TwilioClient()
-        except Exception as e:
-            logger.warning(f"Failed to initialize Twilio: {e}")
+    # Twilio/WhatsApp integration removed for MCP compliance
+    # All notifications now go through audit logging
+    logger.info("Twilio/WhatsApp integration disabled for MCP compliance")
     
     if config.get('enable_db') and SupabaseClient:
         try:

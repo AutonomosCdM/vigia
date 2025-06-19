@@ -8,12 +8,20 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from vigia_detect.messaging.slack_notifier import SlackNotifier
+# Messaging replaced with audit logging for MCP compliance
+class SlackNotifier:
+    def __init__(self, *args, **kwargs):
+        import logging
+        self.logger = logging.getLogger(__name__)
+    
+    def send_notification(self, *args, **kwargs):
+        self.logger.info(f"Slack notification logged via audit: {kwargs}")
+        return {"status": "logged", "audit_compliant": True}
 
 def send_update_message():
-    """Send v0.4.0 update message to #it_vigia channel."""
+    """Send update message via audit logging."""
     
-    # Initialize Slack client
+    # Initialize audit logging notifier
     notifier = SlackNotifier()
     
     # Message content

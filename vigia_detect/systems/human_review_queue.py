@@ -21,7 +21,11 @@ import redis.asyncio as redis
 from ..core.input_packager import StandardizedInput
 from ..core.medical_dispatcher import TriageDecision
 from ..core.session_manager import SessionManager, SessionState
-from ..messaging.slack_notifier_refactored import SlackNotifier
+# Optional messaging import - removed for MCP compliance
+try:
+    from ..messaging.slack_notifier_refactored import SlackNotifier
+except ImportError:
+    SlackNotifier = None
 from ..utils.secure_logger import SecureLogger
 
 logger = SecureLogger("human_review_queue")

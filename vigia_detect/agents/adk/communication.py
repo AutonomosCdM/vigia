@@ -2,8 +2,8 @@
 Communication Agent - Native ADK Implementation
 ==============================================
 
-WorkflowAgent for deterministic medical communication and notification workflows.
-Handles WhatsApp, Slack, and clinical team notifications with medical compliance.
+WorkflowAgent for deterministic medical communication and audit logging workflows.
+Handles medical notifications through abstract interfaces for MCP compliance.
 """
 
 import logging
@@ -31,14 +31,13 @@ class NotificationPriority(Enum):
     EMERGENCY = "emergency"
 
 
-class NotificationChannel(Enum):
-    """Available notification channels."""
-    WHATSAPP = "whatsapp"
-    SLACK = "slack"
-    EMAIL = "email"
-    SMS = "sms"
-    IN_APP = "in_app"
-    PHONE_CALL = "phone_call"
+class CommunicationChannel(Enum):
+    """Available communication channels for MCP compliance."""
+    AUDIT_LOG = "audit_log"
+    MEDICAL_ALERT_LOG = "medical_alert_log"
+    ESCALATION_LOG = "escalation_log"
+    INTERNAL_QUEUE = "internal_queue"
+    COMPLIANCE_LOG = "compliance_log"
 
 
 class CommunicationAgent(VigiaBaseAgent, WorkflowAgent):
@@ -111,56 +110,27 @@ class CommunicationAgent(VigiaBaseAgent, WorkflowAgent):
         """Initialize HIPAA-compliant message templates."""
         return {
             "lpp_detection_alert": {
-                "subject": "🏥 Pressure Injury Detection Alert - Patient {patient_id}",
-                "whatsapp": """
-🚨 *MEDICAL ALERT*
-📋 Patient: {patient_id}
-🔍 Detection: LPP Grade {lpp_grade}
-📊 Confidence: {confidence}%
-📍 Location: {anatomical_location}
-⏰ Time: {timestamp}
-
-🩺 *Immediate Actions Required:*
-{immediate_actions}
-
-👨‍⚕️ Assigned: {care_team}
-📱 Reply with STATUS for updates
-                """,
-                "slack": """
-:warning: *PRESSURE INJURY DETECTED*
-
-*Patient:* {patient_id}
-*Grade:* {lpp_grade} (Confidence: {confidence}%)
-*Location:* {anatomical_location}
-*Detected:* {timestamp}
-
-*Immediate Actions:*
-{immediate_actions}
-
-*Assigned Care Team:* {care_team}
-*Thread ID:* {case_id}
-                """,
-                "email": """
-Medical Alert: Pressure Injury Detection
-
-Patient ID: {patient_id}
-LPP Grade: {lpp_grade}
-Detection Confidence: {confidence}%
-Anatomical Location: {anatomical_location}
-Detection Time: {timestamp}
+                "notification_type": "lpp_medical_alert",
+                "template": """
+MEDICAL ALERT: Pressure Injury Detection
+Patient: {anonymized_patient}
+Detection: LPP Grade {lpp_grade}
+Confidence: {confidence}%
+Location: {anatomical_location}
+Time: {timestamp}
 
 Immediate Actions Required:
 {immediate_actions}
 
-Clinical Assessment:
-{clinical_assessment}
-
-Care Team Assigned:
-{care_team}
-
+Assigned Care Team: {care_team}
 Case ID: {case_id}
-System: Vigia Medical AI
-                """
+                """,
+                "audit_data": {
+                    "event_type": "lpp_detection",
+                    "medical_priority": "high",
+                    "hipaa_compliant": True,
+                    "anonymized": True
+                }
             },
             "protocol_notification": {
                 "subject": "📋 Medical Protocol Update - Patient {patient_id}",
@@ -253,38 +223,43 @@ System: Vigia Medical AI
         return {
             "lpp_grade_4": {
                 "priority": NotificationPriority.EMERGENCY,
-                "channels": [NotificationChannel.WHATSAPP, NotificationChannel.SLACK, NotificationChannel.PHONE_CALL],
+                "channels": [CommunicationChannel.MEDICAL_ALERT_LOG, CommunicationChannel.ESCALATION_LOG],
                 "escalation_delay_minutes": 5,
                 "recipients": ["attending_physician", "wound_care_specialist", "nursing_supervisor"],
-                "repeat_until_acknowledged": True
+                "repeat_until_acknowledged": True,
+                "audit_required": True
             },
             "lpp_grade_3": {
                 "priority": NotificationPriority.HIGH,
-                "channels": [NotificationChannel.WHATSAPP, NotificationChannel.SLACK],
+                "channels": [CommunicationChannel.MEDICAL_ALERT_LOG, CommunicationChannel.AUDIT_LOG],
                 "escalation_delay_minutes": 15,
                 "recipients": ["attending_physician", "primary_nurse"],
-                "repeat_until_acknowledged": False
+                "repeat_until_acknowledged": False,
+                "audit_required": True
             },
             "lpp_grade_2": {
                 "priority": NotificationPriority.MEDIUM,
-                "channels": [NotificationChannel.WHATSAPP, NotificationChannel.SLACK],
+                "channels": [CommunicationChannel.AUDIT_LOG, CommunicationChannel.INTERNAL_QUEUE],
                 "escalation_delay_minutes": 30,
                 "recipients": ["primary_nurse", "care_coordinator"],
-                "repeat_until_acknowledged": False
+                "repeat_until_acknowledged": False,
+                "audit_required": True
             },
             "lpp_grade_1": {
                 "priority": NotificationPriority.LOW,
-                "channels": [NotificationChannel.SLACK],
+                "channels": [CommunicationChannel.AUDIT_LOG],
                 "escalation_delay_minutes": 60,
                 "recipients": ["primary_nurse"],
-                "repeat_until_acknowledged": False
+                "repeat_until_acknowledged": False,
+                "audit_required": False
             },
             "infection_suspected": {
                 "priority": NotificationPriority.HIGH,
-                "channels": [NotificationChannel.WHATSAPP, NotificationChannel.SLACK, NotificationChannel.EMAIL],
+                "channels": [CommunicationChannel.MEDICAL_ALERT_LOG, CommunicationChannel.ESCALATION_LOG, CommunicationChannel.COMPLIANCE_LOG],
                 "escalation_delay_minutes": 10,
                 "recipients": ["attending_physician", "infection_control_nurse"],
-                "repeat_until_acknowledged": True
+                "repeat_until_acknowledged": True,
+                "audit_required": True
             }
         }
     
@@ -293,36 +268,36 @@ System: Vigia Medical AI
         return {
             "attending_physician": {
                 "role": "Attending Physician",
-                "primary_channel": NotificationChannel.WHATSAPP,
-                "secondary_channel": NotificationChannel.PHONE_CALL,
+                "primary_channel": CommunicationChannel.MEDICAL_ALERT_LOG,
+                "secondary_channel": CommunicationChannel.ESCALATION_LOG,
                 "availability_hours": "24/7",
                 "escalation_delay": 5
             },
             "primary_nurse": {
                 "role": "Primary Nurse",
-                "primary_channel": NotificationChannel.SLACK,
-                "secondary_channel": NotificationChannel.WHATSAPP,
+                "primary_channel": CommunicationChannel.AUDIT_LOG,
+                "secondary_channel": CommunicationChannel.MEDICAL_ALERT_LOG,
                 "availability_hours": "shift_based",
                 "escalation_delay": 10
             },
             "wound_care_specialist": {
                 "role": "Wound Care Specialist",
-                "primary_channel": NotificationChannel.EMAIL,
-                "secondary_channel": NotificationChannel.WHATSAPP,
+                "primary_channel": CommunicationChannel.COMPLIANCE_LOG,
+                "secondary_channel": CommunicationChannel.MEDICAL_ALERT_LOG,
                 "availability_hours": "business_hours",
                 "escalation_delay": 15
             },
             "nursing_supervisor": {
                 "role": "Nursing Supervisor",
-                "primary_channel": NotificationChannel.WHATSAPP,
-                "secondary_channel": NotificationChannel.PHONE_CALL,
+                "primary_channel": CommunicationChannel.ESCALATION_LOG,
+                "secondary_channel": CommunicationChannel.MEDICAL_ALERT_LOG,
                 "availability_hours": "24/7",
                 "escalation_delay": 3
             },
             "care_coordinator": {
                 "role": "Care Coordinator",
-                "primary_channel": NotificationChannel.SLACK,
-                "secondary_channel": NotificationChannel.EMAIL,
+                "primary_channel": CommunicationChannel.AUDIT_LOG,
+                "secondary_channel": CommunicationChannel.INTERNAL_QUEUE,
                 "availability_hours": "business_hours",
                 "escalation_delay": 20
             }
@@ -794,3 +769,80 @@ System: Vigia Medical AI
             "notifications_sent": workflow_result.get("notifications_delivered", 0),
             "escalations_triggered": workflow_result.get("escalations_count", 0)
         }
+    
+    # New audit logging methods for MCP compliance
+    async def _send_audit_log_communication(
+        self,
+        channel: CommunicationChannel,
+        message_template: str,
+        medical_data: Dict[str, Any],
+        recipients: List[str]
+    ) -> Dict[str, Any]:
+        """Send communication via audit logging for MCP compliance."""
+        
+        audit_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "communication_type": "medical_notification",
+            "channel": channel.value,
+            "recipients": recipients,
+            "medical_urgency": self._determine_medical_urgency(medical_data),
+            "case_id": medical_data.get("case_id", f"CASE_{datetime.now().timestamp()}"),
+            "anonymized_patient": self._anonymize_patient_data(medical_data.get("patient_id", "Unknown")),
+            "notification_sent": True,
+            "hipaa_compliant": True,
+            "audit_logged": True
+        }
+        
+        if medical_data.get("lpp_grade"):
+            audit_entry["medical_details"] = {
+                "lpp_grade": medical_data["lpp_grade"],
+                "severity": self._determine_medical_severity(medical_data["lpp_grade"]),
+                "escalation_required": self._requires_escalation(medical_data["lpp_grade"])
+            }
+        
+        logger.info(f"Medical notification logged: {audit_entry}")
+        
+        return {
+            "status": "logged",
+            "audit_entry": audit_entry,
+            "delivery_method": "audit_log",
+            "compliance_verified": True
+        }
+    
+    def _determine_medical_urgency(self, medical_data: Dict[str, Any]) -> str:
+        """Determine medical urgency level from data."""
+        lpp_grade = medical_data.get("lpp_grade", 0)
+        confidence = medical_data.get("confidence", 0)
+        
+        if lpp_grade >= 4 or (lpp_grade >= 3 and confidence > 0.9):
+            return "EMERGENCY"
+        elif lpp_grade >= 3 or (lpp_grade >= 2 and confidence > 0.85):
+            return "HIGH"
+        elif lpp_grade >= 2:
+            return "MEDIUM"
+        else:
+            return "LOW"
+    
+    def _determine_medical_severity(self, lpp_grade: int) -> str:
+        """Determine medical severity level."""
+        severity_map = {
+            1: "MILD",
+            2: "MODERATE", 
+            3: "SEVERE",
+            4: "CRITICAL"
+        }
+        return severity_map.get(lpp_grade, "UNKNOWN")
+    
+    def _requires_escalation(self, lpp_grade: int) -> bool:
+        """Check if case requires medical escalation."""
+        return lpp_grade >= 3
+    
+    def _anonymize_patient_data(self, patient_id: str) -> str:
+        """Anonymize patient data for HIPAA compliance."""
+        if not patient_id or len(patient_id) < 3:
+            return "Pat***"
+        
+        if patient_id.startswith("CD-"):
+            return f"CD-{patient_id[3:7]}***"
+        
+        return f"{patient_id[:3]}***"

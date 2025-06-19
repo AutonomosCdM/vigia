@@ -13,6 +13,7 @@ import asyncio
 import json
 import uuid
 import logging
+import os
 from typing import Dict, List, Any, Optional, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -183,7 +184,16 @@ class A2AAuthenticationManager:
     Supports API keys, OAuth 2.0, and JWT tokens.
     """
     
-    def __init__(self, secret_key: str = "vigia_a2a_secret_key"):
+    def __init__(self, secret_key: str = None):
+        # Use environment variable or generate a secure random key
+        if secret_key is None:
+            secret_key = os.getenv('VIGIA_A2A_SECRET_KEY')
+            if secret_key is None:
+                # Generate a secure random key and warn
+                secret_key = hashlib.sha256(str(uuid.uuid4()).encode()).hexdigest()
+                logger.warning("No VIGIA_A2A_SECRET_KEY environment variable found. Generated temporary key.")
+                logger.warning("Set VIGIA_A2A_SECRET_KEY in environment for production use.")
+        
         self.secret_key = secret_key
         self.api_keys = {}  # agent_id -> api_key mapping
         self.jwt_tokens = {}  # agent_id -> jwt_token mapping

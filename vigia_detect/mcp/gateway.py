@@ -102,6 +102,54 @@ class MCPRouter:
                 timeout=30,
                 rate_limit=10
             ),
+            'supabase': MCPServiceConfig(
+                name='mcp-supabase',
+                endpoint='http://mcp-supabase:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=25
+            ),
+            'postgres': MCPServiceConfig(
+                name='mcp-postgres',
+                endpoint='http://mcp-postgres:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=30
+            ),
+            'google_cloud': MCPServiceConfig(
+                name='mcp-google-cloud',
+                endpoint='http://mcp-google-cloud:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=20
+            ),
+            'sendgrid': MCPServiceConfig(
+                name='mcp-sendgrid',
+                endpoint='http://mcp-sendgrid:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=10
+            ),
+            'aws': MCPServiceConfig(
+                name='mcp-aws',
+                endpoint='http://mcp-aws:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=25
+            ),
+            'sentry': MCPServiceConfig(
+                name='mcp-sentry',
+                endpoint='http://mcp-sentry:8080',
+                service_type='hub',
+                compliance_level='standard',
+                timeout=30,
+                rate_limit=15
+            ),
             'stripe': MCPServiceConfig(
                 name='mcp-stripe', 
                 endpoint='http://mcp-stripe:8080',
@@ -162,13 +210,37 @@ class MCPRouter:
                 timeout=60,
                 rate_limit=10
             ),
-            'fhir_gateway': MCPServiceConfig(
-                name='vigia-fhir-gateway',
-                endpoint='http://vigia-fhir-gateway:8080',
+            'vigia_fhir': MCPServiceConfig(
+                name='vigia-fhir-server',
+                endpoint='http://vigia-fhir-server:8080',
                 service_type='custom',
                 compliance_level='hipaa',
                 timeout=45,
+                rate_limit=20
+            ),
+            'vigia_minsal': MCPServiceConfig(
+                name='vigia-minsal-server',
+                endpoint='http://vigia-minsal-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=30,
                 rate_limit=15
+            ),
+            'vigia_redis': MCPServiceConfig(
+                name='vigia-redis-server',
+                endpoint='http://vigia-redis-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=20,
+                rate_limit=50
+            ),
+            'vigia_medical_protocol': MCPServiceConfig(
+                name='vigia-medical-protocol-server',
+                endpoint='http://vigia-medical-protocol-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=30
             ),
             'medical_knowledge': MCPServiceConfig(
                 name='vigia-medical-knowledge',
@@ -636,6 +708,241 @@ class MCPGateway:
             severity,
             platform,
             message
+        )
+    
+    # === NEW MCP INTEGRATION METHODS ===
+    
+    async def supabase_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Supabase database operations for medical data"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'supabase',
+            'data_storage': True,
+            'phi_protection': True,
+            'backup_enabled': True
+        })
+        
+        return await self.call_service(
+            'supabase',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def postgres_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """PostgreSQL database operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'postgres',
+            'database_type': 'primary',
+            'transaction_support': True,
+            'acid_compliance': True
+        })
+        
+        return await self.call_service(
+            'postgres',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def google_cloud_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Google Cloud Platform operations (Vertex AI, Storage, BigQuery)"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'google_cloud',
+            'ai_processing': True,
+            'hipaa_compliance': True,
+            'vertex_ai_enabled': True
+        })
+        
+        return await self.call_service(
+            'google_cloud',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def sendgrid_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """SendGrid email operations for medical notifications"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'sendgrid',
+            'notification_type': 'email',
+            'phi_protection': True,
+            'delivery_tracking': True
+        })
+        
+        return await self.call_service(
+            'sendgrid',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def aws_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """AWS cloud services operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'aws',
+            'cloud_infrastructure': True,
+            'hipaa_eligible': True,
+            'scalable': True
+        })
+        
+        return await self.call_service(
+            'aws',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def sentry_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Sentry error tracking and monitoring"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'sentry',
+            'monitoring_type': 'error_tracking',
+            'performance_monitoring': True,
+            'alert_system': True
+        })
+        
+        return await self.call_service(
+            'sentry',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    # === CUSTOM VIGIA MCP SERVICES ===
+    
+    async def fhir_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """FHIR operations for medical data interchange"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_fhir',
+            'interoperability': True,
+            'hl7_standard': True,
+            'medical_data_exchange': True
+        })
+        
+        return await self.call_service(
+            'vigia_fhir',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def minsal_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """MINSAL Chilean healthcare compliance operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_minsal',
+            'regulatory_compliance': True,
+            'chile_specific': True,
+            'mandatory_reporting': True
+        })
+        
+        return await self.call_service(
+            'vigia_minsal',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def redis_cache_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Redis caching operations for medical data"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_redis',
+            'cache_type': 'medical_data',
+            'high_performance': True,
+            'vector_search': True
+        })
+        
+        return await self.call_service(
+            'vigia_redis',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def medical_protocol_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Medical protocol operations for clinical guidelines"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_medical_protocol',
+            'clinical_guidelines': True,
+            'evidence_based': True,
+            'protocol_search': True
+        })
+        
+        return await self.call_service(
+            'vigia_medical_protocol',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    # === CONVENIENCE METHODS FOR COMPLEX WORKFLOWS ===
+    
+    async def send_email_alert(self, recipient: str, subject: str, message: str, severity: str = "medium", patient_context: Optional[Dict[str, Any]] = None) -> MCPResponse:
+        """Send medical alert via email"""
+        return await self.sendgrid_operation(
+            'send_email',
+            medical_context=patient_context,
+            to=recipient,
+            subject=f"[{severity.upper()}] {subject}",
+            html_content=message,
+            medical_alert=True
+        )
+    
+    async def cache_patient_data(self, patient_id: str, patient_data: Dict[str, Any], ttl_hours: int = 24) -> MCPResponse:
+        """Cache patient data in Redis"""
+        return await self.redis_cache_operation(
+            'cache_patient_data',
+            medical_context={'patient_id': patient_id},
+            patient_id=patient_id,
+            patient_data=patient_data,
+            ttl_hours=ttl_hours
+        )
+    
+    async def search_medical_protocols(self, query: str, lpp_grade: Optional[int] = None) -> MCPResponse:
+        """Search for medical protocols"""
+        search_params = {'query': query}
+        if lpp_grade:
+            search_params['severity'] = f'grade_{lpp_grade}'
+        
+        return await self.medical_protocol_operation(
+            'search_protocols',
+            search_params
+        )
+    
+    async def validate_minsal_compliance(self, lpp_data: Dict[str, Any], hospital_data: Dict[str, Any]) -> MCPResponse:
+        """Validate MINSAL compliance for Chilean healthcare"""
+        return await self.minsal_operation(
+            'validate_minsal_compliance',
+            medical_context={'country': 'chile'},
+            lpp_data=lpp_data,
+            hospital_data=hospital_data
+        )
+    
+    async def create_fhir_patient(self, patient_data: Dict[str, Any]) -> MCPResponse:
+        """Create FHIR Patient resource"""
+        return await self.fhir_operation(
+            'create_patient',
+            medical_context={'resource_type': 'Patient'},
+            patient_data=patient_data
+        )
+    
+    async def log_medical_error(self, error_data: Dict[str, Any], severity: str = "error") -> MCPResponse:
+        """Log medical system error to Sentry"""
+        return await self.sentry_operation(
+            'capture_exception',
+            medical_context={'system': 'vigia_medical'},
+            error_data=error_data,
+            level=severity,
+            tags={'medical_system': True}
         )
     
     async def get_service_status(self) -> Dict[str, Any]:

@@ -32,9 +32,9 @@ mcp>=1.0.0
 # Monitoring
 sentry-sdk==2.0.1
 
-# Basic data processing
-pandas==2.2.2
-matplotlib==3.8.4
+# Basic data processing (removed for now to avoid build issues)
+# pandas==2.2.2  
+# matplotlib==3.8.4
 
 # Async processing
 celery==5.3.6

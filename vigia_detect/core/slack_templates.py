@@ -1,6 +1,7 @@
 """
 Templates centralizados para notificaciones médicas (channel-agnostic)
 Templates anteriormente específicos para Slack, ahora genéricos para auditoría
+Enhanced with Block Kit support for rich Slack interfaces
 """
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -134,6 +135,40 @@ class MedicalNotificationTemplates:
             "hipaa_compliant": True,
             "audit_safe": True
         }
+    
+    def to_block_kit(self) -> List[Dict[str, Any]]:
+        """Convert patient history to Slack Block Kit format"""
+        try:
+            from ..slack.block_kit_medical import BlockKitMedical
+            # Convert back to patient data format for Block Kit
+            patient_data = {
+                'id': self['patient_info']['anonymized_id'],
+                'name': self['patient_info']['anonymized_name'], 
+                'age': int(self['patient_info']['age_range'].split('-')[0]) + 5,  # Mid-range
+                'service': self['patient_info']['service'],
+                'bed': self['patient_info']['bed_unit'],
+                'diagnoses': ["Diagnóstico confidencial"] * self['medical_summary']['diagnoses_count'],
+                'medications': ["Medicamento confidencial"] * self['medical_summary']['medications_count'],
+                'lpp_history': [
+                    {
+                        'date': '****/**/**',
+                        'grade': 'X',
+                        'location': 'confidencial',
+                        'status': 'histórico'
+                    }
+                ] * self['medical_summary']['lpp_history_entries']
+            }
+            return BlockKitMedical.patient_history_blocks(patient_data)
+        except ImportError:
+            return [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Patient History:* {self['patient_info']['anonymized_name']}"
+                    }
+                }
+            ]
     
     @staticmethod
     def resolucion_caso() -> Dict[str, Any]:
@@ -280,3 +315,33 @@ class MedicalAlertTemplates:
             }
         
         return alert_data
+    
+    def to_block_kit(self) -> List[Dict[str, Any]]:
+        """Convert alert data to Slack Block Kit format"""
+        try:
+            from ..slack.block_kit_medical import BlockKitMedical
+            
+            case_info = self.get("case_info", {})
+            detection = self.get("medical_detection", {})
+            
+            return BlockKitMedical.lpp_alert_blocks(
+                case_id=case_info.get("case_id", "unknown"),
+                patient_code=case_info.get("anonymized_patient", "unknown"),
+                lpp_grade=detection.get("lpp_grade", 0),
+                confidence=detection.get("model_confidence", 0.0),
+                location=detection.get("anatomical_location", "unknown"),
+                service=case_info.get("service", "unknown"),
+                bed=case_info.get("anonymized_bed", "unknown"),
+                timestamp=case_info.get("timestamp")
+            )
+        except ImportError:
+            # Fallback to simple text if Block Kit not available
+            return [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*LPP Alert:* Grade {self.get('medical_detection', {}).get('lpp_grade', 0)} detected"
+                    }
+                }
+            ]

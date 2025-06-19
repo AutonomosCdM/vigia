@@ -16,6 +16,7 @@ from urllib.parse import urljoin
 
 from ..utils.shared_utilities import VigiaLogger
 from ..systems.medical_decision_engine import MedicalDecisionEngine
+from ..slack.block_kit_medical import BlockKitMedical, BlockKitInteractions
 
 logger = VigiaLogger.get_logger(__name__)
 
@@ -583,6 +584,73 @@ class MCPGateway:
     async def redis_operation(self, operation: str, **kwargs) -> MCPResponse:
         """Redis-specific operations"""
         return await self.call_service('redis', operation, kwargs)
+    
+    async def slack_operation(self, operation: str, **kwargs) -> MCPResponse:
+        """Slack-specific operations with Block Kit support"""
+        return await self.call_service('slack', operation, kwargs)
+    
+    async def send_slack_block_kit(self, channel: str, blocks: List[Dict[str, Any]], 
+                                  text: str = None, **kwargs) -> MCPResponse:
+        """Send Block Kit message to Slack"""
+        params = {
+            'channel': channel,
+            'blocks': blocks,
+            **kwargs
+        }
+        if text:
+            params['text'] = text
+            
+        return await self.slack_operation('chat_postMessage', **params)
+    
+    async def send_lpp_alert_slack(self, case_id: str, patient_code: str, lpp_grade: int,
+                                  confidence: float, location: str, service: str, bed: str,
+                                  channel: str = '#medical-alerts') -> MCPResponse:
+        """Send LPP alert using Block Kit format"""
+        blocks = BlockKitMedical.lpp_alert_blocks(
+            case_id=case_id,
+            patient_code=patient_code,
+            lpp_grade=lpp_grade,
+            confidence=confidence,
+            location=location,
+            service=service,
+            bed=bed
+        )
+        
+        return await self.send_slack_block_kit(
+            channel=channel,
+            blocks=blocks,
+            text=f"LPP Grade {lpp_grade} Alert - Case {case_id}"
+        )
+    
+    async def send_patient_history_slack(self, patient_data: Dict[str, Any],
+                                        channel: str = '#medical-team') -> MCPResponse:
+        """Send patient history using Block Kit format"""
+        blocks = BlockKitMedical.patient_history_blocks(patient_data)
+        
+        return await self.send_slack_block_kit(
+            channel=channel,
+            blocks=blocks,
+            text=f"Patient History - {patient_data.get('name', 'Unknown')[:3]}***"
+        )
+    
+    async def handle_slack_interaction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle Slack interactive components (buttons, modals, etc.)"""
+        if payload.get('type') == 'block_actions':
+            # Handle button clicks
+            actions = payload.get('actions', [])
+            if actions:
+                action = actions[0]
+                action_id = action.get('action_id')
+                value = action.get('value')
+                user_id = payload.get('user', {}).get('id')
+                
+                return BlockKitInteractions.handle_action(action_id, value, user_id)
+                
+        elif payload.get('type') == 'view_submission':
+            # Handle modal submissions
+            return BlockKitInteractions.handle_modal_submission(payload.get('view', {}))
+        
+        return {"response_type": "ephemeral", "text": "Acción no reconocida"}
     
     async def lpp_detection(self, image_path: str, patient_context: Dict[str, Any]) -> MCPResponse:
         """LPP detection via custom medical service"""

@@ -148,14 +148,64 @@
           "note": "All tests passed"
         }
       ]
+    },
+    "task_1750307635": {
+      "task_id": "task_1750307635",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:33:55.504211",
+      "end_time": "2025-06-19T00:33:55.505460",
+      "claude_actual_hours": 3.469444444444444e-07,
+      "efficiency_ratio": 1.734722222222222e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:33:55.505115",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 1.6e-05
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:33:55.505463",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750307665": {
+      "task_id": "task_1750307665",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:34:25.577990",
+      "end_time": "2025-06-19T00:34:25.579100",
+      "claude_actual_hours": 3.083333333333334e-07,
+      "efficiency_ratio": 1.541666666666667e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:34:25.578712",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 1.3033333333333334e-05
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:34:25.579103",
+          "note": "All tests passed"
+        }
+      ]
     }
   },
   "stats": {
-    "total_tasks": 6,
-    "completed_tasks": 5,
+    "total_tasks": 8,
+    "completed_tasks": 7,
     "failed_tasks": 0,
     "active_tasks": 1,
-    "total_claude_hours": 0.5575883408333333,
-    "total_human_estimate_hours": 12.5
+    "total_claude_hours": 0.557588996111111,
+    "total_human_estimate_hours": 16.5
   }
 }

@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: vigia-medical
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python vigia_detect/web/unified_server.py
+    healthCheckPath: /health
+    plan: free
+    region: oregon
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: VIGIA_USE_MOCK_YOLO
+        value: true
+      - key: MCP_MODE
+        value: serverless
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+      - key: PORT
+        sync: false
+      # Optional external services
+      - key: REDIS_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false

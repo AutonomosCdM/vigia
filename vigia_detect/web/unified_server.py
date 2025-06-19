@@ -17,6 +17,7 @@ import logging
 from typing import Optional, Dict, Any
 from pathlib import Path
 import argparse
+from datetime import datetime
 
 # Configure logging first
 logging.basicConfig(
@@ -151,15 +152,19 @@ class UnifiedServer:
             """Health check endpoint for deployment platforms."""
             status = {
                 "status": "healthy",
-                "timestamp": str(asyncio.get_event_loop().time()),
+                "timestamp": datetime.utcnow().isoformat(),
+                "version": "1.0.0",
                 "services": {
-                    "webhook": webhook_available,
-                    "whatsapp": whatsapp_available,
-                    "detection": detection_available,
-                    "redis": self.redis_available,
-                    "database": self.database_available,
-                    "mcp": mcp_available
-                }
+                    "yolo": "mock" if os.getenv("VIGIA_USE_MOCK_YOLO", "false").lower() == "true" else "active",
+                    "mcp_endpoints": "active" if mcp_available else "unavailable",
+                    "webhook": "active" if webhook_available else "unavailable",
+                    "whatsapp": "active" if whatsapp_available else "unavailable", 
+                    "detection": "active" if detection_available else "unavailable",
+                    "redis": "connected" if self.redis_available else "not_configured",
+                    "database": "connected" if self.database_available else "not_configured"
+                },
+                "environment": os.getenv("ENVIRONMENT", "development"),
+                "mcp_mode": os.getenv("MCP_MODE", "standard")
             }
             return JSONResponse(content=status, status_code=200)
         

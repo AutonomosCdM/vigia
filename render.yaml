@@ -2,7 +2,7 @@ services:
   - type: web
     name: vigia-medical
     runtime: python
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements-render.txt && pip install -r requirements-medical.txt
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements-render-minimal.txt
     startCommand: uvicorn vigia_detect.api.standalone:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     plan: free

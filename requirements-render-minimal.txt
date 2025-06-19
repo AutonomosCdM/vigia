@@ -1,0 +1,41 @@
+# Minimal requirements for Render deployment with mock YOLO
+# Core dependencies only - no heavy ML libraries
+
+# Core dependencies
+numpy==1.26.4
+pillow==10.4.0
+opencv-python==4.9.0.80
+python-dotenv==1.0.1
+pydantic==2.7.0
+pydantic-settings==2.2.1
+
+# Web API
+fastapi==0.110.2
+uvicorn==0.29.0
+python-multipart==0.0.9
+httpx==0.27.0
+
+# Database
+supabase==2.4.2
+postgrest==0.16.4
+
+# Redis
+redis==5.0.4
+
+# Communication services (from requirements-medical.txt)
+twilio==9.0.4
+slack-sdk==3.27.1
+
+# MCP Integration
+mcp>=1.0.0
+
+# Monitoring
+sentry-sdk==2.0.1
+
+# Basic data processing
+pandas==2.2.2
+matplotlib==3.8.4
+
+# Async processing
+celery==5.3.6
+kombu==5.3.5

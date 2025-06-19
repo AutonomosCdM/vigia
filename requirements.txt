@@ -24,8 +24,9 @@ faiss-cpu>=1.7.4  # Use faiss-gpu if CUDA available
 python-magic==0.4.27
 
 # Deep Learning - YOLOv5
-torch==2.3.0
-torchvision==0.18.0
+# Note: torch/torchvision handled by ultralytics
+# torch==2.3.0
+# torchvision==0.18.0
 ultralytics==8.2.0
 yolov5==7.0.13
 

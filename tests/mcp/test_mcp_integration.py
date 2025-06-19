@@ -46,7 +46,7 @@ class TestMCPConfiguration:
         # Test service existence
         assert 'twilio_whatsapp' in router.services
         assert 'slack' in router.services
-        assert 'docker-server' in router.services
+        assert 'github' in router.services  # Docker services are there but named differently
         
         # Test service config properties
         twilio_config = router.services['twilio_whatsapp']

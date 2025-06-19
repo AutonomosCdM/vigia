@@ -7,8 +7,9 @@ services:
     healthCheckPath: /health
     plan: free
     region: oregon
-    pythonVersion: "3.11"
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
       - key: ENVIRONMENT
         value: production
       - key: LOG_LEVEL

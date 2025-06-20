@@ -1027,3 +1027,7 @@ class ClinicalProcessingFactory:
         )
         
         return processor
+
+
+# Legacy alias for backward compatibility
+ClinicalProcessor = ClinicalProcessingSystem

@@ -85,9 +85,9 @@ class VigiaCapabilityMapper:
                 task_id="note_summary_1",
                 level=CapabilityLevel.PARTIAL,
                 components=[
-                    "vigia_detect.agents.agent_llm.LlmAgent",
-                    "vigia_detect.messaging.slack_messenger",
-                    "vigia_detect.ai.medgemma_local_client"
+                    "vigia_detect.agents.adk.clinical_assessment",
+                    "vigia_detect.slack.block_kit_medical",
+                    "vigia_detect.ai.medgemma_adk"
                 ],
                 evidence="Clinical summaries via LLM agents and Slack notifications",
                 gaps=["Structured note templates", "FHIR export"]
@@ -110,9 +110,9 @@ class VigiaCapabilityMapper:
                 task_id="comm_explain_1",
                 level=CapabilityLevel.STRONG,
                 components=[
-                    "vigia_detect.agents.agent_communication.UserCommunicationAgent",
-                    "vigia_detect.messaging.whatsapp_messenger",
-                    "vigia_detect.ai.medgemma_local_client"
+                    "vigia_detect.agents.adk.communication",
+                    "vigia_detect.mcp.gateway",
+                    "vigia_detect.ai.medgemma_adk"
                 ],
                 evidence="Medical term simplification with readability scoring",
                 gaps=[]
@@ -121,8 +121,8 @@ class VigiaCapabilityMapper:
                 task_id="comm_instruct_1",
                 level=CapabilityLevel.STRONG,
                 components=[
-                    "vigia_detect.messaging.templates",
-                    "vigia_detect.agents.agent_communication"
+                    "vigia_detect.slack.block_kit_medical",
+                    "vigia_detect.agents.adk.communication"
                 ],
                 evidence="Automated care instructions via WhatsApp",
                 gaps=[]

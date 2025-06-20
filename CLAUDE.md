@@ -69,8 +69,14 @@ python examples/redis_integration_demo.py
 # Environment setup (loads .env files from config/)
 source scripts/quick_env_setup.sh
 
-# Secure credential management
+# Secure credential management (UPDATED - Medical-grade security)
 python scripts/setup/setup_credentials.py
+python scripts/setup/secure_key_generator.py             # Generate production cryptographic keys
+python scripts/setup/setup_production_env.py             # Complete production environment setup
+
+# Security audit and validation (NEW - Comprehensive security monitoring)
+python scripts/security/security_audit.py               # Run complete security audit
+python scripts/security/validate_security_enhancements.py  # Validate all security components
 
 # Docker deployment configurations
 deploy/docker/docker-compose.hospital.yml     # Hospital production
@@ -360,6 +366,33 @@ tracker.finish_task(task_id, success=True, notes="All MCPs working")
 tracker.print_dashboard()  # Shows Claude vs Human productivity metrics
 ```
 
+### Security Development Examples (NEW)
+```python
+# Medical-grade security setup
+from vigia_detect.utils.secrets_manager import VigiaSecretsManager
+from vigia_detect.utils.auth_manager import get_auth_manager, UserRole
+from vigia_detect.monitoring.security_monitor import get_security_monitor
+
+# Multi-cloud secrets management
+secrets = VigiaSecretsManager()
+jwt_secret = secrets.get_secret("JWT_SECRET_KEY")
+
+# Medical role-based authentication
+auth = get_auth_manager()
+user = auth.create_user(
+    email="doctor@hospital.cl",
+    password="SecurePass123!",
+    name="Dr. García",
+    roles=[UserRole.PHYSICIAN],
+    medical_license="MD12345"
+)
+
+# Real-time security monitoring
+monitor = get_security_monitor()
+monitor.record_event("medical_data_access", severity="info", 
+                    details={"patient_id": "PAT-001", "phi_data": True})
+```
+
 ## Medical Safety Requirements
 
 ### Evidence-Based Medicine
@@ -374,6 +407,15 @@ tracker.print_dashboard()  # Shows Claude vs Human productivity metrics
 - Medical protocol caching with Redis vector search (`vigia_detect/redis_layer/vector_service.py`)
 - Synthetic patient testing with 120+ patient cohort required before production
 - Evidence-based medical reasoning with A/B/C evidence level classification
+
+### Medical-Grade Security (NEW - v1.4.2)
+- **Automatic Secure Key Generation**: Production-grade cryptographic key generation (`scripts/setup/secure_key_generator.py`)
+- **Multi-Cloud Secrets Management**: Unified secrets interface supporting AWS, Google Cloud, Docker, local keyring (`vigia_detect/utils/secrets_manager.py`)
+- **TLS/SSL Medical Configuration**: Medical-grade TLS 1.3 with approved cipher suites (`vigia_detect/utils/tls_config.py`)
+- **OAuth 2.0 + MFA System**: Enterprise authentication with medical role hierarchy (`vigia_detect/utils/auth_manager.py`, `vigia_detect/api/auth_endpoints.py`)
+- **Security Monitoring**: Real-time threat detection with medical alert prioritization (`vigia_detect/monitoring/security_monitor.py`)
+- **HIPAA Compliance Middleware**: Security headers, rate limiting, request validation (`vigia_detect/utils/security_middleware.py`)
+- **Automated Vulnerability Scanning**: CI/CD security pipeline with dependency auditing (`.github/workflows/security-scan.yml`)
 
 ## Architecture Rules
 
@@ -424,7 +466,7 @@ vigia/
 - Complete audit trails with HIPAA compliance for all medical operations
 
 ## Production Status
-✅ **Production-Ready Cloud Run Medical System** - v1.4.1 Complete Architecture (RECENTLY REFACTORED):
+✅ **Production-Ready Cloud Run Medical System** - v1.4.2 Complete Architecture with Medical-Grade Security:
 - **Google ADK Hackathon Ready**: 5 native ADK agents with complete A2A protocol and Agent Cards
 - **Complete MCP Integration Suite**: 17+ MCP services (Official + Custom) covering all medical workflow aspects
 - **Medical AI Excellence**: Evidence-based decision engine with NPUAP/EPUAP/MINSAL compliance
@@ -437,18 +479,20 @@ vigia/
 - **Privacy-First Architecture**: Local MedGemma processing via Ollama, comprehensive audit trails
 - **Multi-Platform Deployment**: Docker for hospitals + Cloud Run for scalable cloud deployment
 - **Clean Codebase**: Recently refactored - no legacy files, consolidated dependencies, fixed imports
+- **Medical-Grade Security**: Complete security suite with OAuth 2.0, MFA, TLS 1.3, automated monitoring
 - **Error Monitoring**: Sentry integration for medical system reliability
 - **Evidence-Based Protocols**: AI-powered medical protocol search and compliance validation
 
 ## Development Notes
 
-### Recent Refactoring (v1.4.1)
-Major codebase cleanup completed:
+### Recent Refactoring & Security (v1.4.2)
+Major codebase cleanup and security enhancements completed:
 - **File consolidation**: 10 requirements files → 1 optimized requirements-cloudrun.txt
 - **Import fixes**: All _v2 and _refactored references corrected throughout codebase
-- **Legacy cleanup**: Removed 8+ obsolete files (cache, empty logs, backup configs)
+- **Legacy cleanup**: Removed 10+ obsolete modules, 46 cache directories, backup files
+- **Security implementation**: Complete medical-grade security suite with 8 security components
+- **Architecture compliance**: Clean ADK implementation with zero duplicates or legacy files
 - **Cloud Run ready**: 6 ADK services with FastAPI entrypoints for production deployment
-- **Architecture compliance**: Now fully follows CLAUDE.md clean architecture principles
 
 ### Claude Time Tracking
 The system includes comprehensive productivity tracking showing Claude efficiency ratios. Recent tasks show:

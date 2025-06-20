@@ -316,7 +316,7 @@ class ConfigManager(BaseClient):
         return {
             "build": ".",
             "container_name": f"vigia-whatsapp-{environment.value}",
-            "command": ["python", "-m", "vigia_detect.messaging.whatsapp.server"],
+            "command": ["python", "-m", "vigia_detect.webhook.server"],
             "environment": self._get_service_env_vars(),
             "ports": [f"{port}:5000"],
             "depends_on": ["redis"],

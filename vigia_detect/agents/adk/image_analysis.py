@@ -14,9 +14,9 @@ from pathlib import Path
 import cv2
 import torch
 
-from google.adk.agents import BaseAgent, AgentContext
+from google.adk.agents import BaseAgent
 from google.adk.core.types import AgentCapability
-from google.adk.tools import Tool
+from google.adk.tools import BaseTool, ToolContext
 
 from .base import VigiaBaseAgent
 

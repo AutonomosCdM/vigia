@@ -15,19 +15,18 @@ from typing import Dict, Any, List, Optional, AsyncIterator
 from datetime import datetime
 from pathlib import Path
 
-from google.adk.agents import LlmAgent, AgentContext
-from google.adk.core.types import AgentMessage, AgentResponse, AgentCapability
-from google.adk.tools import Tool
+from google.adk.agents import LlmAgent
+from google.adk.tools import BaseTool, ToolContext
 
 from .base import VigiaBaseAgent
-from ..ai.hume_ai_client import HumeAIClient, create_hume_ai_client, VoiceAnalysisResult
-from ..systems.medical_decision_engine import MedicalDecisionEngine
-from ..utils.shared_utilities import VigiaLogger
+from ...ai.hume_ai_client import HumeAIClient, create_hume_ai_client, VoiceAnalysisResult
+from ...systems.medical_decision_engine import MedicalDecisionEngine
+from ...utils.shared_utilities import VigiaLogger
 
 logger = VigiaLogger.get_logger(__name__)
 
 
-class VoiceAnalysisTool(Tool):
+class VoiceAnalysisTool(BaseTool):
     """
     ADK Tool for voice analysis operations.
     
@@ -63,7 +62,7 @@ class VoiceAnalysisTool(Tool):
             }
         )
     
-    async def execute(self, context: AgentContext, **kwargs) -> Dict[str, Any]:
+    async def execute(self, context: ToolContext, **kwargs) -> Dict[str, Any]:
         """Execute voice analysis"""
         try:
             audio_file_path = kwargs.get("audio_file_path")
@@ -114,7 +113,7 @@ class VoiceAnalysisTool(Tool):
             }
 
 
-class StreamingVoiceAnalysisTool(Tool):
+class StreamingVoiceAnalysisTool(BaseTool):
     """
     ADK Tool for real-time streaming voice analysis.
     """
@@ -140,7 +139,7 @@ class StreamingVoiceAnalysisTool(Tool):
             }
         )
     
-    async def execute(self, context: AgentContext, **kwargs) -> Dict[str, Any]:
+    async def execute(self, context: ToolContext, **kwargs) -> Dict[str, Any]:
         """Execute streaming voice analysis"""
         # Note: In a real implementation, this would connect to an audio stream
         # For now, we return a placeholder indicating streaming capability
@@ -175,9 +174,9 @@ class VoiceAnalysisAgent(VigiaBaseAgent, LlmAgent):
             agent_id="voice_analysis_agent",
             agent_name="Voice Analysis Agent",
             capabilities=[
-                AgentCapability.REASONING,
-                AgentCapability.PLANNING,
-                AgentCapability.TOOL_USE
+                "reasoning",
+                "planning", 
+                "tool_use"
             ],
             medical_specialties=["voice_analysis", "stress_detection", "pain_assessment"]
         )

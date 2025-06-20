@@ -70,7 +70,7 @@ except ImportError as e:
     mcp_available = False
 
 try:
-    from vigia_detect.messaging.whatsapp.processor import WhatsAppProcessor
+    from vigia_detect.mcp.gateway import create_mcp_gateway
     whatsapp_available = True
 except ImportError as e:
     logger.warning(f"WhatsApp components not available: {e}")

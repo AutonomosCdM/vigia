@@ -2,13 +2,13 @@
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/AutonomosCdM/vigia)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
-![Version](https://img.shields.io/badge/version-1.3.3-blue)
+![Version](https://img.shields.io/badge/version-1.4.2-blue)
 ![Architecture](https://img.shields.io/badge/Architecture-ADK_Agents-purple)
 ![Compliance](https://img.shields.io/badge/Compliance-HIPAA_ISO13485-green)
 
 Sistema médico de producción para detección de lesiones por presión (LPP) usando arquitectura ADK (Agent Development Kit) con 5 agentes médicos especializados, procesamiento local MedGemma y cumplimiento hospitalario.
 
-## 🆕 **v1.3.3 - Arquitectura ADK Lista para Producción**
+## 🆕 **v1.4.2 - Arquitectura ADK con Seguridad Médica**
 - **🏥 Sistema Médico ADK**: 5 agentes especializados con comunicación A2A
 - **🔬 Decisiones Basadas en Evidencia**: Motor NPUAP/EPUAP/MINSAL con justificación científica
 - **⚡ Pipeline Asíncrono**: Procesamiento Celery que previene timeouts médicos

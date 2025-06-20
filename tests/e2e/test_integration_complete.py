@@ -13,7 +13,7 @@ from typing import Dict, Any
 # Layer 1 - Input Isolation
 from vigia_detect.core.input_packager import InputPackager, StandardizedInput, InputSource, InputType
 from vigia_detect.core.input_queue import InputQueue
-from vigia_detect.messaging.whatsapp.isolated_bot import IsolatedWhatsAppBot
+from vigia_detect.mcp.gateway import create_mcp_gateway
 
 # Layer 2 - Medical Orchestration  
 from vigia_detect.core.medical_dispatcher import MedicalDispatcher, ProcessingRoute

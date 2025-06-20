@@ -75,8 +75,8 @@ class SystemValidator:
                 "vigia_detect.ai.medgemma_client"
             ],
             "Messaging": [
-                "vigia_detect.messaging.twilio_client",
-                "vigia_detect.messaging.whatsapp.server"
+                "vigia_detect.api.mcp_twilio",
+                "vigia_detect.webhook.server"
             ]
         }
         

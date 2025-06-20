@@ -13,8 +13,8 @@ from typing import Dict, Any, List
 import os
 
 from vigia_detect.core.unified_image_processor import UnifiedImageProcessor
-from vigia_detect.messaging.whatsapp.processor import WhatsAppProcessor
-from vigia_detect.messaging.slack_notifier_refactored import SlackNotifier
+from vigia_detect.mcp.gateway import create_mcp_gateway
+from vigia_detect.slack.block_kit_medical import BlockKitMedical
 from vigia_detect.deployment.health_checker import HealthChecker
 from vigia_detect.utils.error_handling import VigiaError, PatientDataError, ImageProcessingError
 from vigia_detect.core.constants import LPPGrade
@@ -35,14 +35,15 @@ class TestCriticalMedicalFlows:
         return UnifiedImageProcessor()
     
     @pytest.fixture
-    def whatsapp_processor(self):
-        """Create WhatsApp processor for testing."""
-        return WhatsAppProcessor()
+    async def mcp_gateway(self):
+        """Create MCP gateway for communication testing."""
+        async with create_mcp_gateway({'medical_compliance': 'hipaa'}) as gateway:
+            yield gateway
     
     @pytest.fixture
-    def slack_notifier(self):
-        """Create Slack notifier for testing."""
-        return SlackNotifier()
+    def slack_block_kit(self):
+        """Create Slack Block Kit medical interface for testing."""
+        return BlockKitMedical()
     
     @pytest.fixture
     def health_checker(self):

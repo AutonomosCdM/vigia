@@ -36,6 +36,7 @@ httpx==0.26.0  # Compatible with Supabase
 supabase==2.4.2
 postgrest==0.16.4
 redis==5.0.4
+aioredis==2.0.1  # Async Redis client for A2A infrastructure
 
 # === MEDICAL COMMUNICATION ===
 # MCP Protocol Support

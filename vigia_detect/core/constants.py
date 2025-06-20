@@ -14,6 +14,13 @@ class LPPGrade(Enum):
     GRADE_4 = 4    # Pérdida total del espesor de los tejidos
 
 
+class ProcessingRoute(Enum):
+    """Rutas de procesamiento médico"""
+    IMMEDIATE = "immediate"
+    URGENT = "urgent"
+    ROUTINE = "routine"
+
+
 class SlackActionIds:
     """Action IDs estandarizados para interacciones de Slack"""
     # Botones principales

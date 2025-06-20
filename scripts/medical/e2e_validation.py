@@ -28,7 +28,7 @@ try:
     from vigia_detect.cv_pipeline.detector import PressureInjuryDetector
     from vigia_detect.db.supabase_client import SupabaseClient
     from vigia_detect.webhook.client import WebhookClient
-    from vigia_detect.messaging.slack_notifier import SlackNotifier
+    from vigia_detect.slack.block_kit_medical import BlockKitMedical as SlackNotifier
     from vigia_detect.utils.image_utils import load_image, validate_image
 except ImportError as e:
     logger.error(f"Failed to import Vigia modules: {e}")

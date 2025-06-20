@@ -38,7 +38,7 @@ def create_app():
 def create_whatsapp_app():
     """Create WhatsApp service app."""
     try:
-        from vigia_detect.messaging.whatsapp.server import app
+        from vigia_detect.webhook.server import app
         logger.info("WhatsApp server created successfully")
         return app
     except ImportError as e:

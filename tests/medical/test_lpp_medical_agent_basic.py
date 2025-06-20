@@ -6,7 +6,7 @@ Simplified tests to verify the medical testing suite works correctly.
 """
 
 import pytest
-from vigia_detect.agents.medical_agent_wrapper import LPPMedicalAgent
+from vigia_detect.agents.adk.clinical_assessment import ClinicalAssessmentAgent as LPPMedicalAgent
 from tests.medical.synthetic_patients import get_patient_by_profile, LPPGradeSynthetic
 
 

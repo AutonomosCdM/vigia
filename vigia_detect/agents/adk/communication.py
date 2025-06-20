@@ -12,10 +12,8 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 from enum import Enum
 
-from google.adk.agents import WorkflowAgent, AgentContext
-from google.adk.core.types import AgentCapability
-from google.adk.tools import Tool
-from google.adk.workflows import Workflow, WorkflowStep, ConditionalStep, ParallelStep
+from google.adk.agents import WorkflowAgent
+from google.adk.tools import BaseTool, ToolContext
 
 from .base import VigiaBaseAgent
 

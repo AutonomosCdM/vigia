@@ -3,7 +3,11 @@ Tests para integración completa MINSAL en arquitectura Vigia
 """
 
 import pytest
-from vigia_detect.agents.enhanced_medical_agent_wrapper import EnhancedLPPMedicalAgent, create_medical_agent
+from vigia_detect.agents.adk.clinical_assessment import ClinicalAssessmentAgent as EnhancedLPPMedicalAgent
+
+def create_medical_agent(**kwargs):
+    """Factory function for creating medical agents."""
+    return EnhancedLPPMedicalAgent(**kwargs)
 from vigia_detect.core.enhanced_medical_dispatcher import EnhancedMedicalDispatcher, create_enhanced_dispatcher
 from vigia_detect.rag.minsal_rag_enhancer import MINSALRAGEnhancer, enhance_minsal_decision_with_rag
 

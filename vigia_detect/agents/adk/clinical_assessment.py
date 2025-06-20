@@ -11,10 +11,8 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from google.adk.agents import LlmAgent, AgentContext
-from google.adk.core.types import AgentCapability
-from google.adk.tools import Tool
-from google.adk.models import ModelConfig
+from google.adk.agents import LlmAgent
+from google.adk.tools import BaseTool, ToolContext
 
 from .base import VigiaBaseAgent
 
@@ -206,7 +204,7 @@ Response format should include:
             ]
         }
     
-    def create_tools(self) -> List[Tool]:
+    def create_tools(self) -> List[BaseTool]:
         """Create clinical assessment tools."""
         
         tools = super().create_medical_tools()
@@ -267,7 +265,7 @@ Response format should include:
                 "evidence_based": True
             }
         
-        tools.append(Tool(
+        tools.append(BaseTool(
             name="assess_lpp_grade",
             function=assess_lpp_grade,
             description="Perform evidence-based clinical assessment of pressure injury following NPUAP guidelines"
@@ -305,7 +303,7 @@ Response format should include:
                 "review_schedule": self._determine_review_schedule(clinical_grade)
             }
         
-        tools.append(Tool(
+        tools.append(BaseTool(
             name="generate_care_plan",
             function=generate_care_plan,
             description="Generate comprehensive evidence-based care plan for pressure injury management"
@@ -356,7 +354,7 @@ Response format should include:
                 "escalation_needed": progress == "worsening"
             }
         
-        tools.append(Tool(
+        tools.append(BaseTool(
             name="assess_healing_progress",
             function=assess_healing_progress,
             description="Assess pressure injury healing progress and recommend care plan adjustments"
@@ -636,7 +634,7 @@ Response format should include:
         self,
         case_id: str,
         patient_data: Dict[str, Any],
-        context: AgentContext
+        context: ToolContext
     ) -> Dict[str, Any]:
         """
         Process clinical assessment case using LLM reasoning.

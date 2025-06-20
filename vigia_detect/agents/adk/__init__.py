@@ -7,7 +7,7 @@ All agents are built using Google ADK patterns without wrappers or legacy code.
 
 Architecture:
 - BaseAgent: Custom agents with specialized logic (ImageAnalysisAgent)
-- LLMAgent: Agents using language models for reasoning (ClinicalAssessmentAgent, ProtocolAgent)
+- LlmAgent: Agents using language models for reasoning (ClinicalAssessmentAgent, ProtocolAgent)
 - WorkflowAgent: Deterministic process orchestration (CommunicationAgent, WorkflowOrchestrationAgent)
 
 A2A Protocol:

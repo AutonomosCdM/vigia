@@ -1,6 +1,6 @@
-# Dockerfile for Clinical Assessment Agent
-# =======================================
-# ADK Native LLMAgent with Gemini Integration
+# Dockerfile for A2A Discovery Service
+# ====================================
+# Lightweight service for ADK Agent discovery and registry
 
 FROM python:3.11-slim
 
@@ -22,21 +22,17 @@ COPY vigia_detect/ ./vigia_detect/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
 
-# Copy ADK agent entry point
-COPY deploy/cloud-run/entrypoints/clinical_assessment_agent.py ./app.py
+# Copy A2A discovery entry point
+COPY deploy/cloud-run/entrypoints/a2a_discovery_service.py ./app.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV AGENT_ID=vigia-clinical-assessment
-ENV AGENT_TYPE=LLMAgent
-ENV LLM_MODEL=gemini-1.5-pro
-ENV TEMPERATURE=0.1
-ENV MAX_TOKENS=2048
+ENV SERVICE_TYPE=a2a_discovery
 ENV PORT=8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the agent
+# Run the discovery service
 CMD ["python", "app.py"]

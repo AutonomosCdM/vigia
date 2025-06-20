@@ -1,4 +1,0 @@
-# Ultra minimal para deployment exitoso
-python-dotenv==1.0.1
-flask==3.0.3
-requests==2.31.0

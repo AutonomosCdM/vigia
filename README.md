@@ -73,7 +73,7 @@ python examples/redis_integration_demo.py
 ./scripts/start_slack_server.sh
 
 # Procesar imágenes con IA local
-python vigia_detect/cli/process_images_refactored.py --input /path/to/images
+python vigia_detect/cli/process_images.py --input /path/to/images
 
 # Análisis de imágenes médicas con MedGemma
 python examples/medgemma_image_analysis_demo.py

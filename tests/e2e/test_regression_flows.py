@@ -29,7 +29,7 @@ class TestCLIRegression:
         try:
             # Test help command
             result = subprocess.run([
-                sys.executable, '-m', 'vigia_detect.cli.process_images_refactored', '--help'
+                sys.executable, '-m', 'vigia_detect.cli.process_images', '--help'
             ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
             
             # Help should exit with code 0
@@ -68,7 +68,7 @@ class TestCLIRegression:
         try:
             # Test invalid patient code
             result = subprocess.run([
-                sys.executable, '-m', 'vigia_detect.cli.process_images_refactored',
+                sys.executable, '-m', 'vigia_detect.cli.process_images',
                 '--patient-code', 'INVALID',
                 'nonexistent.jpg'
             ], capture_output=True, text=True, cwd=str(Path(__file__).parent.parent.parent))
@@ -494,9 +494,9 @@ class TestDatabaseIntegrationRegression:
     
     def test_supabase_client_interface_compatibility(self, mock_supabase_client):
         """Test that Supabase client interface remains compatible."""
-        from vigia_detect.db.supabase_client_refactored import SupabaseClient
+        from vigia_detect.db.supabase_client import SupabaseClient
         
-        with patch('vigia_detect.db.supabase_client_refactored.create_client', return_value=mock_supabase_client):
+        with patch('vigia_detect.db.supabase_client.create_client', return_value=mock_supabase_client):
             client = SupabaseClient()
             
             # Test basic operations still work

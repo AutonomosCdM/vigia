@@ -180,7 +180,7 @@ def create_redis_client():
     """Create Redis client - returns mock if Redis not available."""
     try:
         # Try to import the real client
-        from .client_v2 import MedicalRedisClient
+        from .client import MedicalRedisClient
         
         # Try to create real client
         client = MedicalRedisClient()

@@ -85,7 +85,7 @@ class VigiaCapabilityMapper:
                 task_id="note_summary_1",
                 level=CapabilityLevel.PARTIAL,
                 components=[
-                    "vigia_detect.agents.agent_llm.LLMAgent",
+                    "vigia_detect.agents.agent_llm.LlmAgent",
                     "vigia_detect.messaging.slack_messenger",
                     "vigia_detect.ai.medgemma_local_client"
                 ],

@@ -3,7 +3,7 @@ Clinical Assessment Agent - Native ADK Implementation
 ===================================================
 
 LLM-powered agent for evidence-based clinical decision making.
-Inherits from LLMAgent for medical reasoning and decision support.
+Inherits from LlmAgent for medical reasoning and decision support.
 """
 
 import logging
@@ -11,7 +11,7 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from google.adk.agents import LLMAgent, AgentContext
+from google.adk.agents import LlmAgent, AgentContext
 from google.adk.core.types import AgentCapability
 from google.adk.tools import Tool
 from google.adk.models import ModelConfig
@@ -21,7 +21,7 @@ from .base import VigiaBaseAgent
 logger = logging.getLogger(__name__)
 
 
-class ClinicalAssessmentAgent(VigiaBaseAgent, LLMAgent):
+class ClinicalAssessmentAgent(VigiaBaseAgent, LlmAgent):
     """
     Evidence-based clinical assessment agent using LLM reasoning.
     
@@ -60,7 +60,7 @@ class ClinicalAssessmentAgent(VigiaBaseAgent, LLMAgent):
             system_prompt=self._get_medical_system_prompt()
         )
         
-        LLMAgent.__init__(self, model_config=model_config)
+        LlmAgent.__init__(self, model_config=model_config)
         
         # Medical knowledge base
         self.npuap_guidelines = self._load_npuap_guidelines()

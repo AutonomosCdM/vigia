@@ -24,7 +24,7 @@ from ..core.input_packager import StandardizedInput
 from ..core.triage_engine import TriageResult as TriageDecision
 from ..cv_pipeline.detector import LPPDetector
 from ..cv_pipeline.preprocessor import ImagePreprocessor
-from ..db.supabase_client_refactored import SupabaseClientRefactored as SupabaseClient
+from ..db.supabase_client import SupabaseClientRefactored as SupabaseClient
 from ..utils.secure_logger import SecureLogger
 # Removed image_utils imports that don't exist
 from ..utils.validators import validate_patient_code_format

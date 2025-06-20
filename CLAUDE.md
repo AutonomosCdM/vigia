@@ -56,8 +56,8 @@ python scripts/setup_medgemma_ollama.py --model 27b --install
 ollama run symptoma/medgemma3 "¿Cuáles son los grados de LPP?"
 
 # Medical image processing
-python vigia_detect/cli/process_images_refactored.py --input /path/to/images
-python vigia_detect/cli/process_images_refactored.py --webhook --patient-code CD-2025-001
+python vigia_detect/cli/process_images.py --input /path/to/images
+python vigia_detect/cli/process_images.py --webhook --patient-code CD-2025-001
 
 # Redis medical protocol setup
 python scripts/setup_redis_simple.py

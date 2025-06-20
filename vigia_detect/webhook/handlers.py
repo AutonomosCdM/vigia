@@ -24,12 +24,12 @@ except ImportError:
     TwilioClient = None
 
 try:
-    from ..db.supabase_client_refactored import SupabaseClient
+    from ..db.supabase_client import SupabaseClient
 except ImportError:
     SupabaseClient = None
 
 try:
-    from ..redis_layer.client_v2 import MedicalRedisClient as RedisClient
+    from ..redis_layer.client import MedicalRedisClient as RedisClient
 except ImportError:
     RedisClient = None
 

@@ -68,7 +68,7 @@ start_webhook() {
 # Function to start CLI processing
 start_cli() {
     log "Starting CLI image processing"
-    exec python -m vigia_detect.cli.process_images_refactored "$@"
+    exec python -m vigia_detect.cli.process_images "$@"
 }
 
 # Function to start Celery worker

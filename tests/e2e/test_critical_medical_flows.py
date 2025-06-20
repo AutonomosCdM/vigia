@@ -406,10 +406,10 @@ class TestRegressionFlows:
     def test_cli_commands_still_work(self, temp_directory):
         """Test that CLI commands maintain their interface."""
         # This would test the CLI interface hasn't changed
-        from vigia_detect.cli.process_images_refactored import main as cli_main
+        from vigia_detect.cli.process_images import main as cli_main
         
         # Mock sys.argv for CLI testing
-        with patch('sys.argv', ['process_images_refactored.py', '--help']):
+        with patch('sys.argv', ['process_images.py', '--help']):
             try:
                 # Should not raise exception for help
                 pass

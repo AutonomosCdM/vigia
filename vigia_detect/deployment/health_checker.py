@@ -10,10 +10,10 @@ from datetime import datetime
 import subprocess
 
 from config.settings import settings
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 
 
-class HealthChecker(BaseClientV2):
+class HealthChecker(BaseClient):
     """
     Comprehensive health checker for all Vigia system components.
     """

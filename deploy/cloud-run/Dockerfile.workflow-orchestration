@@ -1,6 +1,6 @@
-# Dockerfile for Clinical Assessment Agent
-# =======================================
-# ADK Native LLMAgent with Gemini Integration
+# Dockerfile for Workflow Orchestration Agent
+# ===========================================
+# ADK Native Master WorkflowAgent for Medical Coordination
 
 FROM python:3.11-slim
 
@@ -23,19 +23,19 @@ COPY scripts/ ./scripts/
 COPY config/ ./config/
 
 # Copy ADK agent entry point
-COPY deploy/cloud-run/entrypoints/clinical_assessment_agent.py ./app.py
+COPY deploy/cloud-run/entrypoints/workflow_orchestration_agent.py ./app.py
 
 # Set environment variables
 ENV PYTHONPATH=/app
-ENV AGENT_ID=vigia-clinical-assessment
-ENV AGENT_TYPE=LLMAgent
-ENV LLM_MODEL=gemini-1.5-pro
-ENV TEMPERATURE=0.1
-ENV MAX_TOKENS=2048
+ENV AGENT_ID=vigia-workflow-orchestration
+ENV AGENT_TYPE=WorkflowAgent
+ENV ORCHESTRATOR_MODE=master
+ENV A2A_REGISTRY_ENDPOINT=https://discovery.vigia-adk.run.app
+ENV WORKFLOW_SLA_ENFORCEMENT=true
 ENV PORT=8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
 # Run the agent

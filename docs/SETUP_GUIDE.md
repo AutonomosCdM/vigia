@@ -310,7 +310,7 @@ docker-compose -f deploy/docker/docker-compose.dev.yml up -d
 
 1. **Process Medical Images**:
    ```bash
-   python vigia_detect/cli/process_images_refactored.py --input /path/to/medical/images
+   python vigia_detect/cli/process_images.py --input /path/to/medical/images
    ```
 
 2. **Start Medical Development Server**:

@@ -16,7 +16,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from vigia_detect.core.image_processor import ImageProcessor
 from vigia_detect.core.constants import LPP_SEVERITY_ALERTS
-from vigia_detect.db.supabase_client_refactored import SupabaseClientRefactored
+from vigia_detect.db.supabase_client import SupabaseClientRefactored
 from vigia_detect.utils.image_utils import list_image_files
 from vigia_detect.utils.energy_monitor import track_energy, energy_monitor
 from vigia_detect.webhook.client import SyncWebhookClient

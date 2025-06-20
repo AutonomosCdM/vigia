@@ -14,7 +14,7 @@ Complete API reference for the medical-grade LPP detection system with ADK archi
 
 ## CLI Module API
 
-**Location**: `vigia_detect/cli/process_images_refactored.py`
+**Location**: `vigia_detect/cli/process_images.py`
 
 ### Functions
 

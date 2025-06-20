@@ -75,4 +75,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Default command - can be overridden
 # For Render deployment, use: CMD ["python", "-m", "vigia_detect.web.unified_server"]
-CMD ["python", "-m", "vigia_detect.cli.process_images_refactored"]
+CMD ["python", "-m", "vigia_detect.cli.process_images"]

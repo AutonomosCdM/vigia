@@ -10,7 +10,7 @@ from pathlib import Path
 from enum import Enum
 
 from config.settings import settings
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 
 
 class DeploymentTarget(Enum):
@@ -21,7 +21,7 @@ class DeploymentTarget(Enum):
     PRODUCTION = "production"
 
 
-class DeployManager(BaseClientV2):
+class DeployManager(BaseClient):
     """
     Unified deployment manager that handles all deployment targets.
     Eliminates duplication between deploy.sh, deploy_with_render.sh, etc.

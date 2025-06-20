@@ -135,7 +135,7 @@ result = image_analysis_task.delay(
 **Location**: `vigia_detect/cli/`
 
 **Structure**:
-- `process_images_refactored.py`: Main CLI script with ADK integration
+- `process_images.py`: Main CLI script with ADK integration
 - `tests/`: Unit tests for CLI functionality
 
 **Key Features**:
@@ -147,7 +147,7 @@ result = image_analysis_task.delay(
 **Adding New CLI Features**:
 
 1. **Identify the requirement**: Define the new feature clearly
-2. **Locate relevant code**: Find functions in `process_images_refactored.py`
+2. **Locate relevant code**: Find functions in `process_images.py`
 3. **Implement logic**: Add feature with type hints and error handling
 4. **Update argument parsing**: Modify `parse_args()` using `argparse`
 5. **Integrate with main flow**: Connect to `main()` or `process_directory()`
@@ -156,7 +156,7 @@ result = image_analysis_task.delay(
 **Example CLI Usage**:
 ```bash
 # Process images with webhook integration
-python vigia_detect/cli/process_images_refactored.py \
+python vigia_detect/cli/process_images.py \
   --input /path/to/images \
   --webhook \
   --patient-code CD-2025-001

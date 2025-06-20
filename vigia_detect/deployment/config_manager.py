@@ -10,7 +10,7 @@ from pathlib import Path
 from enum import Enum
 
 from config.settings import settings
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 from ..utils.shared_utilities import VigiaValidator
 
 
@@ -22,7 +22,7 @@ class EnvironmentType(Enum):
     TESTING = "testing"
 
 
-class ConfigManager(BaseClientV2):
+class ConfigManager(BaseClient):
     """
     Configuration manager for deployment and environment setup.
     Handles validation and generation of configuration files.

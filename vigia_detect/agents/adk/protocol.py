@@ -3,7 +3,7 @@ Protocol Agent - Native ADK Implementation
 =========================================
 
 LLM-powered agent for medical protocol retrieval and guidance consultation.
-Inherits from LLMAgent for intelligent protocol search and recommendation.
+Inherits from LlmAgent for intelligent protocol search and recommendation.
 """
 
 import logging
@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from pathlib import Path
 
-from google.adk.agents import LLMAgent, AgentContext
+from google.adk.agents import LlmAgent, AgentContext
 from google.adk.core.types import AgentCapability
 from google.adk.tools import Tool
 from google.adk.models import ModelConfig
@@ -23,7 +23,7 @@ from .base import VigiaBaseAgent
 logger = logging.getLogger(__name__)
 
 
-class ProtocolAgent(VigiaBaseAgent, LLMAgent):
+class ProtocolAgent(VigiaBaseAgent, LlmAgent):
     """
     Medical protocol consultation agent using LLM and vector search.
     
@@ -62,7 +62,7 @@ class ProtocolAgent(VigiaBaseAgent, LLMAgent):
             system_prompt=self._get_protocol_system_prompt()
         )
         
-        LLMAgent.__init__(self, model_config=model_config)
+        LlmAgent.__init__(self, model_config=model_config)
         
         # Medical protocol database
         self.protocol_database = self._initialize_protocol_database()

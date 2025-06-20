@@ -2,10 +2,10 @@
 Web interface placeholder for future medical UI development.
 """
 from typing import Dict, Any
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 
 
-class WebInterface(BaseClientV2):
+class WebInterface(BaseClient):
     """
     Web interface for medical detection system.
     Placeholder for future development.

@@ -1,0 +1,58 @@
+# Vigia Cloud Run Requirements - Medical AI System v1.4.0
+# Optimized for Google Cloud Run deployment with ADK integration
+
+# === GOOGLE ADK CORE ===
+# Native Google Agent Development Kit
+google-adk==1.0.0
+google-cloud-aiplatform==1.49.0
+vertexai==1.38.1
+google-genai==0.3.0
+
+# === CORE MEDICAL DEPENDENCIES ===
+numpy==1.26.4
+pillow==10.4.0
+opencv-python-headless==4.9.0.80  # headless for Cloud Run
+python-dotenv==1.0.1
+pydantic==2.7.0
+pydantic-settings==2.2.1
+
+# === DEEP LEARNING - YOLO MEDICAL DETECTION ===
+torch==2.3.0
+torchvision==0.18.0
+ultralytics==8.2.0
+
+# === VECTOR SEARCH & EMBEDDINGS ===
+sentence-transformers==2.7.0
+faiss-cpu==1.8.0  # CPU version for Cloud Run
+transformers==4.40.1
+
+# === WEB API FRAMEWORK ===
+fastapi==0.110.2
+uvicorn==0.29.0
+python-multipart==0.0.9
+httpx==0.26.0  # Compatible with Supabase
+
+# === DATABASE & STORAGE ===
+supabase==2.4.2
+postgrest==0.16.4
+redis==5.0.4
+
+# === MEDICAL COMMUNICATION ===
+# MCP Protocol Support
+twilio==9.0.4
+slack-sdk==3.27.1
+
+# === ASYNC PROCESSING ===
+celery==5.3.6
+kombu==5.3.5
+
+# === SECURITY & COMPLIANCE ===
+python-magic==0.4.27
+
+# === MONITORING (Production) ===
+sentry-sdk==2.0.1
+prometheus-client==0.20.0
+
+# === TESTING (Development) ===
+pytest==8.2.0
+pytest-asyncio==0.23.6

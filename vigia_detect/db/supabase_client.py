@@ -9,10 +9,10 @@ from typing import Dict, Any, Optional, List
 from supabase import create_client, Client
 
 # Importar la clase base
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 
 
-class SupabaseClientRefactored(BaseClientV2):
+class SupabaseClientRefactored(BaseClient):
     """
     Cliente mejorado para interactuar con Supabase.
     Extiende BaseClient para manejo consistente de configuración y logging.
@@ -316,7 +316,7 @@ def migrate_to_refactored_client():
     # client = SupabaseClient()
     
     # Nuevo
-    from vigia_detect.db.supabase_client_refactored import SupabaseClientRefactored
+    from vigia_detect.db.supabase_client import SupabaseClientRefactored
     client = SupabaseClientRefactored()
     
     # La API es la misma, pero ahora con mejor manejo de errores y logging

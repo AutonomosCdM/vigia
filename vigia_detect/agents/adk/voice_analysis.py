@@ -2,7 +2,7 @@
 Voice Analysis Agent - Native Google ADK Implementation
 ======================================================
 
-ADK LLMAgent for voice analysis using Hume AI.
+ADK LlmAgent for voice analysis using Hume AI.
 Detects stress, pain, and emotional indicators in patient voice recordings.
 """
 
@@ -15,7 +15,7 @@ from typing import Dict, Any, List, Optional, AsyncIterator
 from datetime import datetime
 from pathlib import Path
 
-from google.adk.agents import LLMAgent, AgentContext
+from google.adk.agents import LlmAgent, AgentContext
 from google.adk.core.types import AgentMessage, AgentResponse, AgentCapability
 from google.adk.tools import Tool
 
@@ -151,9 +151,9 @@ class StreamingVoiceAnalysisTool(Tool):
         }
 
 
-class VoiceAnalysisAgent(VigiaBaseAgent, LLMAgent):
+class VoiceAnalysisAgent(VigiaBaseAgent, LlmAgent):
     """
-    Voice Analysis Agent - Native ADK LLMAgent Implementation
+    Voice Analysis Agent - Native ADK LlmAgent Implementation
     
     Capabilities:
     - Voice emotion detection and analysis
@@ -182,8 +182,8 @@ class VoiceAnalysisAgent(VigiaBaseAgent, LLMAgent):
             medical_specialties=["voice_analysis", "stress_detection", "pain_assessment"]
         )
         
-        # Initialize LLMAgent with medical-focused system prompt
-        LLMAgent.__init__(
+        # Initialize LlmAgent with medical-focused system prompt
+        LlmAgent.__init__(
             self,
             system_prompt=self._get_system_prompt(),
             model_name="claude-3-sonnet-20240229",

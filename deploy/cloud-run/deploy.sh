@@ -115,20 +115,31 @@ build_and_push_images() {
     gcloud auth configure-docker
     
     # List of agents to build
-    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration")
+    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration" "a2a-discovery")
     
     for agent in "${agents[@]}"; do
         log "Building $agent agent..."
         
         # Build image
-        docker build \
-            -f deploy/cloud-run/Dockerfile.$agent \
-            -t gcr.io/$PROJECT_ID/vigia-$agent-agent:latest \
-            .
+        if [[ "$agent" == "a2a-discovery" ]]; then
+            docker build \
+                -f deploy/cloud-run/Dockerfile.$agent \
+                -t gcr.io/$PROJECT_ID/vigia-$agent:latest \
+                .
+        else
+            docker build \
+                -f deploy/cloud-run/Dockerfile.$agent \
+                -t gcr.io/$PROJECT_ID/vigia-$agent-agent:latest \
+                .
+        fi
         
         # Push image
-        log "Pushing $agent agent to GCR..."
-        docker push gcr.io/$PROJECT_ID/vigia-$agent-agent:latest
+        log "Pushing $agent to GCR..."
+        if [[ "$agent" == "a2a-discovery" ]]; then
+            docker push gcr.io/$PROJECT_ID/vigia-$agent:latest
+        else
+            docker push gcr.io/$PROJECT_ID/vigia-$agent-agent:latest
+        fi
         
         log "$agent agent built and pushed ✓"
     done

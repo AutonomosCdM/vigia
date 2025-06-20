@@ -21,18 +21,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Install ADK and medical dependencies
-RUN pip install \
-    google-adk==1.0.0 \
-    torch \
-    torchvision \
-    ultralytics \
-    opencv-python-headless \
-    numpy \
-    Pillow
+COPY requirements-cloudrun.txt .
+RUN pip install --no-cache-dir -r requirements-cloudrun.txt
 
 # Copy application code
 COPY vigia_detect/ ./vigia_detect/

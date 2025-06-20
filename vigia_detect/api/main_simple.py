@@ -4,14 +4,27 @@ Simple FastAPI Application - Render Deployment
 
 Simplified FastAPI app that doesn't depend on complex ADK imports.
 Fallback for deployment when full system dependencies aren't available.
+Enhanced with production-grade security features.
 """
 
 import os
+import ssl
 import logging
 from datetime import datetime
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+# Import security components
+try:
+    from vigia_detect.utils.security_middleware import add_security_middleware
+    from vigia_detect.utils.tls_config import get_ssl_context, TLSProfile
+    from vigia_detect.utils.secrets_manager import get_secret
+    HAS_SECURITY = True
+except ImportError:
+    HAS_SECURITY = False
+    logging.warning("Security components not available in simplified mode")
 
 # Configure logging
 logging.basicConfig(
@@ -21,23 +34,52 @@ logging.basicConfig(
 
 logger = logging.getLogger('vigia.simple')
 
-# Create FastAPI app
+# Create FastAPI app with security
 app = FastAPI(
     title="Vigia Medical Detection System",
-    description="Medical pressure injury detection system - Simple mode",
-    version="1.0.0",
+    description="Medical pressure injury detection system - Enhanced security mode",
+    version="1.4.1",
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Configure security middleware
+if HAS_SECURITY:
+    # Get security configuration
+    medical_grade = os.getenv("MEDICAL_COMPLIANCE_LEVEL", "hipaa") in ["hipaa", "medical", "iso13485"]
+    rate_limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "60"))
+    webhook_secret = get_secret("WEBHOOK_SECRET")
+    
+    # Add comprehensive security middleware
+    add_security_middleware(
+        app, 
+        medical_grade=medical_grade,
+        rate_limit=rate_limit,
+        webhook_secret=webhook_secret
+    )
+    
+    # Configure secure CORS for production
+    allowed_origins = os.getenv("CORS_ALLOWED_ORIGINS", "*").split(",")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_headers=["*"],
+        expose_headers=["X-Medical-Compliance", "X-Security-Level"]
+    )
+    
+    logger.info(f"Security middleware enabled (medical_grade={medical_grade})")
+else:
+    # Fallback CORS for simple mode
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logger.warning("Running in simplified mode without enhanced security")
 
 @app.get("/health")
 async def health_check():
@@ -186,11 +228,59 @@ if __name__ == "__main__":
     import uvicorn
     
     port = int(os.getenv("PORT", 8000))
-    logger.info(f"🚀 Starting Vigia Simple API on port {port}")
+    host = os.getenv("HOST", "0.0.0.0")
     
+    # SSL/TLS Configuration
+    ssl_context = None
+    use_ssl = os.getenv("USE_SSL", "false").lower() == "true"
+    
+    if use_ssl and HAS_SECURITY:
+        try:
+            # Determine TLS profile based on environment
+            environment = os.getenv("ENVIRONMENT", "development")
+            if environment == "production":
+                if os.getenv("MEDICAL_COMPLIANCE_LEVEL") in ["hipaa", "medical"]:
+                    tls_profile = TLSProfile.MEDICAL_GRADE
+                else:
+                    tls_profile = TLSProfile.HIGH_SECURITY
+            else:
+                tls_profile = TLSProfile.DEVELOPMENT
+            
+            # Get certificate paths from environment or secrets
+            cert_file = os.getenv("SSL_CERT_FILE") or get_secret("SSL_CERT_FILE")
+            key_file = os.getenv("SSL_KEY_FILE") or get_secret("SSL_KEY_FILE")
+            ca_file = os.getenv("SSL_CA_FILE") or get_secret("SSL_CA_FILE")
+            
+            # Create SSL context
+            ssl_context = get_ssl_context(
+                profile=tls_profile,
+                server=True,
+                cert_file=cert_file,
+                key_file=key_file,
+                ca_file=ca_file
+            )
+            
+            logger.info(f"🔒 SSL/TLS enabled with {tls_profile.value} profile")
+            
+        except Exception as e:
+            logger.error(f"Failed to configure SSL: {e}")
+            logger.warning("Starting without SSL/TLS")
+            ssl_context = None
+    
+    logger.info(f"🚀 Starting Vigia Medical API on {host}:{port}")
+    logger.info(f"🔒 Security mode: {'Enhanced' if HAS_SECURITY else 'Simplified'}")
+    logger.info(f"🏥 Medical compliance: {os.getenv('MEDICAL_COMPLIANCE_LEVEL', 'standard')}")
+    
+    # Start server with optional SSL
     uvicorn.run(
         "vigia_detect.api.main_simple:app",
-        host="0.0.0.0",
+        host=host,
         port=port,
-        log_level="info"
+        log_level="info",
+        ssl_version=ssl.PROTOCOL_TLS_SERVER if ssl_context else None,
+        ssl_cert_reqs=ssl.CERT_NONE if ssl_context else None,
+        ssl_context=ssl_context,
+        access_log=True,
+        server_header=False,  # Don't expose server version
+        date_header=False     # Don't expose server date
     )

@@ -1,0 +1,53 @@
+# CodeQL Configuration for Vigia Medical AI System
+# Enhanced security scanning for medical-grade applications
+
+name: "Vigia Medical Security Analysis"
+
+disable-default-queries: false
+
+queries:
+  - name: security-and-quality
+    uses: security-and-quality
+  - name: security-extended
+    uses: security-extended
+  - name: security-experimental
+    uses: security-experimental
+
+# Medical-specific security queries
+query-filters:
+  - exclude:
+      # Exclude test files from certain checks
+      problem.severity: "note"
+      tags: "correctness"
+  - include:
+      # Include all security-related queries
+      tags: "security"
+  - include:
+      # Include medical compliance queries
+      tags: "external/cwe/cwe-209"  # Information exposure
+  - include:
+      tags: "external/cwe/cwe-312"  # Cleartext storage
+  - include:
+      tags: "external/cwe/cwe-319"  # Cleartext transmission
+  - include:
+      tags: "external/cwe/cwe-798"  # Hard-coded credentials
+
+# Paths to analyze
+paths:
+  - vigia_detect/
+  - scripts/
+
+# Paths to ignore
+paths-ignore:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+  - "**/.git/**"
+  - "**/test_*"
+  - "**/tests/**"
+  - "dev/**"
+  - "docs/**"
+  - "**/*.md"
+  - "**/*.txt"
+  - "**/*.json"
+  - "**/*.yml"
+  - "**/*.yaml"

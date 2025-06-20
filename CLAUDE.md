@@ -55,7 +55,7 @@ python scripts/setup_medgemma_ollama.py --install-ollama
 python scripts/setup_medgemma_ollama.py --model 27b --install
 ollama run symptoma/medgemma3 "¿Cuáles son los grados de LPP?"
 
-# Medical image processing
+# Medical image processing (UPDATED - cleaned file names)
 python vigia_detect/cli/process_images.py --input /path/to/images
 python vigia_detect/cli/process_images.py --webhook --patient-code CD-2025-001
 
@@ -74,8 +74,12 @@ python scripts/setup/setup_credentials.py
 
 # Docker deployment configurations
 deploy/docker/docker-compose.hospital.yml     # Hospital production
-deploy/docker/docker-compose.render.yml       # Cloud deployment
 deploy/docker/docker-compose.mcp-hub.yml      # MCP services deployment
+
+# Cloud Run deployment (NEW - Production Ready)
+./deploy/cloud-run/deploy.sh deploy           # Deploy all 6 ADK services to Google Cloud Run
+./deploy/cloud-run/deploy.sh status           # Check Cloud Run services status
+./deploy/cloud-run/deploy.sh cleanup          # Remove all Cloud Run services
 ```
 
 ### MCP (Model Context Protocol) Integration
@@ -374,11 +378,12 @@ tracker.print_dashboard()  # Shows Claude vs Human productivity metrics
 ## Architecture Rules
 
 ### Clean Architecture Principles
-- **Native ADK implementation**: No wrappers, all agents inherit directly from Google ADK (BaseAgent, LLMAgent, WorkflowAgent)
-- **Single implementations only**: No _v2, _refactored, _adk file duplicates
+- **Native ADK implementation**: No wrappers, all agents inherit directly from Google ADK (BaseAgent, LlmAgent, WorkflowAgent)  
+- **Single implementations only**: No _v2, _refactored, _legacy file duplicates (RECENTLY CLEANED)
 - **Professional test organization**: 50+ test files with 14,340+ lines categorized in tests/unit/, tests/adk/, tests/medical/, tests/integration/
 - **Evidence-based decisions**: 100% preservation of medical decision logic with scientific justification
 - **A2A protocol compliance**: Native Agent Card discovery and JSON-RPC 2.0 medical extensions
+- **Consolidated dependencies**: Single requirements-cloudrun.txt file (10 redundant files removed)
 
 ### Directory Structure (Native ADK Architecture)
 ```
@@ -391,7 +396,8 @@ vigia/
 │   ├── ai/              # MedGemma ADK Tool integration
 │   └── tasks/           # Celery async medical tasks
 ├── config/               # Centralized configuration (.env, requirements, pytest.ini)
-├── deploy/               # Docker deployment configurations
+├── deploy/               # Multi-platform deployment configurations
+│   ├── cloud-run/       # Google Cloud Run deployment (6 ADK services + entrypoints)
 │   └── docker/          # Hospital production deployment
 ├── docs/                 # Essential documentation (medical, deployment, setup)
 ├── tests/                # 50+ test files with 14,340+ lines (unit, adk, medical, integration)
@@ -418,7 +424,7 @@ vigia/
 - Complete audit trails with HIPAA compliance for all medical operations
 
 ## Production Status
-✅ **Production-Ready MCP-Integrated Medical System** - v1.4.0 Complete Architecture:
+✅ **Production-Ready Cloud Run Medical System** - v1.4.1 Complete Architecture (RECENTLY REFACTORED):
 - **Google ADK Hackathon Ready**: 5 native ADK agents with complete A2A protocol and Agent Cards
 - **Complete MCP Integration Suite**: 17+ MCP services (Official + Custom) covering all medical workflow aspects
 - **Medical AI Excellence**: Evidence-based decision engine with NPUAP/EPUAP/MINSAL compliance
@@ -429,15 +435,25 @@ vigia/
 - **Medical Interoperability**: Custom FHIR R4 server for healthcare system integration
 - **Comprehensive Testing**: 50+ test files with 14,340+ lines across unit/adk/medical/integration categories
 - **Privacy-First Architecture**: Local MedGemma processing via Ollama, comprehensive audit trails
-- **Professional Deployment**: Complete Docker infrastructure for hospital environments
+- **Multi-Platform Deployment**: Docker for hospitals + Cloud Run for scalable cloud deployment
+- **Clean Codebase**: Recently refactored - no legacy files, consolidated dependencies, fixed imports
 - **Error Monitoring**: Sentry integration for medical system reliability
 - **Evidence-Based Protocols**: AI-powered medical protocol search and compliance validation
 
 ## Development Notes
 
+### Recent Refactoring (v1.4.1)
+Major codebase cleanup completed:
+- **File consolidation**: 10 requirements files → 1 optimized requirements-cloudrun.txt
+- **Import fixes**: All _v2 and _refactored references corrected throughout codebase
+- **Legacy cleanup**: Removed 8+ obsolete files (cache, empty logs, backup configs)
+- **Cloud Run ready**: 6 ADK services with FastAPI entrypoints for production deployment
+- **Architecture compliance**: Now fully follows CLAUDE.md clean architecture principles
+
 ### Claude Time Tracking
 The system includes comprehensive productivity tracking showing Claude efficiency ratios. Recent tasks show:
 - MCP Integration: 0.56 hours vs 4.5 hours estimated (12.4% efficiency - 8x faster than human estimate)
+- Cloud Run Refactoring: Complete architectural cleanup in single session
 - Average efficiency ratio across tasks demonstrates significant productivity gains through automated development
 
 ### Docker Test Infrastructure  

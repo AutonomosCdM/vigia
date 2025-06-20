@@ -115,7 +115,7 @@ build_and_push_images() {
     gcloud auth configure-docker
     
     # List of agents to build
-    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration" "risk-assessment" "a2a-discovery")
+    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration" "risk-assessment" "voice-analysis" "a2a-discovery")
     
     for agent in "${agents[@]}"; do
         log "Building $agent agent..."
@@ -159,6 +159,7 @@ create_secrets() {
     echo -n "https://hooks.slack.com/services/PLACEHOLDER" | gcloud secrets create slack-webhook --data-file=- || true
     echo -n "smtp.hospital.local" | gcloud secrets create smtp-server --data-file=- || true
     echo -n "redis://redis.vigia-adk.run.app:6379" | gcloud secrets create redis-endpoint --data-file=- || true
+    echo -n "PLACEHOLDER_HUME_API_KEY" | gcloud secrets create hume-api-key --data-file=- || true
     
     log "Secrets created ✓"
 }
@@ -180,6 +181,7 @@ deploy_services() {
     deploy_communication_agent
     deploy_workflow_orchestration_agent
     deploy_risk_assessment_agent
+    deploy_voice_analysis_agent
     deploy_a2a_discovery_service
     
     log "All services deployed ✓"
@@ -296,6 +298,25 @@ deploy_risk_assessment_agent() {
         --no-allow-unauthenticated
 }
 
+deploy_voice_analysis_agent() {
+    log "Deploying Voice Analysis Agent..."
+    
+    gcloud run deploy vigia-voice-analysis-agent \
+        --image=gcr.io/$PROJECT_ID/vigia-voice-analysis-agent:latest \
+        --platform=managed \
+        --region=$REGION \
+        --memory=2Gi \
+        --cpu=1 \
+        --timeout=300 \
+        --min-instances=1 \
+        --max-instances=10 \
+        --concurrency=15 \
+        --service-account=vigia-adk@$PROJECT_ID.iam.gserviceaccount.com \
+        --set-env-vars="AGENT_ID=vigia-voice-analysis,AGENT_TYPE=VoiceAnalysisAgent,HUME_AI_ENABLED=true" \
+        --set-secrets="HUME_API_KEY=hume-api-key:latest" \
+        --no-allow-unauthenticated
+}
+
 deploy_a2a_discovery_service() {
     log "Deploying A2A Discovery Service..."
     
@@ -396,6 +417,7 @@ main() {
             gcloud run services delete vigia-clinical-assessment-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-image-analysis-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-risk-assessment-agent --region=$REGION --quiet || true
+            gcloud run services delete vigia-voice-analysis-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-a2a-discovery --region=$REGION --quiet || true
             log "Cleanup completed ✓"
             ;;

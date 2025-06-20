@@ -50,6 +50,7 @@ from vigia_detect.agents.protocol_agent import ProtocolAgent
 from vigia_detect.agents.communication_agent import CommunicationAgent
 from vigia_detect.agents.workflow_orchestration_agent import WorkflowOrchestrationAgent
 from .adk.risk_assessment import RiskAssessmentAgent
+from .adk.voice_analysis import VoiceAnalysisAgent
 
 warnings.filterwarnings("ignore", category=UserWarning, module=".*pydantic.*")
 
@@ -109,7 +110,8 @@ class MasterMedicalOrchestrator:
             'protocol': None,
             'communication': None,
             'workflow': None,
-            'risk_assessment': None
+            'risk_assessment': None,
+            'voice_analysis': None
         }
         
         # Initialize specialized agents with A2A communication
@@ -812,6 +814,10 @@ def get_orchestrator_status() -> Dict[str, Any]:
             self.registered_agents['risk_assessment'] = RiskAssessmentAgent()
             logger.info("✅ RiskAssessmentAgent inicializado")
             
+            # Initialize VoiceAnalysisAgent
+            self.registered_agents['voice_analysis'] = VoiceAnalysisAgent()
+            logger.info("✅ VoiceAnalysisAgent inicializado")
+            
             # Register agents for A2A discovery
             await self._register_agents_for_a2a()
             
@@ -890,6 +896,30 @@ def get_orchestrator_status() -> Dict[str, Any]:
                     authentication={'method': 'api_key'},
                     supported_modes=['request_response'],
                     medical_specialization='workflow_management',
+                    compliance_certifications=['HIPAA', 'MINSAL']
+                ),
+                'risk_assessment': AgentCard(
+                    agent_id='risk_assessment_agent',
+                    name='Risk Assessment Agent',
+                    description='Comprehensive medical risk assessment using validated scales',
+                    version='1.0.0',
+                    capabilities=['braden_scale', 'fall_risk_assessment', 'nutritional_screening', 'infection_risk'],
+                    endpoints={'a2a': 'http://localhost:8086'},
+                    authentication={'method': 'api_key'},
+                    supported_modes=['request_response'],
+                    medical_specialization='preventive_medicine',
+                    compliance_certifications=['HIPAA', 'MINSAL']
+                ),
+                'voice_analysis': AgentCard(
+                    agent_id='voice_analysis_agent',
+                    name='Voice Analysis Agent',
+                    description='Empathic AI voice analysis for stress, pain and emotional detection',
+                    version='1.0.0',
+                    capabilities=['voice_emotion_detection', 'stress_analysis', 'pain_assessment', 'hume_ai_integration'],
+                    endpoints={'a2a': 'http://localhost:8087'},
+                    authentication={'method': 'api_key'},
+                    supported_modes=['request_response', 'streaming'],
+                    medical_specialization='behavioral_health',
                     compliance_certifications=['HIPAA', 'MINSAL']
                 )
             }

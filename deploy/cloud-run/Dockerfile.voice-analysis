@@ -1,0 +1,44 @@
+# Voice Analysis Agent Dockerfile for Google Cloud Run
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV AGENT_TYPE=VoiceAnalysisAgent
+ENV PORT=8087
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN groupadd -r vigia && useradd -r -g vigia vigia
+
+# Set work directory
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements-cloudrun.txt .
+RUN pip install --no-cache-dir -r requirements-cloudrun.txt
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/temp && \
+    chown -R vigia:vigia /app
+
+# Switch to non-root user
+USER vigia
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:$PORT/health || exit 1
+
+# Expose port
+EXPOSE $PORT
+
+# Entry point for Voice Analysis Agent
+CMD ["python", "deploy/cloud-run/entrypoints/voice_analysis_agent.py"]

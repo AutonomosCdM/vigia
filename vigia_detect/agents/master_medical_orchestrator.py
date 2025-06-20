@@ -49,6 +49,7 @@ from vigia_detect.agents.clinical_assessment_agent import ClinicalAssessmentAgen
 from vigia_detect.agents.protocol_agent import ProtocolAgent
 from vigia_detect.agents.communication_agent import CommunicationAgent
 from vigia_detect.agents.workflow_orchestration_agent import WorkflowOrchestrationAgent
+from .adk.risk_assessment import RiskAssessmentAgent
 
 warnings.filterwarnings("ignore", category=UserWarning, module=".*pydantic.*")
 
@@ -107,7 +108,8 @@ class MasterMedicalOrchestrator:
             'clinical_assessment': None,
             'protocol': None,
             'communication': None,
-            'workflow': None
+            'workflow': None,
+            'risk_assessment': None
         }
         
         # Initialize specialized agents with A2A communication
@@ -805,6 +807,10 @@ def get_orchestrator_status() -> Dict[str, Any]:
             self.registered_agents['workflow'] = WorkflowOrchestrationAgent()
             await self.registered_agents['workflow'].initialize()
             logger.info("✅ WorkflowOrchestrationAgent inicializado")
+            
+            # Initialize RiskAssessmentAgent
+            self.registered_agents['risk_assessment'] = RiskAssessmentAgent()
+            logger.info("✅ RiskAssessmentAgent inicializado")
             
             # Register agents for A2A discovery
             await self._register_agents_for_a2a()

@@ -115,7 +115,7 @@ build_and_push_images() {
     gcloud auth configure-docker
     
     # List of agents to build
-    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration" "a2a-discovery")
+    agents=("image-analysis" "clinical-assessment" "protocol" "communication" "workflow-orchestration" "risk-assessment" "a2a-discovery")
     
     for agent in "${agents[@]}"; do
         log "Building $agent agent..."
@@ -179,6 +179,7 @@ deploy_services() {
     deploy_protocol_agent
     deploy_communication_agent
     deploy_workflow_orchestration_agent
+    deploy_risk_assessment_agent
     deploy_a2a_discovery_service
     
     log "All services deployed ✓"
@@ -275,6 +276,24 @@ deploy_workflow_orchestration_agent() {
         --service-account=vigia-adk@$PROJECT_ID.iam.gserviceaccount.com \
         --set-env-vars="AGENT_ID=vigia-workflow-orchestration,AGENT_TYPE=WorkflowAgent,ORCHESTRATOR_MODE=master" \
         --allow-unauthenticated  # This is the main entry point
+}
+
+deploy_risk_assessment_agent() {
+    log "Deploying Risk Assessment Agent..."
+    
+    gcloud run deploy vigia-risk-assessment-agent \
+        --image=gcr.io/$PROJECT_ID/vigia-risk-assessment-agent:latest \
+        --platform=managed \
+        --region=$REGION \
+        --memory=2Gi \
+        --cpu=1 \
+        --timeout=180 \
+        --min-instances=1 \
+        --max-instances=15 \
+        --concurrency=20 \
+        --service-account=vigia-adk@$PROJECT_ID.iam.gserviceaccount.com \
+        --set-env-vars="AGENT_ID=vigia-risk-assessment,AGENT_TYPE=LlmAgent,ASSESSMENT_SCALES=braden,norton,stratify,must" \
+        --no-allow-unauthenticated
 }
 
 deploy_a2a_discovery_service() {
@@ -376,6 +395,7 @@ main() {
             gcloud run services delete vigia-protocol-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-clinical-assessment-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-image-analysis-agent --region=$REGION --quiet || true
+            gcloud run services delete vigia-risk-assessment-agent --region=$REGION --quiet || true
             gcloud run services delete vigia-a2a-discovery --region=$REGION --quiet || true
             log "Cleanup completed ✓"
             ;;

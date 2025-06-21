@@ -34,8 +34,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install -r requirements-cloudrun.txt || pip install -r requirements.txt
+        pip install -r requirements-dev.txt || echo "requirements-dev.txt not found, skipping"
     
     - name: Copy testing environment
       run: |
@@ -47,7 +47,7 @@ jobs:
     
     - name: Upload validation report
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: validation-report
         path: validation-report.json
@@ -82,8 +82,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install -r requirements-cloudrun.txt || pip install -r requirements.txt
+        pip install -r requirements-dev.txt || echo "requirements-dev.txt not found, skipping"
     
     - name: Copy testing environment
       run: |
@@ -96,7 +96,7 @@ jobs:
     
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.test-suite }}
         path: |
@@ -144,7 +144,7 @@ jobs:
     
     - name: Upload security reports
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -170,8 +170,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install -r requirements-cloudrun.txt || pip install -r requirements.txt
+        pip install -r requirements-dev.txt || echo "requirements-dev.txt not found, skipping"
     
     - name: Copy testing environment
       run: |
@@ -207,8 +207,8 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install -r requirements-cloudrun.txt || pip install -r requirements.txt
+        pip install -r requirements-dev.txt || echo "requirements-dev.txt not found, skipping"
     
     - name: Copy testing environment
       run: |
@@ -234,7 +234,7 @@ jobs:
         echo "- ✅ Medical compliance validation" >> deployment-report.md
     
     - name: Upload deployment report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-report
         path: deployment-report.md

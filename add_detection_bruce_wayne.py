@@ -13,9 +13,15 @@ def add_bruce_wayne_detection():
     print("🔍 ADDING LPP DETECTION FOR BRUCE WAYNE")
     print("=" * 60)
     
-    # Supabase configuration
-    SUPABASE_URL = "https://olewpkrwmvftyrsyemxf.supabase.co"
-    SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9sZXdwa3J3bXZmdHlyc3llbXhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA1MTcxNzksImV4cCI6MjA2NjA5MzE3OX0.k30a3_k671sEnKCJTFM4MGzilEjA0ax7FwZx37LPnmI"
+    # Supabase configuration from environment
+    import os
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+    
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        print("❌ ERROR: SUPABASE_URL and SUPABASE_ANON_KEY environment variables required")
+        print("   Run: source scripts/quick_env_setup.sh")
+        return False
     
     headers = {
         'apikey': SUPABASE_ANON_KEY,

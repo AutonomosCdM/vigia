@@ -1,0 +1,36 @@
+name: Claude Code Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  claude-analysis:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Claude Code Action Official
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional: Specify files or directories to analyze
+          include-paths: |
+            vigia_detect/
+            apps/
+            config/
+          # Optional: Exclude only unnecessary files
+          exclude-paths: |
+            node_modules/
+            .git/
+            *.log
+          # Optional: Focus on specific analysis types
+          analysis-types: |
+            security
+            code-quality
+            architecture
+            medical-compliance

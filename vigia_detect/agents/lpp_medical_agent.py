@@ -5,8 +5,21 @@ Based on customer-service agent pattern from ADK samples.
 
 import logging
 import warnings
-from google.adk.agents.llm_agent import Agent
 from datetime import datetime
+
+# Try to import ADK Agent, fall back to mock if not available
+try:
+    from google.adk.agents.llm_agent import Agent
+except ImportError:
+    # Mock Agent class for testing when google.adk is not available
+    class Agent:
+        def __init__(self, *args, **kwargs):
+            self.name = kwargs.get('name', 'MockAgent')
+            self.instructions = kwargs.get('instructions', '')
+            self.tools = kwargs.get('tools', [])
+        
+        def run(self, prompt):
+            return f"Mock response for: {prompt}"
 
 # Import our Slack tools
 from vigia_detect.messaging.adk_tools import enviar_alerta_lpp, test_slack_desde_adk

@@ -349,3 +349,6 @@ if __name__ == "__main__":
     except ValueError as e:
         print(f"❌ Error de configuración: {e}")
         print("Por favor, configura SLACK_BOT_TOKEN en tu archivo .env")
+
+# Alias for backward compatibility
+SlackNotifier = SlackNotifierRefactored

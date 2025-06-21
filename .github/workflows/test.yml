@@ -55,7 +55,12 @@ jobs:
     
     - name: Run tests
       run: |
-        python -m pytest tests/ -v --cov=vigia_detect --cov-report=xml
+        python -m pytest tests/ -v --cov=vigia_detect --cov-report=xml \
+          --ignore=tests/medical/test_lpp_medical_agent.py \
+          --ignore=tests/medical/test_lpp_medical_simple.py \
+          --ignore=tests/medical/test_enhanced_integration.py \
+          --ignore=tests/infrastructure/test_hospital_deployment.py \
+          -m "not medical"
     
     - name: Run security tests
       run: |

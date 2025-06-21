@@ -161,3 +161,6 @@ class LPPDetector:
             "conf_threshold": self.conf_threshold,
             "classes": self.class_names
         }
+
+# Alias for backward compatibility
+YOLODetector = LPPDetector

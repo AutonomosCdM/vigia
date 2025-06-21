@@ -341,3 +341,6 @@ if __name__ == "__main__":
     except ValueError as e:
         print(f"❌ Error de configuración: {e}")
         print("Por favor, configura SUPABASE_URL y SUPABASE_KEY en tu archivo .env")
+
+# Alias for backward compatibility
+SupabaseClient = SupabaseClientRefactored

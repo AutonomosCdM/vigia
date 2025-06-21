@@ -26,3 +26,6 @@ mkdocs-material==9.5.17
 ipython==8.23.0
 jupyter==1.0.0
 pre-commit==3.7.0
+
+# Database dependencies for testing
+psycopg2-binary==2.9.9

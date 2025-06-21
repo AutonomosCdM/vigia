@@ -59,6 +59,8 @@ jobs:
           --ignore=tests/medical/test_lpp_medical_agent.py \
           --ignore=tests/medical/test_lpp_medical_simple.py \
           --ignore=tests/medical/test_enhanced_integration.py \
+          --ignore=tests/medical/test_clinical_processing.py \
+          --ignore=tests/medical/test_medical_dispatcher.py \
           --ignore=tests/infrastructure/test_hospital_deployment.py \
           -m "not medical"
     

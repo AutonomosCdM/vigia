@@ -18,7 +18,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, List, Any
 import json
 
-from vigia_detect.agents.medical_agent_wrapper import LPPMedicalAgent
+from vigia_detect.agents.adk.clinical_assessment import ClinicalAssessmentAgent as LPPMedicalAgent
 from vigia_detect.core.constants import LPPGrade
 from tests.medical.synthetic_patients import (
     generate_test_cohort, 

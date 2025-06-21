@@ -5,7 +5,7 @@ import numpy as np
 from unittest.mock import Mock, patch, MagicMock
 import json
 
-from vigia_detect.redis_layer.cache_service_v2 import MedicalSemanticCache
+from vigia_detect.redis_layer.cache_service import MedicalSemanticCache
 from vigia_detect.redis_layer.embeddings import MedicalEmbeddingService
 
 
@@ -30,8 +30,8 @@ def mock_embedding_service():
 @pytest.fixture
 def medical_cache(mock_redis_client, mock_embedding_service):
     """Create a medical cache instance with mocks."""
-    with patch('vigia_detect.redis_layer.cache_service_v2.redis.Redis', return_value=mock_redis_client):
-        with patch('vigia_detect.redis_layer.cache_service_v2.MedicalEmbeddingService', return_value=mock_embedding_service):
+    with patch('vigia_detect.redis_layer.cache_service.redis.Redis', return_value=mock_redis_client):
+        with patch('vigia_detect.redis_layer.cache_service.MedicalEmbeddingService', return_value=mock_embedding_service):
             cache = MedicalSemanticCache()
             cache.client = mock_redis_client
             cache.embedding_service = mock_embedding_service

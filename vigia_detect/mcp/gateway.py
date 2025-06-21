@@ -14,11 +14,11 @@ from datetime import datetime
 import aiohttp
 from urllib.parse import urljoin
 
-from ..utils.logger import get_logger
-from ..utils.encryption import encrypt_phi, decrypt_phi
+from ..utils.shared_utilities import VigiaLogger
 from ..systems.medical_decision_engine import MedicalDecisionEngine
+from ..agents.adk.slack_block_kit import create_slack_block_kit_agent
 
-logger = get_logger(__name__)
+logger = VigiaLogger.get_logger(__name__)
 
 
 @dataclass
@@ -103,6 +103,54 @@ class MCPRouter:
                 timeout=30,
                 rate_limit=10
             ),
+            'supabase': MCPServiceConfig(
+                name='mcp-supabase',
+                endpoint='http://mcp-supabase:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=25
+            ),
+            'postgres': MCPServiceConfig(
+                name='mcp-postgres',
+                endpoint='http://mcp-postgres:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=30
+            ),
+            'google_cloud': MCPServiceConfig(
+                name='mcp-google-cloud',
+                endpoint='http://mcp-google-cloud:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=20
+            ),
+            'sendgrid': MCPServiceConfig(
+                name='mcp-sendgrid',
+                endpoint='http://mcp-sendgrid:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=10
+            ),
+            'aws': MCPServiceConfig(
+                name='mcp-aws',
+                endpoint='http://mcp-aws:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=25
+            ),
+            'sentry': MCPServiceConfig(
+                name='mcp-sentry',
+                endpoint='http://mcp-sentry:8080',
+                service_type='hub',
+                compliance_level='standard',
+                timeout=30,
+                rate_limit=15
+            ),
             'stripe': MCPServiceConfig(
                 name='mcp-stripe', 
                 endpoint='http://mcp-stripe:8080',
@@ -126,6 +174,39 @@ class MCPRouter:
                 compliance_level='hipaa',
                 timeout=30,
                 rate_limit=20
+            ),
+            'twilio_whatsapp': MCPServiceConfig(
+                name='mcp-twilio-whatsapp',
+                endpoint='http://mcp-twilio-whatsapp:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=45,
+                rate_limit=8  # Conservative rate limit for WhatsApp
+            ),
+            'whatsapp_direct': MCPServiceConfig(
+                name='mcp-whatsapp-direct',
+                endpoint='http://mcp-whatsapp-direct:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=60,
+                rate_limit=5  # Very conservative for direct WhatsApp Web
+            ),
+            'slack': MCPServiceConfig(
+                name='mcp-slack',
+                endpoint='http://mcp-slack:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=15
+            ),
+            'hume_ai': MCPServiceConfig(
+                name='mcp-hume-ai',
+                endpoint='http://mcp-hume-ai:8080',
+                service_type='hub',
+                compliance_level='hipaa',
+                timeout=60,  # Voice analysis can take longer
+                rate_limit=20,  # Reasonable for voice processing
+                enabled=True
             )
         }
         
@@ -139,13 +220,37 @@ class MCPRouter:
                 timeout=60,
                 rate_limit=10
             ),
-            'fhir_gateway': MCPServiceConfig(
-                name='vigia-fhir-gateway',
-                endpoint='http://vigia-fhir-gateway:8080',
+            'vigia_fhir': MCPServiceConfig(
+                name='vigia-fhir-server',
+                endpoint='http://vigia-fhir-server:8080',
                 service_type='custom',
                 compliance_level='hipaa',
                 timeout=45,
+                rate_limit=20
+            ),
+            'vigia_minsal': MCPServiceConfig(
+                name='vigia-minsal-server',
+                endpoint='http://vigia-minsal-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=30,
                 rate_limit=15
+            ),
+            'vigia_redis': MCPServiceConfig(
+                name='vigia-redis-server',
+                endpoint='http://vigia-redis-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=20,
+                rate_limit=50
+            ),
+            'vigia_medical_protocol': MCPServiceConfig(
+                name='vigia-medical-protocol-server',
+                endpoint='http://vigia-medical-protocol-server:8080',
+                service_type='custom',
+                compliance_level='hipaa',
+                timeout=30,
+                rate_limit=30
             ),
             'medical_knowledge': MCPServiceConfig(
                 name='vigia-medical-knowledge',
@@ -489,6 +594,125 @@ class MCPGateway:
         """Redis-specific operations"""
         return await self.call_service('redis', operation, kwargs)
     
+    async def slack_operation(self, operation: str, **kwargs) -> MCPResponse:
+        """Slack-specific operations with Block Kit support"""
+        return await self.call_service('slack', operation, kwargs)
+    
+    async def send_slack_block_kit(self, channel: str, blocks: List[Dict[str, Any]], 
+                                  text: str = None, **kwargs) -> MCPResponse:
+        """Send Block Kit message to Slack"""
+        params = {
+            'channel': channel,
+            'blocks': blocks,
+            **kwargs
+        }
+        if text:
+            params['text'] = text
+            
+        return await self.slack_operation('chat_postMessage', **params)
+    
+    async def send_lpp_alert_slack(self, case_id: str, patient_code: str, lpp_grade: int,
+                                  confidence: float, location: str, service: str, bed: str,
+                                  channel: str = '#medical-alerts') -> MCPResponse:
+        """Send LPP alert using Block Kit format via ADK agent"""
+        try:
+            # Create ADK agent and generate blocks using ADK tools
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            # Use ADK tool to generate LPP alert blocks
+            blocks_result = await block_kit_agent.tools["generate_lpp_alert_blocks"](
+                case_id=case_id,
+                patient_code=patient_code,
+                lpp_grade=lpp_grade,
+                confidence=confidence,
+                location=location,
+                service=service,
+                bed=bed
+            )
+            
+            return await self.send_slack_block_kit(
+                channel=channel,
+                blocks=blocks_result["blocks"],
+                text=f"LPP Grade {lpp_grade} Alert - Case {case_id}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending LPP alert via ADK: {e}")
+            return MCPResponse(
+                status="error",
+                error=str(e),
+                message="Failed to send LPP alert via ADK agent"
+            )
+    
+    async def send_patient_history_slack(self, patient_data: Dict[str, Any],
+                                        channel: str = '#medical-team') -> MCPResponse:
+        """Send patient history using Block Kit format via ADK agent"""
+        try:
+            # Create ADK agent and generate blocks using ADK tools
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            # Use ADK tool to generate patient history blocks
+            blocks_result = await block_kit_agent.tools["generate_patient_history_blocks"](patient_data)
+            
+            patient_id = patient_data.get('id', 'Unknown')
+            return await self.send_slack_block_kit(
+                channel=channel,
+                blocks=blocks_result["blocks"],
+                text=f"Patient History - {patient_id}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending patient history via ADK: {e}")
+            return MCPResponse(
+                status="error",
+                error=str(e),
+                message="Failed to send patient history via ADK agent"
+            )
+    
+    async def handle_slack_interaction(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle Slack interactive components via ADK agent"""
+        try:
+            # Create ADK agent for interaction handling
+            block_kit_agent = create_slack_block_kit_agent()
+            
+            if payload.get('type') == 'block_actions':
+                # Handle button clicks
+                actions = payload.get('actions', [])
+                if actions:
+                    action = actions[0]
+                    action_id = action.get('action_id')
+                    value = action.get('value')
+                    user_id = payload.get('user', {}).get('id')
+                    
+                    # Use ADK agent to handle the interaction
+                    agent_response = await block_kit_agent.handle_slack_interaction(
+                        action_id=action_id,
+                        value=value,
+                        user_id=user_id
+                    )
+                    
+                    if agent_response.success:
+                        return agent_response.data
+                    else:
+                        return {
+                            "response_type": "ephemeral",
+                            "text": f"Error: {agent_response.error}"
+                        }
+                    
+            elif payload.get('type') == 'view_submission':
+                # Handle modal submissions (keeping original for now)
+                from ..slack.block_kit_medical import BlockKitInteractions
+                return BlockKitInteractions.handle_modal_submission(payload.get('view', {}))
+            
+            return {"response_type": "ephemeral", "text": "Acción no reconocida"}
+            
+        except Exception as e:
+            logger.error(f"Error handling Slack interaction via ADK: {e}")
+            return {
+                "response_type": "ephemeral",
+                "text": f"Error processing interaction: {str(e)}"
+            }
+    
     async def lpp_detection(self, image_path: str, patient_context: Dict[str, Any]) -> MCPResponse:
         """LPP detection via custom medical service"""
         return await self.call_service(
@@ -504,6 +728,350 @@ class MCPGateway:
             'fhir_gateway',
             operation,
             fhir_data
+        )
+    
+    async def whatsapp_operation(self, operation: str, patient_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """WhatsApp operations via Twilio integration"""
+        medical_context = patient_context or {}
+        medical_context.update({
+            'platform': 'whatsapp',
+            'phi_protection': True,
+            'message_encryption': True
+        })
+        
+        return await self.call_service(
+            'twilio_whatsapp',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def whatsapp_direct_operation(self, operation: str, patient_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Direct WhatsApp Web operations"""
+        medical_context = patient_context or {}
+        medical_context.update({
+            'platform': 'whatsapp_direct',
+            'phi_protection': True,
+            'local_processing': True,
+            'audit_required': True
+        })
+        
+        return await self.call_service(
+            'whatsapp_direct',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def slack_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Slack operations for medical team communication"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'slack',
+            'team_communication': True,
+            'phi_protection': True,
+            'escalation_capable': True
+        })
+        
+        return await self.call_service(
+            'slack',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def send_medical_alert(self, alert_type: str, patient_id: str, severity: str, 
+                                platform: str = 'slack', message: str = None) -> MCPResponse:
+        """Send medical alerts via messaging platforms"""
+        alert_data = {
+            'alert_type': alert_type,
+            'patient_id': patient_id,
+            'severity': severity,
+            'message': message,
+            'timestamp': datetime.now().isoformat(),
+            'requires_acknowledgment': severity in ['high', 'critical']
+        }
+        
+        medical_context = {
+            'alert_system': True,
+            'phi_protection': True,
+            'audit_required': True,
+            'emergency_escalation': severity == 'critical'
+        }
+        
+        if platform == 'slack':
+            return await self.slack_operation('send_alert', medical_context, **alert_data)
+        elif platform == 'whatsapp':
+            return await self.whatsapp_operation('send_alert', medical_context, **alert_data)
+        else:
+            raise ValueError(f"Unsupported platform for medical alerts: {platform}")
+    
+    async def notify_lpp_detection(self, lpp_grade: int, confidence: float, patient_context: Dict[str, Any],
+                                  image_path: str = None, platform: str = 'slack') -> MCPResponse:
+        """Notify medical team of LPP detection"""
+        # Determine severity based on LPP grade and confidence
+        if lpp_grade >= 3 or (lpp_grade >= 2 and confidence > 0.9):
+            severity = 'high'
+        elif lpp_grade >= 2 or confidence > 0.8:
+            severity = 'medium'
+        else:
+            severity = 'low'
+        
+        message = f"LPP Grade {lpp_grade} detected (conf: {confidence:.2f})"
+        if patient_context.get('patient_id'):
+            message += f" for patient {patient_context['patient_id']}"
+        
+        notification_data = {
+            'lpp_grade': lpp_grade,
+            'confidence': confidence,
+            'severity': severity,
+            'message': message,
+            'image_path': image_path,
+            'patient_context': patient_context,
+            'requires_review': lpp_grade >= 2 or confidence < 0.7
+        }
+        
+        return await self.send_medical_alert(
+            'lpp_detection',
+            patient_context.get('patient_id', 'unknown'),
+            severity,
+            platform,
+            message
+        )
+    
+    # === NEW MCP INTEGRATION METHODS ===
+    
+    async def supabase_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Supabase database operations for medical data"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'supabase',
+            'data_storage': True,
+            'phi_protection': True,
+            'backup_enabled': True
+        })
+        
+        return await self.call_service(
+            'supabase',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def postgres_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """PostgreSQL database operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'postgres',
+            'database_type': 'primary',
+            'transaction_support': True,
+            'acid_compliance': True
+        })
+        
+        return await self.call_service(
+            'postgres',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def google_cloud_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Google Cloud Platform operations (Vertex AI, Storage, BigQuery)"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'google_cloud',
+            'ai_processing': True,
+            'hipaa_compliance': True,
+            'vertex_ai_enabled': True
+        })
+        
+        return await self.call_service(
+            'google_cloud',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def sendgrid_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """SendGrid email operations for medical notifications"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'sendgrid',
+            'notification_type': 'email',
+            'phi_protection': True,
+            'delivery_tracking': True
+        })
+        
+        return await self.call_service(
+            'sendgrid',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def aws_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """AWS cloud services operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'aws',
+            'cloud_infrastructure': True,
+            'hipaa_eligible': True,
+            'scalable': True
+        })
+        
+        return await self.call_service(
+            'aws',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def sentry_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Sentry error tracking and monitoring"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'sentry',
+            'monitoring_type': 'error_tracking',
+            'performance_monitoring': True,
+            'alert_system': True
+        })
+        
+        return await self.call_service(
+            'sentry',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    # === CUSTOM VIGIA MCP SERVICES ===
+    
+    async def fhir_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """FHIR operations for medical data interchange"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_fhir',
+            'interoperability': True,
+            'hl7_standard': True,
+            'medical_data_exchange': True
+        })
+        
+        return await self.call_service(
+            'vigia_fhir',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def minsal_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """MINSAL Chilean healthcare compliance operations"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_minsal',
+            'regulatory_compliance': True,
+            'chile_specific': True,
+            'mandatory_reporting': True
+        })
+        
+        return await self.call_service(
+            'vigia_minsal',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def redis_cache_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Redis caching operations for medical data"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_redis',
+            'cache_type': 'medical_data',
+            'high_performance': True,
+            'vector_search': True
+        })
+        
+        return await self.call_service(
+            'vigia_redis',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    async def medical_protocol_operation(self, operation: str, medical_context: Optional[Dict[str, Any]] = None, **kwargs) -> MCPResponse:
+        """Medical protocol operations for clinical guidelines"""
+        medical_context = medical_context or {}
+        medical_context.update({
+            'platform': 'vigia_medical_protocol',
+            'clinical_guidelines': True,
+            'evidence_based': True,
+            'protocol_search': True
+        })
+        
+        return await self.call_service(
+            'vigia_medical_protocol',
+            operation,
+            kwargs,
+            medical_context=medical_context
+        )
+    
+    # === CONVENIENCE METHODS FOR COMPLEX WORKFLOWS ===
+    
+    async def send_email_alert(self, recipient: str, subject: str, message: str, severity: str = "medium", patient_context: Optional[Dict[str, Any]] = None) -> MCPResponse:
+        """Send medical alert via email"""
+        return await self.sendgrid_operation(
+            'send_email',
+            medical_context=patient_context,
+            to=recipient,
+            subject=f"[{severity.upper()}] {subject}",
+            html_content=message,
+            medical_alert=True
+        )
+    
+    async def cache_patient_data(self, patient_id: str, patient_data: Dict[str, Any], ttl_hours: int = 24) -> MCPResponse:
+        """Cache patient data in Redis"""
+        return await self.redis_cache_operation(
+            'cache_patient_data',
+            medical_context={'patient_id': patient_id},
+            patient_id=patient_id,
+            patient_data=patient_data,
+            ttl_hours=ttl_hours
+        )
+    
+    async def search_medical_protocols(self, query: str, lpp_grade: Optional[int] = None) -> MCPResponse:
+        """Search for medical protocols"""
+        search_params = {'query': query}
+        if lpp_grade:
+            search_params['severity'] = f'grade_{lpp_grade}'
+        
+        return await self.medical_protocol_operation(
+            'search_protocols',
+            search_params
+        )
+    
+    async def validate_minsal_compliance(self, lpp_data: Dict[str, Any], hospital_data: Dict[str, Any]) -> MCPResponse:
+        """Validate MINSAL compliance for Chilean healthcare"""
+        return await self.minsal_operation(
+            'validate_minsal_compliance',
+            medical_context={'country': 'chile'},
+            lpp_data=lpp_data,
+            hospital_data=hospital_data
+        )
+    
+    async def create_fhir_patient(self, patient_data: Dict[str, Any]) -> MCPResponse:
+        """Create FHIR Patient resource"""
+        return await self.fhir_operation(
+            'create_patient',
+            medical_context={'resource_type': 'Patient'},
+            patient_data=patient_data
+        )
+    
+    async def log_medical_error(self, error_data: Dict[str, Any], severity: str = "error") -> MCPResponse:
+        """Log medical system error to Sentry"""
+        return await self.sentry_operation(
+            'capture_exception',
+            medical_context={'system': 'vigia_medical'},
+            error_data=error_data,
+            level=severity,
+            tags={'medical_system': True}
         )
     
     async def get_service_status(self) -> Dict[str, Any]:

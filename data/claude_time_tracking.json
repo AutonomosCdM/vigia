@@ -1,0 +1,211 @@
+{
+  "tasks": {
+    "task_1750303675": {
+      "task_id": "task_1750303675",
+      "task_name": "Vig\u00eda MCP Integration - Claude Code Migration",
+      "description": "",
+      "priority": "medium",
+      "human_estimate_hours": 4.5,
+      "start_time": "2025-06-18T23:27:55.592894",
+      "end_time": null,
+      "claude_actual_hours": null,
+      "efficiency_ratio": null,
+      "status": "in_progress",
+      "checkpoints": [],
+      "notes": []
+    },
+    "task_1750303690": {
+      "task_id": "task_1750303690",
+      "task_name": "Vig\u00eda MCP Integration - Claude Code Migration",
+      "description": "",
+      "priority": "medium",
+      "human_estimate_hours": 4.5,
+      "start_time": "2025-06-18T23:28:10.912769",
+      "end_time": "2025-06-19T00:01:38.227778",
+      "claude_actual_hours": 0.5575875025,
+      "efficiency_ratio": 0.12390833388888889,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-18T23:29:13.548108",
+          "message": "Template y scripts deployment creados",
+          "elapsed_minutes": 1.0439228999999999
+        },
+        {
+          "timestamp": "2025-06-18T23:30:24.826003",
+          "message": "Documentaci\u00f3n CLAUDE.md actualizada con MCPs",
+          "elapsed_minutes": 2.23188785
+        },
+        {
+          "timestamp": "2025-06-18T23:31:36.243044",
+          "message": "Tests MCP creados - integraci\u00f3n completa",
+          "elapsed_minutes": 3.422171833333333
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:01:38.227790",
+          "note": "MCP integration completa - PR creado, documentaci\u00f3n profesional, tests comprehensivos, deployment autom\u00e1tico"
+        }
+      ]
+    },
+    "task_1750305839": {
+      "task_id": "task_1750305839",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:03:59.406550",
+      "end_time": "2025-06-19T00:03:59.407263",
+      "claude_actual_hours": 1.9805555555555555e-07,
+      "efficiency_ratio": 9.902777777777778e-08,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:03:59.407049",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 8.933333333333333e-06
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:03:59.407267",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750305864": {
+      "task_id": "task_1750305864",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:04:24.550544",
+      "end_time": "2025-06-19T00:04:24.551115",
+      "claude_actual_hours": 1.586111111111111e-07,
+      "efficiency_ratio": 7.930555555555555e-08,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:04:24.550935",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 7e-06
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:04:24.551117",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750307231": {
+      "task_id": "task_1750307231",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:27:11.468015",
+      "end_time": "2025-06-19T00:27:11.468896",
+      "claude_actual_hours": 2.447222222222222e-07,
+      "efficiency_ratio": 1.223611111111111e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:27:11.468648",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 1.1233333333333333e-05
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:27:11.468899",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750307250": {
+      "task_id": "task_1750307250",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:27:30.214374",
+      "end_time": "2025-06-19T00:27:30.215227",
+      "claude_actual_hours": 2.3694444444444446e-07,
+      "efficiency_ratio": 1.1847222222222223e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:27:30.214867",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 9.116666666666665e-06
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:27:30.215230",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750307635": {
+      "task_id": "task_1750307635",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:33:55.504211",
+      "end_time": "2025-06-19T00:33:55.505460",
+      "claude_actual_hours": 3.469444444444444e-07,
+      "efficiency_ratio": 1.734722222222222e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:33:55.505115",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 1.6e-05
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:33:55.505463",
+          "note": "All tests passed"
+        }
+      ]
+    },
+    "task_1750307665": {
+      "task_id": "task_1750307665",
+      "task_name": "Test MCP Integration",
+      "description": "Testing MCP integration features",
+      "priority": "medium",
+      "human_estimate_hours": 2.0,
+      "start_time": "2025-06-19T00:34:25.577990",
+      "end_time": "2025-06-19T00:34:25.579100",
+      "claude_actual_hours": 3.083333333333334e-07,
+      "efficiency_ratio": 1.541666666666667e-07,
+      "status": "completed",
+      "checkpoints": [
+        {
+          "timestamp": "2025-06-19T00:34:25.578712",
+          "message": "MCP configuration completed",
+          "elapsed_minutes": 1.3033333333333334e-05
+        }
+      ],
+      "notes": [
+        {
+          "timestamp": "2025-06-19T00:34:25.579103",
+          "note": "All tests passed"
+        }
+      ]
+    }
+  },
+  "stats": {
+    "total_tasks": 8,
+    "completed_tasks": 7,
+    "failed_tasks": 0,
+    "active_tasks": 1,
+    "total_claude_hours": 0.557588996111111,
+    "total_human_estimate_hours": 16.5
+  }
+}

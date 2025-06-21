@@ -1,0 +1,133 @@
+# Vigia Development Docker Compose
+# Lightweight setup for local development with real services
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Development
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: vigia-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vigia_dev
+      POSTGRES_USER: vigia_user
+      POSTGRES_PASSWORD: vigia_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/setup/postgres_init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vigia_user -d vigia_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vigia-dev
+
+  # Redis Cache for Development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: vigia-redis-dev
+    restart: unless-stopped
+    command: redis-server --appendonly yes --appendfsync everysec
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vigia-dev
+
+  # Celery Worker for Development
+  celery-worker-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vigia-celery-dev
+    restart: unless-stopped
+    command: celery -A vigia_detect.tasks worker --loglevel=info --concurrency=2
+    environment:
+      CELERY_BROKER_URL: redis://redis-dev:6379/0
+      CELERY_RESULT_BACKEND: redis://redis-dev:6379/1
+      DATABASE_URL: postgresql://vigia_user:vigia_password@postgres-dev:5432/vigia_dev
+      ENVIRONMENT: development
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+      redis-dev:
+        condition: service_healthy
+    networks:
+      - vigia-dev
+
+  # Flower for Celery Monitoring
+  flower-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vigia-flower-dev
+    restart: unless-stopped
+    command: celery -A vigia_detect.tasks flower --port=5555
+    environment:
+      CELERY_BROKER_URL: redis://redis-dev:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis-dev
+      - celery-worker-dev
+    networks:
+      - vigia-dev
+
+  # Redis Commander for Redis GUI
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vigia-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis-dev:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis-dev
+    networks:
+      - vigia-dev
+
+  # pgAdmin for PostgreSQL GUI
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vigia-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vigia.dev
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres-dev
+    networks:
+      - vigia-dev
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  vigia-dev:
+    driver: bridge
+    name: vigia-development

@@ -12,9 +12,9 @@ from datetime import datetime
 import aiohttp
 
 from .gateway import MCPGateway, MCPRequest, MCPResponse, create_mcp_gateway
-from ..utils.logger import get_logger
+from ..utils.shared_utilities import VigiaLogger
 
-logger = get_logger(__name__)
+logger = VigiaLogger.get_logger(__name__)
 
 
 class MCPClient:

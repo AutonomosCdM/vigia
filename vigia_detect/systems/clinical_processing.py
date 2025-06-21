@@ -21,12 +21,12 @@ import tempfile
 import hashlib
 
 from ..core.input_packager import StandardizedInput
-from ..core.medical_dispatcher import TriageDecision
+from ..core.triage_engine import TriageResult as TriageDecision
 from ..cv_pipeline.detector import LPPDetector
 from ..cv_pipeline.preprocessor import ImagePreprocessor
-from ..db.supabase_client_refactored import SupabaseClient
+from ..db.supabase_client import SupabaseClientRefactored as SupabaseClient
 from ..utils.secure_logger import SecureLogger
-from ..utils.image_utils import download_image_from_url, anonymize_image
+# Removed image_utils imports that don't exist
 from ..utils.validators import validate_patient_code_format
 
 logger = SecureLogger("clinical_processing_system")
@@ -1027,3 +1027,7 @@ class ClinicalProcessingFactory:
         )
         
         return processor
+
+
+# Legacy alias for backward compatibility
+ClinicalProcessor = ClinicalProcessingSystem

@@ -1,12 +1,6 @@
 """
 User interfaces for Vigia medical detection system.
-Includes Slack bot, web UI, and other interactive interfaces.
+Interactive interfaces placeholder package.
 """
 
-from .slack_interface import SlackInterface
-from .web_interface import WebInterface
-
-__all__ = [
-    "SlackInterface",
-    "WebInterface",
-]
+__all__ = []

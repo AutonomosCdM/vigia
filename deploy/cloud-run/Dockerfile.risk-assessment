@@ -1,0 +1,42 @@
+# Dockerfile for Risk Assessment Agent
+# ====================================
+# Native ADK LlmAgent for comprehensive medical risk assessment
+
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements-cloudrun.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-cloudrun.txt
+
+# Copy application code
+COPY . .
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Create user for security
+RUN useradd --create-home --shell /bin/bash vigia
+RUN chown -R vigia:vigia /app
+USER vigia
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Run the Risk Assessment Agent
+CMD ["python", "deploy/cloud-run/entrypoints/risk_assessment_agent.py"]

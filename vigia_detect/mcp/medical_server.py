@@ -18,14 +18,13 @@ from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field
 import uvicorn
 
-from ..utils.logger import get_logger
-from ..utils.encryption import encrypt_phi, decrypt_phi
+from ..utils.shared_utilities import VigiaLogger
 from ..systems.medical_decision_engine import MedicalDecisionEngine
-from ..systems.clinical_processing import ClinicalProcessor
+from ..systems.clinical_processing import ClinicalProcessingSystem
 from ..cv_pipeline.detector import LPPDetector
 from ..integrations.his_fhir_gateway import HISFHIRGateway
 
-logger = get_logger(__name__)
+logger = VigiaLogger.get_logger(__name__)
 
 
 class MCPMedicalRequest(BaseModel):

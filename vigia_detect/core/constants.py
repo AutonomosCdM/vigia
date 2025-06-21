@@ -14,6 +14,13 @@ class LPPGrade(Enum):
     GRADE_4 = 4    # Pérdida total del espesor de los tejidos
 
 
+class ProcessingRoute(Enum):
+    """Rutas de procesamiento médico"""
+    IMMEDIATE = "immediate"
+    URGENT = "urgent"
+    ROUTINE = "routine"
+
+
 class SlackActionIds:
     """Action IDs estandarizados para interacciones de Slack"""
     # Botones principales
@@ -28,6 +35,16 @@ class SlackActionIds:
     # Acciones secundarias
     ACEPTAR_EVALUACION: ClassVar[str] = "aceptar_evaluacion"
     VER_DETALLES_EVALUACION: ClassVar[str] = "ver_detalles_evaluacion"
+    
+    # Block Kit specific actions
+    VIEW_MEDICAL_HISTORY: ClassVar[str] = "view_medical_history"
+    REQUEST_MEDICAL_EVALUATION: ClassVar[str] = "request_medical_evaluation"
+    MARK_RESOLVED: ClassVar[str] = "mark_resolved"
+    ACCEPT_EVALUATION: ClassVar[str] = "accept_evaluation"
+    CONTACT_NURSING: ClassVar[str] = "contact_nursing"
+    VIEW_CASE_DETAILS: ClassVar[str] = "view_case_details"
+    INVESTIGATE_ERROR: ClassVar[str] = "investigate_error"
+    VIEW_LOGS: ClassVar[str] = "view_logs"
 
 
 class SlackChannels:

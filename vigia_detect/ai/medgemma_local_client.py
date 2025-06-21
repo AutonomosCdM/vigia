@@ -33,7 +33,7 @@ import gc
 
 from ..utils.secure_logger import SecureLogger
 from ..utils.error_handling import handle_exceptions
-from ..core.base_client_v2 import BaseClientV2
+from ..core.base_client import BaseClient
 
 logger = SecureLogger("medgemma_local_client")
 
@@ -109,7 +109,7 @@ class MedGemmaResponse:
     error_message: Optional[str] = None
 
 
-class MedGemmaLocalClient(BaseClientV2):
+class MedGemmaLocalClient(BaseClient):
     """Cliente para ejecutar MedGemma localmente."""
     
     def __init__(self, config: Optional[MedGemmaConfig] = None):

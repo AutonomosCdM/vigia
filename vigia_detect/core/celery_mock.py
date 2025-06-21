@@ -1,137 +1,150 @@
 """
-Celery Mock for Testing Without Dependencies
-==========================================
-
-Mock implementation of Celery for testing the async pipeline without
-requiring Celery installation.
+Mock implementation of Celery for testing environments where Celery is not available.
+This provides compatibility during testing and development.
 """
 
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, Mock
-import uuid
-from datetime import datetime, timezone
+import asyncio
+import logging
+from typing import Any, Callable, Dict, Optional
+from unittest.mock import Mock
 
-class MockAsyncResult:
-    """Mock AsyncResult for testing"""
+logger = logging.getLogger(__name__)
+
+
+class MockQueue:
+    """Mock queue for testing without Redis/Celery infrastructure."""
     
-    def __init__(self, task_id: str = None):
-        self.id = task_id or str(uuid.uuid4())
-        self.status = 'PENDING'
-        self.result = None
-        self.info = None
+    def __init__(self, name: str = "default"):
+        self.name = name
+        self.tasks = []
         
-    def ready(self) -> bool:
-        return self.status in ['SUCCESS', 'FAILURE', 'REVOKED']
-    
-    def successful(self) -> bool:
-        return self.status == 'SUCCESS'
-    
-    def failed(self) -> bool:
-        return self.status == 'FAILURE'
-    
-    def get(self, timeout=None, propagate=True):
-        if self.status == 'SUCCESS':
-            return self.result
-        elif self.status == 'FAILURE':
-            if propagate:
-                raise Exception(self.info or "Task failed")
-            return None
-        else:
-            raise TimeoutError("Task timeout")
+    async def put(self, task_data: Dict[str, Any]):
+        """Mock enqueue operation."""
+        self.tasks.append(task_data)
+        logger.debug(f"Mock task queued in {self.name}: {task_data}")
+        
+    async def get(self):
+        """Mock dequeue operation."""
+        if self.tasks:
+            return self.tasks.pop(0)
+        return None
+        
+    def size(self):
+        """Get queue size."""
+        return len(self.tasks)
+
 
 class MockTask:
-    """Mock Celery Task"""
+    """Mock Celery task for testing."""
     
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self, func: Callable, name: str = None):
+        self.func = func
+        self.name = name or func.__name__
+        self.retry_count = 0
         
     def delay(self, *args, **kwargs):
-        """Mock delay method"""
-        result = MockAsyncResult()
-        result.status = 'SUCCESS'
-        result.result = {'success': True, 'task_name': self.name}
-        return result
+        """Mock async task execution."""
+        logger.info(f"Mock task executed: {self.name}")
+        try:
+            # For testing, execute synchronously
+            result = self.func(*args, **kwargs)
+            return MockAsyncResult(result, task_id=f"mock-{self.name}-{id(self)}")
+        except Exception as e:
+            logger.error(f"Mock task failed: {self.name} - {e}")
+            return MockAsyncResult(None, task_id=f"mock-{self.name}-{id(self)}", error=str(e))
     
     def apply_async(self, args=None, kwargs=None, **options):
-        """Mock apply_async method"""
-        return self.delay(*(args or []), **(kwargs or {}))
+        """Mock apply_async execution."""
+        args = args or []
+        kwargs = kwargs or {}
+        return self.delay(*args, **kwargs)
 
-class MockCeleryApp:
-    """Mock Celery App"""
+
+class MockAsyncResult:
+    """Mock Celery AsyncResult for testing."""
     
-    def __init__(self, name: str):
-        self.name = name
-        self.conf = MagicMock()
-        self.control = MagicMock()
+    def __init__(self, result: Any = None, task_id: str = None, error: str = None):
+        self.result = result
+        self.id = task_id or f"mock-task-{id(self)}"
+        self.error = error
+        self._state = "SUCCESS" if error is None else "FAILURE"
         
-        # Mock inspect
-        self.control.inspect.return_value.active_queues.return_value = {}
-        self.control.inspect.return_value.stats.return_value = {}
-        self.control.inspect.return_value.active.return_value = {}
-        self.control.inspect.return_value.scheduled.return_value = {}
-        self.control.inspect.return_value.reserved.return_value = {}
-        self.control.ping.return_value = ['pong']
+    @property
+    def state(self):
+        return self._state
         
-    def AsyncResult(self, task_id: str):
-        """Mock AsyncResult creation"""
-        result = MockAsyncResult(task_id)
-        result.status = 'SUCCESS'
-        result.result = {'success': True, 'task_id': task_id}
-        return result
+    @property
+    def status(self):
+        return self._state
+        
+    def get(self, timeout=None):
+        """Get task result."""
+        if self.error:
+            raise Exception(self.error)
+        return self.result
+        
+    def ready(self):
+        """Check if task is ready."""
+        return True
+        
+    def successful(self):
+        """Check if task was successful."""
+        return self.error is None
+
+
+class MockCelery:
+    """Mock Celery app for testing environments."""
+    
+    def __init__(self, *args, **kwargs):
+        self.conf = Mock()
+        self.tasks = {}
+        self.queues = {
+            'medical_priority': MockQueue('medical_priority'),
+            'image_processing': MockQueue('image_processing'),
+            'notifications': MockQueue('notifications'),
+            'audit_logging': MockQueue('audit_logging'),
+            'default': MockQueue('default')
+        }
+        
+        # Configure mock settings
+        self.conf.task_serializer = 'json'
+        self.conf.result_serializer = 'json'
+        self.conf.accept_content = ['json']
+        self.conf.result_expires = 3600
+        self.conf.timezone = 'UTC'
+        self.conf.enable_utc = True
+        
+        logger.info("MockCelery initialized for testing")
     
     def task(self, *args, **kwargs):
-        """Mock task decorator"""
+        """Mock task decorator."""
         def decorator(func):
-            task = MockTask(func.__name__)
-            task.delay = lambda *a, **kw: MockAsyncResult(f"{func.__name__}_{uuid.uuid4()}")
-            return task
+            task_name = kwargs.get('name', func.__name__)
+            mock_task = MockTask(func, task_name)
+            self.tasks[task_name] = mock_task
+            
+            # Return the function with task methods attached
+            func.delay = mock_task.delay
+            func.apply_async = mock_task.apply_async
+            func.name = task_name
+            
+            return func
         return decorator
     
-    def autodiscover_tasks(self, packages):
-        """Mock autodiscover"""
-        pass
+    def send_task(self, name: str, args=None, kwargs=None, **options):
+        """Mock send_task method."""
+        if name in self.tasks:
+            return self.tasks[name].delay(*(args or []), **(kwargs or {}))
+        else:
+            logger.warning(f"Mock task not found: {name}")
+            return MockAsyncResult(None, error=f"Task {name} not found")
 
-# Mock objects for imports
-class MockQueue:
-    def __init__(self, name, routing_key=None):
-        self.name = name
-        self.routing_key = routing_key
 
-class MockGroup:
-    """Mock Celery group"""
-    
-    def __init__(self, tasks):
-        self.tasks = tasks
-        
-    def get(self, timeout=None, propagate=True):
-        """Mock group get with results"""
-        return [{'success': True} for _ in self.tasks]
+# Create mock celery app instance
+celery_app = MockCelery('vigia_medical_mock')
 
-# Export mock functions
-def group(tasks):
-    """Mock group function"""
-    return MockGroup(tasks)
+# Mock queue aliases for compatibility
+Queue = MockQueue
 
-# Mock celery app instance
-celery_app = MockCeleryApp('vigia_medical_pipeline')
-
-# Mock configuration
-MEDICAL_TASK_CONFIG = {
-    'image_analysis_task': {
-        'time_limit': 240,
-        'soft_time_limit': 180,
-        'max_retries': 2,
-        'retry_delay': 30,
-        'queue': 'image_processing'
-    }
-}
-
-def configure_task_defaults(task_name: str):
-    """Mock configure_task_defaults"""
-    return MEDICAL_TASK_CONFIG.get(task_name, {
-        'time_limit': 300,
-        'soft_time_limit': 240,
-        'max_retries': 3,
-        'retry_delay': 60,
-        'queue': 'default'
-    })
+# Export for compatibility
+__all__ = ['celery_app', 'MockCelery', 'MockTask', 'MockAsyncResult', 'MockQueue', 'Queue']

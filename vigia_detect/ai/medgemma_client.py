@@ -17,7 +17,7 @@ from enum import Enum
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
-from vigia_detect.core.base_client_v2 import BaseClientV2
+from vigia_detect.core.base_client import BaseClient
 from vigia_detect.utils.secure_logger import SecureLogger
 from vigia_detect.utils.error_handling import handle_exceptions
 from config.settings import get_settings
@@ -58,7 +58,7 @@ class MedGemmaResponse:
     audit_trail: Dict[str, Any] = None
 
 
-class MedGemmaClient(BaseClientV2):
+class MedGemmaClient(BaseClient):
     """
     Cliente especializado para MedGemma con enfoque en análisis médico LPP.
     
@@ -597,7 +597,7 @@ FORMATO DE RESPUESTA (JSON):
     
     async def validate_connection(self) -> bool:
         """
-        Implementación del método abstracto de BaseClientV2.
+        Implementación del método abstracto de BaseClient.
         Valida la conexión con el servicio MedGemma.
         
         Returns:

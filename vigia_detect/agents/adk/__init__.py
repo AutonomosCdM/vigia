@@ -1,0 +1,45 @@
+"""
+Vigia ADK Agents - Google Agent Development Kit Integration
+=========================================================
+
+This module contains native Google ADK implementations of Vigia's medical agents.
+All agents are built using Google ADK patterns without wrappers or legacy code.
+
+Architecture:
+- BaseAgent: Custom agents with specialized logic (ImageAnalysisAgent)
+- LlmAgent: Agents using language models for reasoning (ClinicalAssessmentAgent, ProtocolAgent)
+- WorkflowAgent: Deterministic process orchestration (CommunicationAgent, WorkflowOrchestrationAgent)
+
+A2A Protocol:
+- Agent Cards for capability discovery
+- HTTP/SSE communication between agents
+- Secure authentication and task management
+"""
+
+from .base import VigiaBaseAgent
+from .voice_analysis import VoiceAnalysisAgent, create_voice_analysis_agent
+from .slack_block_kit import SlackBlockKitAgent, create_slack_block_kit_agent
+# Temporarily comment out other agents until they are updated for simplified ADK
+# from .image_analysis import ImageAnalysisAgent
+# from .clinical_assessment import ClinicalAssessmentAgent
+# from .protocol import ProtocolAgent
+# from .communication import CommunicationAgent
+# from .workflow_orchestration import WorkflowOrchestrationAgent
+
+__all__ = [
+    "VigiaBaseAgent",
+    "VoiceAnalysisAgent",
+    "create_voice_analysis_agent", 
+    "SlackBlockKitAgent",
+    "create_slack_block_kit_agent"
+    # Temporarily removed until ADK simplified:
+    # "ImageAnalysisAgent", 
+    # "ClinicalAssessmentAgent",
+    # "ProtocolAgent",
+    # "CommunicationAgent",
+    # "WorkflowOrchestrationAgent"
+]
+
+# Version info
+__version__ = "1.0.0"
+__adk_version__ = "1.0.0"

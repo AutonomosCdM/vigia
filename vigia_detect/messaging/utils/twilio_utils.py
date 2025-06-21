@@ -104,6 +104,38 @@ def is_image_media(media_type: str) -> bool:
     """
     return media_type.startswith('image/')
 
+def validate_media_format(media_type: str, file_size: int = 0) -> Dict[str, Any]:
+    """
+    Valida formato de media para aislamiento técnico
+    
+    Args:
+        media_type: Tipo MIME del archivo
+        file_size: Tamaño del archivo en bytes
+        
+    Returns:
+        Dict: Resultado de validación técnica
+    """
+    # Formatos permitidos (solo validación técnica)
+    allowed_types = {
+        'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+        'video/mp4', 'video/mov', 'video/avi'
+    }
+    
+    # Límite de tamaño (10MB)
+    max_size = 10 * 1024 * 1024
+    
+    # Validaciones técnicas básicas
+    valid_type = media_type.lower() in allowed_types
+    valid_size = file_size <= max_size if file_size > 0 else True
+    
+    return {
+        'valid': valid_type and valid_size,
+        'type_valid': valid_type,
+        'size_valid': valid_size,
+        'media_type': media_type,
+        'file_size': file_size
+    }
+
 def parse_twilio_error(error_json: str) -> Dict[str, Any]:
     """
     Parsea un error de Twilio para mostrar información útil

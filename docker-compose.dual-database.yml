@@ -1,0 +1,406 @@
+version: '3.8'
+
+# ===============================================
+# DUAL DATABASE ARCHITECTURE
+# Hospital PHI Database + Processing Database
+# ===============================================
+
+services:
+  # ===============================================
+  # 1. HOSPITAL PHI DATABASE (INTERNAL)
+  # ===============================================
+  hospital-phi-db:
+    image: postgres:15-alpine
+    container_name: vigia-hospital-phi-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_DB: hospital_phi
+      POSTGRES_USER: hospital_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/hospital_db_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      
+    volumes:
+      - hospital_phi_data:/var/lib/postgresql/data
+      - ./hospital/schemas/hospital_phi_database.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./hospital/init/:/docker-entrypoint-initdb.d/init/:ro
+      
+    ports:
+      - "5432:5432"  # Hospital internal access only
+      
+    networks:
+      - hospital_internal
+      
+    secrets:
+      - hospital_db_password
+      
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+      
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+          
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hospital_admin -d hospital_phi"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===============================================
+  # 2. PROCESSING DATABASE (EXTERNAL)
+  # ===============================================
+  processing-db:
+    image: postgres:15-alpine
+    container_name: vigia-processing-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_DB: vigia_processing
+      POSTGRES_USER: vigia_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/processing_db_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      
+    volumes:
+      - processing_data:/var/lib/postgresql/data
+      - ./processing/schemas/processing_database.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./processing/init/:/docker-entrypoint-initdb.d/init/:ro
+      
+    ports:
+      - "5433:5432"  # External access for Vigia system
+      
+    networks:
+      - processing_external
+      - tokenization_bridge
+      
+    secrets:
+      - processing_db_password
+      
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+      
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+          
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vigia_admin -d vigia_processing"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===============================================
+  # 3. PHI TOKENIZATION SERVICE
+  # ===============================================
+  phi-tokenization-service:
+    build:
+      context: .
+      dockerfile: tokenization/Dockerfile
+    container_name: vigia-phi-tokenization-service
+    restart: unless-stopped
+    
+    environment:
+      # Database connections
+      HOSPITAL_PHI_DB_URL: "postgresql://hospital_admin:${HOSPITAL_DB_PASSWORD}@hospital-phi-db:5432/hospital_phi"
+      VIGIA_PROCESSING_DB_URL: "postgresql://vigia_admin:${PROCESSING_DB_PASSWORD}@processing-db:5432/vigia_processing"
+      
+      # Security
+      PHI_TOKENIZATION_JWT_SECRET_FILE: /run/secrets/tokenization_jwt_secret
+      PHI_ENCRYPTION_KEY_FILE: /run/secrets/tokenization_encryption_key
+      
+      # Configuration
+      TOKEN_EXPIRY_DAYS: 30
+      MAX_REQUESTS_PER_HOUR: 100
+      
+    ports:
+      - "8080:8080"  # API endpoint
+      
+    networks:
+      - hospital_internal    # Access to hospital PHI DB
+      - tokenization_bridge  # Access to processing DB
+      
+    secrets:
+      - hospital_db_password
+      - processing_db_password
+      - tokenization_jwt_secret
+      - tokenization_encryption_key
+      
+    depends_on:
+      hospital-phi-db:
+        condition: service_healthy
+      processing-db:
+        condition: service_healthy
+        
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+      
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ===============================================
+  # 4. VIGIA PROCESSING PIPELINE
+  # ===============================================
+  vigia-processing:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vigia-processing-pipeline
+    restart: unless-stopped
+    
+    environment:
+      # Processing database connection
+      VIGIA_PROCESSING_DB_URL: "postgresql://vigia_admin:${PROCESSING_DB_PASSWORD}@processing-db:5432/vigia_processing"
+      
+      # PHI Tokenization Service
+      PHI_TOKENIZATION_SERVICE_URL: "http://phi-tokenization-service:8080"
+      HOSPITAL_STAFF_ID: "VIGIA_SYSTEM"
+      HOSPITAL_AUTH_LEVEL: "administrator"
+      
+      # Environment
+      ENVIRONMENT: "production"
+      LOG_LEVEL: "INFO"
+      
+    networks:
+      - processing_external
+      - tokenization_bridge
+      
+    secrets:
+      - processing_db_password
+      
+    depends_on:
+      processing-db:
+        condition: service_healthy
+      phi-tokenization-service:
+        condition: service_healthy
+        
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+      
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===============================================
+  # 5. REDIS CACHE (SHARED)
+  # ===============================================
+  redis-cache:
+    image: redis:7-alpine
+    container_name: vigia-redis-cache
+    restart: unless-stopped
+    
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 1gb --maxmemory-policy allkeys-lru
+    
+    ports:
+      - "6379:6379"
+      
+    networks:
+      - processing_external
+      
+    volumes:
+      - redis_data:/data
+      
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      
+    # Health check
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===============================================
+  # 6. NGINX REVERSE PROXY
+  # ===============================================
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: vigia-nginx-proxy
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+      
+    volumes:
+      - ./nginx/dual-database.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      
+    networks:
+      - processing_external
+      - tokenization_bridge
+      
+    depends_on:
+      - phi-tokenization-service
+      - vigia-processing
+      
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+      - /var/cache/nginx
+
+  # ===============================================
+  # 7. MONITORING & LOGGING
+  # ===============================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vigia-prometheus
+    restart: unless-stopped
+    
+    ports:
+      - "9090:9090"
+      
+    volumes:
+      - ./monitoring/prometheus-dual.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+      
+    networks:
+      - processing_external
+      
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vigia-grafana
+    restart: unless-stopped
+    
+    ports:
+      - "3000:3000"
+      
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_admin_password
+      
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      
+    networks:
+      - processing_external
+      
+    secrets:
+      - grafana_admin_password
+
+# ===============================================
+# NETWORKS
+# ===============================================
+networks:
+  # Hospital internal network (PHI database)
+  hospital_internal:
+    driver: bridge
+    internal: true  # No external access
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+    
+  # Processing external network (tokenized data)
+  processing_external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+    
+  # Bridge network for tokenization service
+  tokenization_bridge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+
+# ===============================================
+# VOLUMES
+# ===============================================
+volumes:
+  hospital_phi_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/vigia/hospital_phi_data
+      
+  processing_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/vigia/processing_data
+      
+  redis_data:
+    driver: local
+    
+  prometheus_data:
+    driver: local
+    
+  grafana_data:
+    driver: local
+
+# ===============================================
+# SECRETS
+# ===============================================
+secrets:
+  hospital_db_password:
+    file: ./secrets/hospital_db_password.txt
+    
+  processing_db_password:
+    file: ./secrets/processing_db_password.txt
+    
+  tokenization_jwt_secret:
+    file: ./secrets/tokenization_jwt_secret.txt
+    
+  tokenization_encryption_key:
+    file: ./secrets/tokenization_encryption_key.txt
+    
+  grafana_admin_password:
+    file: ./secrets/grafana_admin_password.txt

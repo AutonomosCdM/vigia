@@ -7,18 +7,32 @@ Vigia is a medical-grade pressure injury (LPP - Lesiones Por Presión) detection
 
 ## Architecture Overview
 
+### 🏗️ Phase-Based Development Structure
+The system is organized into phases (FASE) for systematic development and compliance:
+
+**FASE 1 - Patient Reception & PHI Tokenization (COMPLETED)**
+- **Location**: `fase1/` - Complete dual database architecture
+- **WhatsApp Agent**: `fase1/whatsapp_agent/` - Input reception (Layer 1)
+- **PHI Tokenization**: `fase1/phi_tokenization/` - Bruce Wayne → Batman conversion
+- **Dual Database**: `fase1/dual_database/` - Hospital PHI + Processing separation
+- **Status**: ✅ 100% validated with 7/7 tests passed
+
+**FASE 2-5 - Medical Processing Pipeline (PENDING)**
+- Requires adaptation to work with tokenized data (Batman) from Processing Database
+- No PHI exposure beyond Hospital Database
+
 ### 🏗️ 3-Layer Security Architecture
 The system implements strict separation of concerns across three layers:
 
 **Layer 1 - Input Isolation (Zero Medical Knowledge)**
-- `vigia_detect/messaging/whatsapp/isolated_bot.py` - WhatsApp Bot with no medical data access
-- `vigia_detect/core/input_packager.py` - Standardizes inputs without medical analysis  
-- `vigia_detect/core/input_queue.py` - Encrypted temporal storage with session tokens
+- `fase1/whatsapp_agent/isolated_bot.py` - WhatsApp Bot with no medical data access
+- `fase1/orchestration/input_packager.py` - Standardizes inputs without medical analysis  
+- `fase1/orchestration/input_queue.py` - Encrypted temporal storage with session tokens
 
 **Layer 2 - Medical Orchestration**
-- `vigia_detect/core/medical_dispatcher.py` - Routes based on medical content and urgency
-- `vigia_detect/core/triage_engine.py` - Applies medical rules for clinical urgency assessment
-- `vigia_detect/core/session_manager.py` - Manages temporal isolation with 15-minute timeouts
+- `fase1/orchestration/medical_dispatcher.py` - Routes based on medical content and urgency
+- `fase1/orchestration/triage_engine.py` - Applies medical rules for clinical urgency assessment
+- `fase1/orchestration/session_manager.py` - Manages temporal isolation with 15-minute timeouts
 
 **Layer 3 - Specialized Medical Systems**
 - `vigia_detect/systems/clinical_processing.py` - LPP detection and medical analysis
@@ -29,6 +43,22 @@ The system implements strict separation of concerns across three layers:
 - `vigia_detect/utils/audit_service.py` - Complete audit trail with 7-year retention
 - `vigia_detect/interfaces/slack_orchestrator.py` - Medical team notifications
 - `vigia_detect/utils/access_control_matrix.py` - Granular permissions by layer and role
+
+### 🔐 Dual Database Architecture (FASE 1)
+**Hospital PHI Database** (Internal Only):
+- Contains real patient data (Bruce Wayne)
+- Schema: `fase1/dual_database/schemas/hospital_phi_database.sql`
+- Network: Hospital internal (no external access)
+
+**Processing Database** (External):
+- Contains ONLY tokenized data (Batman)
+- Schema: `fase1/dual_database/schemas/processing_database.sql`  
+- Network: Processing external (Vigia system access)
+
+**PHI Tokenization Service**:
+- Bridge between databases: `fase1/phi_tokenization/service/`
+- API for secure Bruce Wayne → Batman conversion
+- JWT authentication and audit logging
 
 ## Commands & Modes
 
@@ -54,6 +84,9 @@ The system implements strict separation of concerns across three layers:
 ```bash
 # Run all tests with standardized runner
 ./scripts/run_tests.sh
+
+# FASE 1 Testing (Dual Database Architecture)
+cd fase1/tests/integration && python test_dual_database_separation.py  # FASE 1 validation (7/7 tests)
 
 # Run specific test suites
 ./scripts/run_tests.sh e2e          # End-to-end tests
@@ -118,8 +151,12 @@ python scripts/validate_post_refactor_simple.py --verbose
 
 ### System Operations
 ```bash
+# FASE 1 Deployment (Dual Database Architecture)
+cd fase1/dual_database/docker && docker-compose -f docker-compose.dual-database.yml up -d  # Start FASE 1
+
 # Start services
-./start_whatsapp_server.sh                    # WhatsApp webhook server
+./start_whatsapp_server.sh                    # WhatsApp webhook server (Layer 1)
+cd fase1/whatsapp_agent && python server.py   # FASE 1 WhatsApp server
 ./scripts/start_slack_server.sh               # Slack notification server
 
 # Hospital deployment (NEW - v1.3.1+)
@@ -589,6 +626,13 @@ protocols = vector_service.search_protocols("LPP Grade 3 treatment")
 ```
 
 ### Project Structure Navigation
+- **FASE 1 (COMPLETED)**: `fase1/` - Patient reception with dual database architecture
+  - **WhatsApp Agent**: `fase1/whatsapp_agent/` (Input Layer 1)
+  - **PHI Tokenization**: `fase1/phi_tokenization/` (Bruce Wayne → Batman)
+  - **Dual Database**: `fase1/dual_database/` (Hospital PHI + Processing separation)
+  - **Orchestration**: `fase1/orchestration/` (Medical dispatcher, session management)
+  - **Testing**: `fase1/tests/` (FASE 1 validation suite)
+  - **Documentation**: `fase1/docs/` (Architecture and deployment guides)
 - **Medical Logic**: `vigia_detect/systems/` and `vigia_detect/agents/`
 - **A2A Distributed Infrastructure**: `vigia_detect/a2a/` (Protocol, Discovery, Load Balancer, Health Monitor, Queuing, Fault Tolerance)
 - **ADK Agents**: `vigia_detect/agents/` (ImageAnalysisAgent, ClinicalAssessmentAgent, ProtocolAgent, CommunicationAgent, WorkflowOrchestrationAgent)

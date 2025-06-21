@@ -18,6 +18,7 @@ import json
 
 from .input_packager import StandardizedInput
 from .session_manager import SessionManager, SessionState, SessionType
+from .phi_tokenization_client import PHITokenizationClient, TokenizedPatient
 from ..utils.secure_logger import SecureLogger
 from ..utils.validators import validate_patient_code_format
 
@@ -42,15 +43,22 @@ class TriageDecision:
         self.reason = reason
         self.flags = flags or []
         self.timestamp = datetime.now(timezone.utc)
+        self.tokenized_patient: Optional[TokenizedPatient] = None  # NO PHI data
     
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "route": self.route.value,
             "confidence": self.confidence,
             "reason": self.reason,
             "flags": self.flags,
             "timestamp": self.timestamp.isoformat()
         }
+        
+        # Include tokenized patient data if available (NO PHI)
+        if self.tokenized_patient:
+            result["tokenized_patient"] = self.tokenized_patient.to_dict()
+        
+        return result
 
 
 class MedicalDispatcher:
@@ -59,14 +67,17 @@ class MedicalDispatcher:
     Coordina el flujo entre sistemas especializados.
     """
     
-    def __init__(self, session_manager: Optional[SessionManager] = None):
+    def __init__(self, session_manager: Optional[SessionManager] = None, 
+                 phi_client: Optional[PHITokenizationClient] = None):
         """
         Inicializar dispatcher.
         
         Args:
             session_manager: Gestor de sesiones (se crea uno si no se proporciona)
+            phi_client: Cliente PHI tokenization (se crea uno si no se proporciona)
         """
         self.session_manager = session_manager or SessionManager()
+        self.phi_client = phi_client  # Se inicializa en initialize()
         
         # Configuración de timeouts por ruta
         self.route_timeouts = {
@@ -89,15 +100,23 @@ class MedicalDispatcher:
         logger.audit("medical_dispatcher_initialized", {
             "component": "layer2_dispatcher",
             "routes_available": [r.value for r in ProcessingRoute],
-            "medical_compliance": True
+            "medical_compliance": True,
+            "phi_tokenization_enabled": True
         })
     
     async def initialize(self):
         """Inicializar dispatcher y servicios."""
         await self.session_manager.initialize()
+        
+        # Inicializar PHI tokenization client si no se proporcionó
+        if self.phi_client is None:
+            self.phi_client = PHITokenizationClient()
+            await self.phi_client.initialize()
+        
         logger.audit("medical_dispatcher_ready", {
             "status": "initialized",
-            "session_manager": "active"
+            "session_manager": "active",
+            "phi_tokenization": "ready"
         })
     
     async def dispatch(self, standardized_input: StandardizedInput) -> Dict[str, Any]:
@@ -222,20 +241,41 @@ class MedicalDispatcher:
                 for keyword in emergency_keywords
             )
             
-            # Detectar código de paciente
+            # Detectar y tokenizar código de paciente (Bruce Wayne → Batman)
             patient_code = self._extract_patient_code(text_content)
-            has_valid_patient_code = patient_code is not None
+            tokenized_patient = None
+            
+            if patient_code:
+                try:
+                    # Convertir MRN a tokenized patient (PHI → NO PHI)
+                    tokenized_patient = await self._tokenize_patient_data(patient_code)
+                    logger.audit("patient_tokenization_success", {
+                        "original_code": patient_code[:8] + "...",  # Partial for audit
+                        "patient_alias": tokenized_patient.patient_alias,
+                        "token_id": tokenized_patient.token_id
+                    })
+                except Exception as e:
+                    logger.error("patient_tokenization_failed", {
+                        "error": str(e),
+                        "patient_code": patient_code[:8] + "..."
+                    })
+                    tokenized_patient = None
+            
+            has_valid_patient_code = tokenized_patient is not None
             
             # Lógica de triage basada en el documento de arquitectura
             
-            # Ruta 1: Imagen clínica con código de paciente
+            # Ruta 1: Imagen clínica con código de paciente tokenizado
             if has_image and has_valid_patient_code:
-                return TriageDecision(
+                decision = TriageDecision(
                     route=ProcessingRoute.CLINICAL_IMAGE,
                     confidence=0.95,
-                    reason="Clinical image with valid patient code",
-                    flags=["has_patient_code", "clinical_context"]
+                    reason="Clinical image with valid tokenized patient",
+                    flags=["has_tokenized_patient", "clinical_context", "phi_protected"]
                 )
+                # Adjuntar datos tokenizados (NO PHI)
+                decision.tokenized_patient = tokenized_patient
+                return decision
             
             # Ruta 2: Consulta médica estructurada
             if has_text and not has_image:
@@ -463,6 +503,32 @@ class MedicalDispatcher:
                 return match
         
         return None
+    
+    async def _tokenize_patient_data(self, hospital_mrn: str) -> TokenizedPatient:
+        """
+        Tokenizar datos de paciente usando el PHI Tokenization Service.
+        Convierte Bruce Wayne → Batman para eliminar PHI del pipeline.
+        
+        Args:
+            hospital_mrn: Medical Record Number del hospital (e.g., "MRN-2025-001-BW")
+            
+        Returns:
+            TokenizedPatient con datos sin PHI
+        """
+        if not self.phi_client:
+            raise Exception("PHI Tokenization client not initialized")
+        
+        # Determinar propósito basado en el contexto médico
+        request_purpose = "Pressure injury detection and medical analysis"
+        
+        # Realizar tokenización (Bruce Wayne → Batman)
+        tokenized_patient = await self.phi_client.tokenize_patient(
+            hospital_mrn=hospital_mrn,
+            request_purpose=request_purpose,
+            urgency_level="routine"  # Se puede ajustar basado en flags de emergencia
+        )
+        
+        return tokenized_patient
     
     def _route_to_session_type(self, route: ProcessingRoute) -> SessionType:
         """Mapear ruta de procesamiento a tipo de sesión."""

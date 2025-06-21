@@ -22,11 +22,12 @@ import hashlib
 
 from ..core.input_packager import StandardizedInput
 from ..core.medical_dispatcher import TriageDecision
+from ..core.phi_tokenization_client import TokenizedPatient
 from ..cv_pipeline.detector import LPPDetector
 from ..cv_pipeline.preprocessor import ImagePreprocessor
 from ..db.supabase_client_refactored import SupabaseClientRefactored as SupabaseClient
+from ..storage.medical_image_storage import MedicalImageStorage, AnatomicalRegion, ImageType
 from ..utils.secure_logger import SecureLogger
-# Removed image_utils imports that don't exist
 from ..utils.validators import validate_patient_code_format
 
 logger = SecureLogger("clinical_processing_system")
@@ -69,9 +70,9 @@ class ClinicalDetection:
 
 @dataclass
 class ClinicalReport:
-    """Reporte clínico estructurado."""
+    """Reporte clínico estructurado con datos tokenizados (NO PHI)."""
     session_id: str
-    patient_code: str
+    tokenized_patient: TokenizedPatient  # NO PHI - solo datos tokenizados
     detection_result: ClinicalDetection
     processing_time: float
     image_metadata: Dict[str, Any]
@@ -90,7 +91,8 @@ class ClinicalProcessingSystem:
     def __init__(self, 
                  detector: Optional[LPPDetector] = None,
                  preprocessor: Optional[ImagePreprocessor] = None,
-                 db_client: Optional[SupabaseClient] = None):
+                 db_client: Optional[SupabaseClient] = None,
+                 image_storage: Optional[MedicalImageStorage] = None):
         """
         Inicializar sistema de procesamiento clínico.
         
@@ -98,10 +100,12 @@ class ClinicalProcessingSystem:
             detector: Detector de LPP
             preprocessor: Preprocesador de imágenes
             db_client: Cliente de base de datos
+            image_storage: Servicio de almacenamiento de imágenes médicas
         """
         self.detector = detector or LPPDetector()
         self.preprocessor = preprocessor or ImagePreprocessor()
         self.db_client = db_client
+        self.image_storage = image_storage or MedicalImageStorage()
         
         # Configuración clínica
         self.min_confidence_threshold = 0.7
@@ -146,11 +150,12 @@ class ClinicalProcessingSystem:
         try:
             # Actualizar estado: VALIDATING
             status = ProcessingStatus.VALIDATING
-            validation_result = await self._validate_clinical_input(standardized_input)
+            validation_result = await self._validate_clinical_input(standardized_input, triage_decision)
             if not validation_result["valid"]:
                 raise ValueError(f"Clinical validation failed: {validation_result['reason']}")
             
-            patient_code = validation_result["patient_code"]
+            # Obtener datos tokenizados (NO PHI) desde triage decision
+            tokenized_patient = validation_result["tokenized_patient"]
             
             # Obtener imagen
             image_path = await self._retrieve_clinical_image(standardized_input)
@@ -158,6 +163,13 @@ class ClinicalProcessingSystem:
             # Actualizar estado: PREPROCESSING
             status = ProcessingStatus.PREPROCESSING
             preprocessed_data = await self._preprocess_clinical_image(image_path)
+            
+            # Store medical image in patient database
+            await self._store_medical_image(
+                preprocessed_data["image_path"],
+                tokenized_patient,
+                standardized_input
+            )
             
             # Actualizar estado: DETECTING
             status = ProcessingStatus.DETECTING
@@ -177,7 +189,7 @@ class ClinicalProcessingSystem:
             status = ProcessingStatus.GENERATING_REPORT
             clinical_report = await self._generate_clinical_report(
                 session_id,
-                patient_code,
+                tokenized_patient,
                 clinical_analysis,
                 preprocessed_data["metadata"],
                 start_time
@@ -230,8 +242,9 @@ class ClinicalProcessingSystem:
                 "recovery_suggestions": self._get_recovery_suggestions(status, str(e))
             }
     
-    async def _validate_clinical_input(self, standardized_input: StandardizedInput) -> Dict[str, Any]:
-        """Validar input para procesamiento clínico."""
+    async def _validate_clinical_input(self, standardized_input: StandardizedInput, 
+                                      triage_decision: TriageDecision) -> Dict[str, Any]:
+        """Validar input para procesamiento clínico con datos tokenizados."""
         try:
             # Verificar que hay imagen
             if not standardized_input.metadata.get("has_media"):
@@ -240,20 +253,20 @@ class ClinicalProcessingSystem:
                     "reason": "No image provided for clinical processing"
                 }
             
-            # Extraer y validar código de paciente
-            text_content = standardized_input.raw_content.get("text", "")
-            patient_code = self._extract_patient_code(text_content)
-            
-            if not patient_code:
+            # Verificar que tenemos datos tokenizados del triage
+            if not hasattr(triage_decision, 'tokenized_patient') or not triage_decision.tokenized_patient:
                 return {
                     "valid": False,
-                    "reason": "No valid patient code found"
+                    "reason": "No tokenized patient data from triage decision"
                 }
             
-            if not validate_patient_code_format(patient_code):
+            tokenized_patient = triage_decision.tokenized_patient
+            
+            # Verificar que los datos tokenizados son válidos
+            if not tokenized_patient.token_id or not tokenized_patient.patient_alias:
                 return {
                     "valid": False,
-                    "reason": f"Invalid patient code format: {patient_code}"
+                    "reason": "Invalid tokenized patient data - missing token_id or alias"
                 }
             
             # Verificar formato de imagen
@@ -272,9 +285,17 @@ class ClinicalProcessingSystem:
                     "reason": f"Image too large: {media_size} bytes"
                 }
             
+            logger.audit("clinical_input_validated", {
+                "session_id": standardized_input.session_id,
+                "patient_alias": tokenized_patient.patient_alias,  # NO PHI
+                "token_id": tokenized_patient.token_id,
+                "media_type": media_type,
+                "phi_protected": True
+            })
+            
             return {
                 "valid": True,
-                "patient_code": patient_code,
+                "tokenized_patient": tokenized_patient,  # NO PHI
                 "media_type": media_type,
                 "media_size": media_size
             }
@@ -434,7 +455,7 @@ class ClinicalProcessingSystem:
     
     async def _generate_clinical_report(self,
                                       session_id: str,
-                                      patient_code: str,
+                                      tokenized_patient: TokenizedPatient,
                                       clinical_analysis: Dict[str, Any],
                                       image_metadata: Dict[str, Any],
                                       start_time: datetime) -> ClinicalReport:
@@ -455,7 +476,7 @@ class ClinicalProcessingSystem:
             
             report = ClinicalReport(
                 session_id=session_id,
-                patient_code=patient_code,
+                tokenized_patient=tokenized_patient,  # NO PHI - solo datos tokenizados
                 detection_result=detection,
                 processing_time=processing_time,
                 image_metadata=image_metadata,
@@ -485,10 +506,11 @@ class ClinicalProcessingSystem:
             return
         
         try:
-            # Preparar datos para almacenamiento
+            # Preparar datos para almacenamiento (solo datos tokenizados - NO PHI)
             detection_data = {
                 "session_id": report.session_id,
-                "patient_code": report.patient_code,
+                "token_id": report.tokenized_patient.token_id,  # NO PHI
+                "patient_alias": report.tokenized_patient.patient_alias,  # NO PHI (Batman)
                 "detected": report.detection_result.detected,
                 "lpp_grade": report.detection_result.lpp_grade.value if report.detection_result.lpp_grade else None,
                 "confidence": report.detection_result.confidence,
@@ -499,19 +521,22 @@ class ClinicalProcessingSystem:
                 "quality_metrics": report.quality_metrics,
                 "compliance_flags": report.compliance_flags,
                 "processor_version": report.processor_version,
-                "created_at": report.timestamp.isoformat()
+                "created_at": report.timestamp.isoformat(),
+                "phi_protected": True  # Flag para confirmar que no hay PHI
             }
             
             # Guardar detección
             await self.db_client.create_detection(detection_data)
             
-            # Guardar notas clínicas por separado (más seguro)
+            # Guardar notas clínicas por separado (más seguro, solo datos tokenizados)
             notes_data = {
                 "session_id": report.session_id,
-                "patient_code": report.patient_code,
+                "token_id": report.tokenized_patient.token_id,  # NO PHI
+                "patient_alias": report.tokenized_patient.patient_alias,  # NO PHI
                 "clinical_notes": report.clinical_notes,
                 "created_at": report.timestamp.isoformat(),
-                "created_by": "clinical_processing_system"
+                "created_by": "clinical_processing_system",
+                "phi_protected": True
             }
             
             await self.db_client.create_clinical_note(notes_data)
@@ -528,6 +553,161 @@ class ClinicalProcessingSystem:
                 "error": str(e)
             })
             # No re-throw - guardar en DB es opcional
+    
+    async def _store_medical_image(
+        self,
+        image_path: str,
+        tokenized_patient: TokenizedPatient,
+        standardized_input: StandardizedInput
+    ):
+        """
+        Store medical image in patient database with metadata
+        
+        Args:
+            image_path: Path to processed image
+            tokenized_patient: Tokenized patient data (NO PHI)
+            standardized_input: Original input with metadata
+        """
+        try:
+            # Extract anatomical region from input metadata
+            anatomical_region = self._extract_anatomical_region(standardized_input)
+            
+            # Determine image type based on context
+            image_type = self._determine_image_type(standardized_input)
+            
+            # Generate clinical context (PHI-safe)
+            clinical_context = self._generate_clinical_context(standardized_input, tokenized_patient)
+            
+            # Store image in patient database
+            image_record = await self.image_storage.store_medical_image(
+                image_file_path=image_path,
+                tokenized_patient=tokenized_patient,
+                anatomical_region=anatomical_region,
+                image_type=image_type,
+                clinical_context=clinical_context,
+                uploaded_by="clinical_processing_system"
+            )
+            
+            logger.audit("medical_image_stored_during_processing", {
+                "session_id": standardized_input.session_id,
+                "image_id": image_record.image_id,
+                "patient_alias": tokenized_patient.patient_alias,
+                "anatomical_region": anatomical_region.value,
+                "image_type": image_type.value
+            })
+            
+        except Exception as e:
+            logger.error("medical_image_storage_failed", {
+                "session_id": standardized_input.session_id,
+                "patient_alias": tokenized_patient.patient_alias,
+                "error": str(e)
+            })
+            # Don't fail the entire processing pipeline if image storage fails
+    
+    def _extract_anatomical_region(self, standardized_input: StandardizedInput) -> AnatomicalRegion:
+        """Extract anatomical region from input metadata"""
+        
+        # Try to extract from text content first
+        text_content = standardized_input.text_content.lower() if standardized_input.text_content else ""
+        
+        # Simple keyword matching for anatomical regions
+        region_keywords = {
+            AnatomicalRegion.SACRUM: ["sacro", "sacrum", "coxis", "coccyx"],
+            AnatomicalRegion.HEEL: ["talon", "heel", "calcáneo", "calcaneus"],
+            AnatomicalRegion.ELBOW: ["codo", "elbow", "olécranon", "olecranon"],
+            AnatomicalRegion.SHOULDER_BLADE: ["omóplato", "shoulder", "escápula", "scapula"],
+            AnatomicalRegion.HIP: ["cadera", "hip", "trocánter", "trochanter"],
+            AnatomicalRegion.ANKLE: ["tobillo", "ankle", "maléolo", "malleolus"],
+            AnatomicalRegion.KNEE: ["rodilla", "knee", "patela", "patella"]
+        }
+        
+        for region, keywords in region_keywords.items():
+            if any(keyword in text_content for keyword in keywords):
+                return region
+        
+        # Default to sacrum (most common pressure injury location)
+        return AnatomicalRegion.SACRUM
+    
+    def _determine_image_type(self, standardized_input: StandardizedInput) -> ImageType:
+        """Determine image type based on context"""
+        
+        text_content = standardized_input.text_content.lower() if standardized_input.text_content else ""
+        
+        # Check for follow-up indicators
+        followup_keywords = ["seguimiento", "control", "evolución", "progress", "follow-up", "followup"]
+        if any(keyword in text_content for keyword in followup_keywords):
+            return ImageType.WOUND_PROGRESS
+        
+        # Check for post-treatment indicators
+        treatment_keywords = ["tratamiento", "después", "post", "treatment", "after", "curación"]
+        if any(keyword in text_content for keyword in treatment_keywords):
+            return ImageType.POST_TREATMENT
+        
+        # Check for baseline indicators
+        baseline_keywords = ["inicial", "baseline", "primera", "first", "nuevo", "new"]
+        if any(keyword in text_content for keyword in baseline_keywords):
+            return ImageType.BASELINE_SKIN
+        
+        # Default to pressure injury assessment
+        return ImageType.PRESSURE_INJURY_ASSESSMENT
+    
+    def _generate_clinical_context(
+        self,
+        standardized_input: StandardizedInput,
+        tokenized_patient: TokenizedPatient
+    ) -> str:
+        """Generate PHI-safe clinical context"""
+        
+        context_parts = []
+        
+        # Add image type context
+        image_type = self._determine_image_type(standardized_input)
+        context_parts.append(f"Image type: {image_type.value.replace('_', ' ')}")
+        
+        # Add anatomical region
+        region = self._extract_anatomical_region(standardized_input)
+        context_parts.append(f"Location: {region.value}")
+        
+        # Add patient age range (tokenized, not exact age)
+        context_parts.append(f"Patient age range: {tokenized_patient.age_range}")
+        
+        # Add risk factors (from tokenized data)
+        if tokenized_patient.risk_factors:
+            active_risks = [k for k, v in tokenized_patient.risk_factors.items() if v]
+            if active_risks:
+                context_parts.append(f"Risk factors: {', '.join(active_risks)}")
+        
+        # Add sanitized text content (remove any potential PHI)
+        if standardized_input.text_content:
+            sanitized_text = self._sanitize_clinical_text(standardized_input.text_content)
+            if sanitized_text:
+                context_parts.append(f"Clinical notes: {sanitized_text}")
+        
+        return " | ".join(context_parts)
+    
+    def _sanitize_clinical_text(self, text: str) -> str:
+        """Remove potential PHI from clinical text"""
+        import re
+        
+        # Remove common PHI patterns
+        sanitized = text
+        
+        # Remove specific names (simple approach)
+        sanitized = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[PATIENT]', sanitized)
+        
+        # Remove phone numbers
+        sanitized = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE]', sanitized)
+        
+        # Remove dates
+        sanitized = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DATE]', sanitized)
+        
+        # Remove medical record numbers
+        sanitized = re.sub(r'\b(MRN|ID|#)\s*:?\s*\w+\b', '[MRN]', sanitized, flags=re.IGNORECASE)
+        
+        # Limit length and keep only relevant medical content
+        sanitized = sanitized[:200] + "..." if len(sanitized) > 200 else sanitized
+        
+        return sanitized.strip()
     
     async def _cleanup_temp_files(self, session_id: str):
         """Limpiar archivos temporales de forma segura."""
@@ -906,10 +1086,10 @@ class ClinicalProcessingSystem:
         return flags
     
     def _serialize_clinical_report(self, report: ClinicalReport) -> Dict[str, Any]:
-        """Serializar reporte clínico para transmisión."""
+        """Serializar reporte clínico para transmisión (solo datos tokenizados - NO PHI)."""
         return {
             "session_id": report.session_id,
-            "patient_code": report.patient_code,
+            "tokenized_patient": report.tokenized_patient.to_dict(),  # NO PHI
             "detection": {
                 "detected": report.detection_result.detected,
                 "lpp_grade": report.detection_result.lpp_grade.value if report.detection_result.lpp_grade else None,
@@ -924,7 +1104,8 @@ class ClinicalProcessingSystem:
             "quality_metrics": report.quality_metrics,
             "compliance_flags": report.compliance_flags,
             "timestamp": report.timestamp.isoformat(),
-            "processor_version": report.processor_version
+            "processor_version": report.processor_version,
+            "phi_protected": True  # Confirma que no hay PHI
         }
     
     def _determine_next_steps(self, report: ClinicalReport) -> List[str]:
@@ -955,21 +1136,25 @@ class ClinicalProcessingSystem:
         notifications = []
         
         if report.detection_result.detected:
-            # Notificación básica
+            # Notificación básica (usando alias tokenizado - NO PHI)
             notifications.append({
                 "type": "clinical_detection",
                 "priority": "high" if report.detection_result.lpp_grade in [LPPGrade.GRADE_3, LPPGrade.GRADE_4] else "medium",
                 "recipients": ["attending_physician", "nursing_team"],
-                "summary": f"LPP Grade {report.detection_result.lpp_grade.value if report.detection_result.lpp_grade else 'Unknown'} detected for patient {report.patient_code}"
+                "summary": f"LPP Grade {report.detection_result.lpp_grade.value if report.detection_result.lpp_grade else 'Unknown'} detected for patient {report.tokenized_patient.patient_alias}",  # Batman, no Bruce Wayne
+                "token_id": report.tokenized_patient.token_id,
+                "phi_protected": True
             })
             
-            # Notificación de riesgo si aplica
+            # Notificación de riesgo si aplica (usando alias tokenizado - NO PHI)
             if "infection_risk" in report.detection_result.risk_factors:
                 notifications.append({
                     "type": "infection_risk_alert",
                     "priority": "urgent",
                     "recipients": ["infection_control", "attending_physician"],
-                    "summary": f"Infection risk identified for patient {report.patient_code}"
+                    "summary": f"Infection risk identified for patient {report.tokenized_patient.patient_alias}",  # Batman, no Bruce Wayne
+                    "token_id": report.tokenized_patient.token_id,
+                    "phi_protected": True
                 })
         
         return notifications

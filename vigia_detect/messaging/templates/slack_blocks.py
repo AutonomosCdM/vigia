@@ -91,16 +91,16 @@ class VigiaMessageTemplates:
     """Templates específicos para mensajes de Vigía"""
     
     @staticmethod
-    def caso_header(paciente: str, id_caso: str, servicio: str, 
+    def caso_header(patient_alias: str, id_caso: str, servicio: str, 
                    cama: str, fecha: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Header estándar para casos de Vigía"""
+        """Header estándar para casos de Vigía (solo datos tokenizados - NO PHI)"""
         if not fecha:
             fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
         
         return [
             SlackBlockBuilder.header(f"Nueva Detección - Caso #{id_caso}", "🚨"),
             SlackBlockBuilder.section_with_fields([
-                f"*Paciente:*\n{paciente}",
+                f"*Paciente:*\n{patient_alias}",  # Tokenized alias (e.g., "Batman") - NO PHI
                 f"*ID Caso:*\n{id_caso}",
                 f"*Servicio:*\n{servicio}",
                 f"*Cama:*\n{cama}",
@@ -172,7 +172,7 @@ class VigiaMessageTemplates:
     
     @staticmethod
     def mensaje_completo_lpp(
-        paciente: str,
+        patient_alias: str,  # Tokenized alias (NO PHI)
         id_caso: str,
         servicio: str,
         cama: str,
@@ -183,11 +183,11 @@ class VigiaMessageTemplates:
         imagen_url: Optional[str] = None,
         analisis_emocional: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
-        """Construir mensaje completo de detección de LPP"""
+        """Construir mensaje completo de detección de LPP (solo datos tokenizados - NO PHI)"""
         
-        # Header
+        # Header with tokenized patient alias
         blocks = VigiaMessageTemplates.caso_header(
-            paciente, id_caso, servicio, cama
+            patient_alias, id_caso, servicio, cama
         )
         
         # Info de detección
@@ -228,18 +228,18 @@ class VigiaMessageTemplates:
     @staticmethod
     def notificacion_evaluacion_medica(
         solicitante: str,
-        paciente: str,
-        id_paciente: str,
+        patient_alias: str,  # Tokenized alias (NO PHI)
+        token_id: str,  # Tokenized ID (NO PHI)
         ubicacion: str,
         prioridad: str = "ALTA"
     ) -> List[Dict[str, Any]]:
-        """Notificación de solicitud de evaluación médica"""
+        """Notificación de solicitud de evaluación médica (solo datos tokenizados - NO PHI)"""
         return [
             SlackBlockBuilder.header("Evaluación Médica Solicitada", "🚨"),
             SlackBlockBuilder.section_with_text(
                 f"*Solicitado por:* <@{solicitante}>\n" +
-                f"*Paciente:* {paciente}\n" +
-                f"*ID:* {id_paciente}\n" +
+                f"*Paciente:* {patient_alias}\n" +  # Tokenized alias (e.g., "Batman")
+                f"*Token ID:* {token_id[:8]}...\n" +  # Partial token for identification
                 f"*Ubicación:* {ubicacion}\n" +
                 f"*Prioridad:* *{prioridad}*"
             ),
@@ -259,18 +259,18 @@ class VigiaMessageTemplates:
     @staticmethod
     def caso_resuelto(
         resuelto_por: str,
-        paciente: str,
-        id_paciente: str,
+        patient_alias: str,  # Tokenized alias (NO PHI)
+        token_id: str,  # Tokenized ID (NO PHI)
         resolucion: str,
         tiempo_resolucion: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        """Mensaje de caso resuelto"""
+        """Mensaje de caso resuelto (solo datos tokenizados - NO PHI)"""
         blocks = [
             SlackBlockBuilder.header("Caso Resuelto", "✅"),
             SlackBlockBuilder.section_with_fields([
                 f"*Resuelto por:* <@{resuelto_por}>",
-                f"*Paciente:* {paciente}",
-                f"*ID:* {id_paciente}",
+                f"*Paciente:* {patient_alias}",  # Tokenized alias (e.g., "Batman")
+                f"*Token ID:* {token_id[:8]}...",  # Partial token for identification
                 f"*Tiempo de resolución:* {tiempo_resolucion or 'N/A'}"
             ]),
             SlackBlockBuilder.divider(),

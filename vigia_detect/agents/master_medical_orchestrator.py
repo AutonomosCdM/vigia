@@ -114,8 +114,9 @@ class MasterMedicalOrchestrator:
         Args:
             case_data: Complete case information including:
                 - image_path: Path to medical image
-                - patient_code: Anonymized patient identifier
-                - patient_context: Medical context and risk factors
+                - token_id: Tokenized patient identifier (NO PHI)
+                - patient_alias: Patient alias (e.g., "Batman") for display
+                - patient_context: Medical context and risk factors (tokenized)
                 - session_token: Temporary session identifier
                 
         Returns:
@@ -123,14 +124,15 @@ class MasterMedicalOrchestrator:
         """
         start_time = datetime.now()
         session_token = case_data.get('session_token')
-        patient_code = case_data.get('patient_code')
+        token_id = case_data.get('token_id')  # Tokenized patient ID (NO PHI)
+        patient_alias = case_data.get('patient_alias', 'Unknown')  # Display alias
         
         try:
             # Initialize session and audit
             await self._initialize_case_session(case_data)
             
             # Phase 1: Image Analysis
-            logger.info(f"Iniciando análisis de imagen para paciente {patient_code}")
+            logger.info(f"Iniciando análisis de imagen para paciente {patient_alias} (token: {token_id[:8]}...)")
             image_analysis_result = await self._coordinate_image_analysis(case_data)
             
             if not image_analysis_result['success']:
@@ -139,7 +141,7 @@ class MasterMedicalOrchestrator:
                 )
             
             # Phase 2: Clinical Assessment
-            logger.info(f"Iniciando evaluación clínica para paciente {patient_code}")
+            logger.info(f"Iniciando evaluación clínica para paciente {patient_alias} (token: {token_id[:8]}...)")
             clinical_result = await self._coordinate_clinical_assessment(
                 case_data, image_analysis_result
             )
@@ -150,13 +152,13 @@ class MasterMedicalOrchestrator:
                 )
             
             # Phase 3: Protocol Consultation
-            logger.info(f"Consultando protocolos médicos para paciente {patient_code}")
+            logger.info(f"Consultando protocolos médicos para paciente {patient_alias} (token: {token_id[:8]}...)")
             protocol_result = await self._coordinate_protocol_consultation(
                 case_data, clinical_result
             )
             
             # Phase 4: Communication and Notifications
-            logger.info(f"Procesando notificaciones para paciente {patient_code}")
+            logger.info(f"Procesando notificaciones para paciente {patient_alias} (token: {token_id[:8]}...)")
             communication_result = await self._coordinate_communication(
                 case_data, protocol_result
             )
@@ -193,9 +195,10 @@ class MasterMedicalOrchestrator:
             return error_result
     
     async def _initialize_case_session(self, case_data: Dict[str, Any]):
-        """Initialize medical case session with audit trail"""
+        """Initialize medical case session with audit trail (tokenized data only - NO PHI)"""
         session_token = case_data.get('session_token')
-        patient_code = case_data.get('patient_code')
+        token_id = case_data.get('token_id')  # Tokenized patient ID
+        patient_alias = case_data.get('patient_alias', 'Unknown')  # Display alias
         
         # Import session types
         from vigia_detect.core.session_manager import SessionType

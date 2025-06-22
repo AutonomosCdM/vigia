@@ -12,6 +12,12 @@ from vigia_detect.core.celery_config import celery_app
 from vigia_detect.utils.secure_logger import SecureLogger
 from vigia_detect.utils.failure_handler import log_task_failure
 
+# FASE 1: PHI Tokenization Integration
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'fase1'))
+from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+
 logger = SecureLogger(__name__)
 
 class AsyncMedicalPipeline:
@@ -22,19 +28,19 @@ class AsyncMedicalPipeline:
     def __init__(self):
         self.logger = SecureLogger(__name__)
         
-    def process_medical_case_async(
+    async def process_medical_case_async(
         self,
         image_path: str,
-        patient_code: str,
+        hospital_mrn: str,
         patient_context: Optional[Dict[str, Any]] = None,
         processing_options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Procesa caso médico de forma completamente asíncrona
+        Procesa caso médico de forma completamente asíncrona con tokenización PHI
         
         Args:
             image_path: Ruta de la imagen médica
-            patient_code: Código único del paciente
+            hospital_mrn: Hospital MRN (Bruce Wayne data - will be tokenized to Batman)
             patient_context: Contexto médico del paciente
             processing_options: Opciones de procesamiento
             
@@ -42,7 +48,36 @@ class AsyncMedicalPipeline:
             Dict con IDs de tareas asíncronas y estado inicial
         """
         try:
-            self.logger.info(f"Starting async medical pipeline for patient: {patient_code}")
+            self.logger.info(f"Starting async medical pipeline with PHI tokenization for MRN: {hospital_mrn[:8]}...")
+            
+            # FASE 1: PHI TOKENIZATION - Convert Bruce Wayne → Batman
+            try:
+                tokenized_patient = await tokenize_patient_phi(
+                    hospital_mrn=hospital_mrn,
+                    request_purpose="LPP detection and medical analysis"
+                )
+                
+                # Use Batman token for all processing
+                token_id = tokenized_patient.token_id
+                patient_alias = tokenized_patient.patient_alias
+                
+                self.logger.audit("phi_tokenization_successful", {
+                    "hospital_mrn": hospital_mrn[:8] + "...",
+                    "token_id": token_id,
+                    "patient_alias": patient_alias,
+                    "tokenization_purpose": "async_medical_pipeline"
+                })
+                
+            except Exception as tokenization_error:
+                self.logger.error(f"PHI tokenization failed: {tokenization_error}")
+                return {
+                    'success': False,
+                    'error': 'PHI tokenization failed - cannot process without proper data protection',
+                    'hospital_mrn': hospital_mrn[:8] + "...",
+                    'tokenization_error': str(tokenization_error)
+                }
+            
+            self.logger.info(f"Processing medical case for tokenized patient: {patient_alias} (Token: {token_id})")
             
             # Importar tareas asíncronas
             from vigia_detect.tasks.medical import (
@@ -59,38 +94,43 @@ class AsyncMedicalPipeline:
             analysis_type = options.get('analysis_type', 'complete')
             notify_channels = options.get('notify_channels', [])
             
-            # 1. Iniciar análisis de imagen (tarea principal)
+            # 1. Iniciar análisis de imagen (tarea principal) - WITH BATMAN TOKEN
             image_task = image_analysis_task.delay(
                 image_path=image_path,
-                patient_code=patient_code,
-                patient_context=patient_context
+                token_id=token_id,  # Batman token instead of PHI
+                patient_context=patient_context,
+                tokenized_patient_data=tokenized_patient.to_dict()
             )
             
-            # 2. Análisis médico completo (depende de análisis de imagen)
+            # 2. Análisis médico completo (depende de análisis de imagen) - WITH BATMAN TOKEN  
             medical_task = medical_analysis_task.delay(
                 image_path=image_path,
-                patient_code=patient_code,
+                token_id=token_id,  # Batman token instead of PHI
                 analysis_type=analysis_type,
-                patient_context=patient_context
+                patient_context=patient_context,
+                tokenized_patient_data=tokenized_patient.to_dict()
             )
             
-            # 3. Logging de auditoría (inmediato)
+            # 3. Logging de auditoría (inmediato) - WITH BATMAN TOKEN
             audit_task = audit_log_task.delay(
                 event_data={
                     'pipeline_started': True,
-                    'patient_code': patient_code,
+                    'token_id': token_id,  # Batman token for audit
+                    'patient_alias': patient_alias,
                     'image_path': image_path,
-                    'analysis_type': analysis_type
+                    'analysis_type': analysis_type,
+                    'phi_tokenization_completed': True
                 },
                 event_type='medical_pipeline_start',
                 patient_context=patient_context
             )
             
-            # Pipeline result tracking
+            # Pipeline result tracking - WITH BATMAN TOKEN
             pipeline_result = {
                 'success': True,
-                'pipeline_id': f"pipeline_{patient_code}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
-                'patient_code': patient_code,
+                'pipeline_id': f"pipeline_{token_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
+                'token_id': token_id,  # Batman token instead of PHI
+                'patient_alias': patient_alias,
                 'started_at': datetime.now(timezone.utc).isoformat(),
                 'status': 'processing',
                 'task_ids': {
@@ -98,10 +138,15 @@ class AsyncMedicalPipeline:
                     'medical_analysis': medical_task.id,
                     'audit_log': audit_task.id
                 },
-                'processing_options': options
+                'processing_options': options,
+                'phi_tokenization': {
+                    'hospital_mrn_partial': hospital_mrn[:8] + "...",
+                    'tokenized_as': patient_alias,
+                    'expires_at': tokenized_patient.expires_at.isoformat()
+                }
             }
             
-            self.logger.info(f"Async pipeline initiated for patient: {patient_code} - Pipeline ID: {pipeline_result['pipeline_id']}")
+            self.logger.info(f"Async pipeline initiated for tokenized patient: {patient_alias} (Token: {token_id}) - Pipeline ID: {pipeline_result['pipeline_id']}")
             return pipeline_result
             
         except Exception as e:
@@ -121,8 +166,9 @@ class AsyncMedicalPipeline:
             return {
                 'success': False,
                 'error': str(e),
-                'patient_code': patient_code,
-                'failure_logged': True
+                'hospital_mrn_partial': hospital_mrn[:8] + "..." if 'hospital_mrn' in locals() else 'unknown',
+                'failure_logged': True,
+                'phi_tokenization_attempted': True
             }
     
     def get_pipeline_status(self, pipeline_id: str, task_ids: Dict[str, str]) -> Dict[str, Any]:
@@ -297,24 +343,27 @@ class AsyncMedicalPipeline:
             target_channels = self._get_escalation_channels(escalation_type)
             target_roles = self._get_escalation_roles(escalation_type)
             
-            # Disparar tareas de escalación
+            # Disparar tareas de escalación - WITH BATMAN TOKEN
             alert_task = medical_alert_slack_task.delay(
                 alert_data=escalation_data,
                 alert_type=escalation_type,
-                patient_code=patient_context.get('patient_code', 'unknown') if patient_context else 'unknown',
+                token_id=patient_context.get('token_id', 'unknown') if patient_context else 'unknown',
+                patient_alias=patient_context.get('patient_alias', 'unknown') if patient_context else 'unknown',
                 medical_team_channels=target_channels
             )
             
             escalation_task = escalation_notification_task.delay(
                 escalation_data=escalation_data,
                 escalation_type=escalation_type,
-                target_roles=target_roles
+                target_roles=target_roles,
+                token_id=patient_context.get('token_id', 'unknown') if patient_context else 'unknown'
             )
             
-            # Auditoría de escalación
+            # Auditoría de escalación - WITH BATMAN TOKEN
             audit_task = medical_decision_audit_task.delay(
                 decision_data=escalation_data,
-                patient_code=patient_context.get('patient_code', 'unknown') if patient_context else 'unknown',
+                token_id=patient_context.get('token_id', 'unknown') if patient_context else 'unknown',
+                patient_alias=patient_context.get('patient_alias', 'unknown') if patient_context else 'unknown',
                 medical_context={'escalation_triggered': True, 'escalation_type': escalation_type}
             )
             

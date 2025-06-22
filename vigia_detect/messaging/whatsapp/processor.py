@@ -32,11 +32,19 @@ try:
     from vigia_detect.cv_pipeline.preprocessor import ImagePreprocessor
     from vigia_detect.utils.image_utils import save_detection_result
     from vigia_detect.utils.security_validator import validate_and_sanitize_image, sanitize_user_input
+    
+    # FASE 1: PHI Tokenization Integration
+    import asyncio
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'fase1'))
+    from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+    
     lpp_detect_available = True
-    logger.info("LPP-Detect CV pipeline importado correctamente")
+    phi_tokenization_available = True
+    logger.info("LPP-Detect CV pipeline and PHI Tokenization importado correctamente")
 except ImportError as e:
-    logger.warning(f"No se pudo importar LPP-Detect CV pipeline: {str(e)}")
+    logger.warning(f"No se pudo importar LPP-Detect CV pipeline o PHI Tokenization: {str(e)}")
     lpp_detect_available = False
+    phi_tokenization_available = False
 
 # Configuración
 TEMP_DIR = os.path.join(Path(__file__).resolve().parent, "temp")
@@ -110,6 +118,72 @@ def download_image(url: str, auth: Optional[Tuple[str, str]] = None) -> Path:
     except Exception as e:
         logger.error(f"Error descargando imagen: {str(e)}")
         raise
+
+async def process_whatsapp_image_tokenized(image_url: str, auth_credentials: Optional[Tuple[str, str]] = None, hospital_mrn: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Procesa una imagen recibida de WhatsApp con tokenización PHI (FASE 1)
+    
+    Args:
+        image_url: URL de la imagen de Twilio
+        auth_credentials: (usuario, contraseña) para autenticación con Twilio
+        hospital_mrn: Hospital MRN (Bruce Wayne data - will be tokenized to Batman)
+        
+    Returns:
+        dict: Resultados del análisis con tokens Batman
+    """
+    try:
+        # STEP 1: PHI TOKENIZATION - Convert Bruce Wayne → Batman
+        tokenized_patient = None
+        if hospital_mrn and phi_tokenization_available:
+            try:
+                tokenized_patient = await tokenize_patient_phi(
+                    hospital_mrn=hospital_mrn,
+                    request_purpose="WhatsApp image analysis for LPP detection"
+                )
+                logger.info(f"PHI tokenization successful: {hospital_mrn[:8]}... → {tokenized_patient.patient_alias}")
+            except Exception as tokenization_error:
+                logger.error(f"PHI tokenization failed: {tokenization_error}")
+                return {
+                    'success': False,
+                    'error': 'PHI tokenization failed - cannot process without proper data protection',
+                    'hospital_mrn_partial': hospital_mrn[:8] + "..." if hospital_mrn else 'unknown',
+                    'tokenization_error': str(tokenization_error)
+                }
+        
+        # STEP 2: Call original processing with Batman token
+        if tokenized_patient:
+            result = process_whatsapp_image(
+                image_url=image_url,
+                auth_credentials=auth_credentials,
+                patient_code=tokenized_patient.token_id  # Use Batman token
+            )
+            
+            # Enhance result with tokenization info
+            result['phi_tokenization'] = {
+                'hospital_mrn_partial': hospital_mrn[:8] + "..." if hospital_mrn else 'unknown',
+                'tokenized_as': tokenized_patient.patient_alias,
+                'token_id': tokenized_patient.token_id,
+                'expires_at': tokenized_patient.expires_at.isoformat(),
+                'phi_compliant': True
+            }
+            
+            return result
+        else:
+            # No tokenization needed or available
+            return process_whatsapp_image(
+                image_url=image_url,
+                auth_credentials=auth_credentials,
+                patient_code=None
+            )
+    
+    except Exception as e:
+        logger.error(f"Error in tokenized WhatsApp processing: {e}")
+        return {
+            'success': False,
+            'error': str(e),
+            'hospital_mrn_partial': hospital_mrn[:8] + "..." if hospital_mrn else 'unknown',
+            'phi_tokenization_attempted': True
+        }
 
 def process_whatsapp_image(image_url: str, auth_credentials: Optional[Tuple[str, str]] = None, patient_code: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -283,12 +357,31 @@ class WhatsAppProcessor:
                 auth_token = os.getenv('TWILIO_AUTH_TOKEN')
                 auth_credentials = (account_sid, auth_token) if account_sid and auth_token else None
                 
-                # Process the image
-                result = process_whatsapp_image(
-                    media_url, 
-                    auth_credentials=auth_credentials,
-                    patient_code=self._extract_patient_code(body)
-                )
+                # Process the image with PHI tokenization
+                hospital_mrn = self._extract_hospital_mrn(body)
+                
+                # Use async tokenized processing if PHI data is present
+                if hospital_mrn and phi_tokenization_available:
+                    import asyncio
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(
+                            process_whatsapp_image_tokenized(
+                                media_url,
+                                auth_credentials=auth_credentials,
+                                hospital_mrn=hospital_mrn
+                            )
+                        )
+                    finally:
+                        loop.close()
+                else:
+                    # Fallback to original processing without PHI
+                    result = process_whatsapp_image(
+                        media_url, 
+                        auth_credentials=auth_credentials,
+                        patient_code=None  # No PHI in Layer 1
+                    )
                 
                 return {
                     "status": "processed",
@@ -313,35 +406,39 @@ class WhatsAppProcessor:
                 "response_message": "Error procesando el mensaje. Intente nuevamente."
             }
     
-    def _extract_patient_code(self, message_body: str) -> Optional[str]:
+    def _extract_hospital_mrn(self, message_body: str) -> Optional[str]:
         """
-        Extract patient code from message body if present
+        Extract hospital MRN (Medical Record Number) from message body if present
         
         Args:
             message_body: WhatsApp message text
             
         Returns:
-            Patient code if found, None otherwise
+            Hospital MRN if found, None otherwise
         """
         try:
-            # Look for patterns like "Paciente: 12345" or "PAC-12345"
+            # Look for patterns like "MRN: MRN-2025-001-BW" or "Paciente: MRN-2025-001-BW"
             import re
             
             # Sanitize input first
             if lpp_detect_available:
                 message_body = sanitize_user_input(message_body)
             
+            # Hospital MRN patterns (Bruce Wayne format)
             patterns = [
-                r'[Pp]aciente:?\s*(\w+)',
-                r'PAC[:-]?\s*(\w+)',
-                r'ID[:-]?\s*(\w+)',
-                r'Código[:-]?\s*(\w+)'
+                r'MRN[:-]?\s*(MRN-\d{4}-\d{3}-\w+)',  # MRN: MRN-2025-001-BW
+                r'[Pp]aciente:?\s*(MRN-\d{4}-\d{3}-\w+)',  # Paciente: MRN-2025-001-BW
+                r'Hospital:?\s*(MRN-\d{4}-\d{3}-\w+)',  # Hospital: MRN-2025-001-BW
+                r'ID[:-]?\s*(MRN-\d{4}-\d{3}-\w+)',  # ID: MRN-2025-001-BW
+                r'(MRN-\d{4}-\d{3}-\w+)'  # Direct MRN-2025-001-BW
             ]
             
             for pattern in patterns:
                 match = re.search(pattern, message_body)
                 if match:
-                    return match.group(1)
+                    hospital_mrn = match.group(1)
+                    logger.info(f"Hospital MRN extracted: {hospital_mrn[:8]}...")
+                    return hospital_mrn
             
             return None
             

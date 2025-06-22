@@ -388,7 +388,7 @@ def process_complete_medical_image_adk_tool(image_path: str, token_id: str,
         start_time = datetime.now(timezone.utc)
         
         # Step 1: Validate image
-        validation_result = validate_medical_image_adk_tool(image_path, patient_code)
+        validation_result = validate_medical_image_adk_tool(image_path, token_id)
         if not validation_result.get('valid', False):
             return {
                 'success': False,

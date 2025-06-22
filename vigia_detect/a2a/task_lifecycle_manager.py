@@ -67,8 +67,9 @@ class TaskLifecycleEvent:
 
 @dataclass
 class MedicalTaskContext:
-    """Medical context for task processing"""
-    patient_code: str
+    """Medical context for task processing with PHI tokenization"""
+    token_id: str  # Batman token (NO PHI)
+    patient_alias: str  # Patient alias (e.g., "Batman")
     case_priority: TaskPriority
     medical_urgency: str  # ROUTINE, URGENT, CRITICAL, EMERGENCY
     anatomical_location: Optional[str] = None
@@ -77,6 +78,7 @@ class MedicalTaskContext:
     requires_specialist: bool = False
     max_processing_time: int = 300  # seconds
     escalation_contacts: List[str] = field(default_factory=list)
+    phi_compliant: bool = True  # Indicates this uses tokenized data
 
 
 @dataclass
@@ -243,7 +245,9 @@ class MedicalTaskLifecycleManager:
                 'agent_to': agent_to,
                 'priority': medical_context.case_priority.value,
                 'medical_urgency': medical_context.medical_urgency,
-                'patient_code': medical_context.patient_code
+                'token_id': medical_context.token_id,
+                'patient_alias': medical_context.patient_alias,
+                'phi_compliant': medical_context.phi_compliant
             }
         )
         
@@ -478,7 +482,9 @@ class MedicalTaskLifecycleManager:
                     'escalation_reason': reason,
                     'agent_to': task.agent_to,
                     'medical_urgency': medical_context.medical_urgency,
-                    'patient_code': medical_context.patient_code
+                    'token_id': medical_context.token_id,
+                    'patient_alias': medical_context.patient_alias,
+                    'phi_compliant': medical_context.phi_compliant
                 }
             )
     

@@ -68,7 +68,15 @@ class WebhookHandlers:
         - Store in database
         - Update cache
         """
-        token_id = payload.get('token_id', payload.get('patient_code', 'UNKNOWN'))  # Batman token
+        # Enforce Batman tokens only - NO PHI fallback
+        token_id = payload.get('token_id')
+        if not token_id:
+            logger.error("No token_id provided in webhook payload - PHI compliance violation")
+            return {
+                'status': 'error',
+                'error': 'token_id required for PHI compliance',
+                'message': 'All webhooks must include Batman token (token_id) - no PHI allowed'
+            }
         risk_level = payload.get('risk_level', 'LOW')
         detections = payload.get('detections', [])
         
@@ -111,7 +119,15 @@ class WebhookHandlers:
         - Notify technical team
         - Track failure metrics
         """
-        token_id = payload.get('token_id', payload.get('patient_code', 'UNKNOWN'))  # Batman token
+        # Enforce Batman tokens only - NO PHI fallback
+        token_id = payload.get('token_id')
+        if not token_id:
+            logger.error("No token_id provided in webhook payload - PHI compliance violation")
+            return {
+                'status': 'error',
+                'error': 'token_id required for PHI compliance',
+                'message': 'All webhooks must include Batman token (token_id) - no PHI allowed'
+            }
         error = payload.get('error', 'Unknown error')
         image_path = payload.get('image_path', 'N/A')
         

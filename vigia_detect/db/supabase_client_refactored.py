@@ -64,43 +64,46 @@ class SupabaseClientRefactored(BaseClientV2):
             self.log_error("Supabase health check failed", e)
             return False
     
-    def get_or_create_patient(self, patient_code: str, **patient_data) -> Dict[str, Any]:
+    def get_or_create_patient(self, token_id: str, patient_alias: str = None, **patient_data) -> Dict[str, Any]:
         """
-        Obtiene un paciente existente o crea uno nuevo.
+        Obtiene un paciente existente o crea uno nuevo usando Batman token (Processing Database)
         
         Args:
-            patient_code: Código único del paciente
-            **patient_data: Datos adicionales del paciente (nombre, edad, etc.)
+            token_id: Batman token (NO PHI)
+            patient_alias: Patient alias (e.g., "Batman")
+            **patient_data: Datos tokenizados adicionales del paciente
             
         Returns:
-            Dict con los datos del paciente
+            Dict con los datos del paciente tokenizado
         """
         try:
-            # Buscar paciente existente
+            # Buscar paciente existente por token_id
             result = self.client.table('patients')\
                 .select('*')\
-                .eq('patient_code', patient_code)\
+                .eq('token_id', token_id)\
                 .execute()
             
             if result.data:
-                self.log_info(f"Found existing patient: {patient_code}")
+                self.log_info(f"Found existing tokenized patient: {patient_alias or 'Unknown'} (Token: {token_id})")
                 return result.data[0]
             
-            # Crear nuevo paciente
+            # Crear nuevo paciente tokenizado
             new_patient = {
                 'id': str(uuid.uuid4()),
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token instead of PHI
+                'patient_alias': patient_alias or 'Unknown',
                 'created_at': datetime.now().isoformat(),
+                'phi_compliant': True,
                 **patient_data
             }
             
             result = self.client.table('patients').insert(new_patient).execute()
-            self.log_info(f"Created new patient: {patient_code}")
+            self.log_info(f"Created new tokenized patient: {patient_alias or 'Unknown'} (Token: {token_id})")
             
             return result.data[0] if result.data else new_patient
             
         except Exception as e:
-            self.log_error(f"Error in get_or_create_patient for {patient_code}", e)
+            self.log_error(f"Error in get_or_create_patient for token {token_id}", e)
             raise
     
     def save_detection(self, 
@@ -168,23 +171,25 @@ class SupabaseClientRefactored(BaseClientV2):
             raise
     
     def get_patient_detections(self, 
-                              patient_code: str,
+                              token_id: str,
+                              patient_alias: str = None,
                               limit: int = 10,
                               status: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Obtiene las detecciones de un paciente.
+        Obtiene las detecciones de un paciente usando Batman token (Processing Database)
         
         Args:
-            patient_code: Código del paciente
+            token_id: Batman token (NO PHI)
+            patient_alias: Patient alias (e.g., "Batman")
             limit: Número máximo de resultados
             status: Filtrar por estado (opcional)
             
         Returns:
-            Lista de detecciones
+            Lista de detecciones tokenizadas
         """
         try:
-            # Primero obtener el paciente
-            patient = self.get_or_create_patient(patient_code)
+            # Primero obtener el paciente tokenizado
+            patient = self.get_or_create_patient(token_id, patient_alias)
             
             # Construir query
             query = self.client.table('detections')\
@@ -205,11 +210,11 @@ class SupabaseClientRefactored(BaseClientV2):
                 if isinstance(detection.get('detection_data'), str):
                     detection['detection_data'] = json.loads(detection['detection_data'])
             
-            self.log_info(f"Retrieved {len(detections)} detections for patient {patient_code}")
+            self.log_info(f"Retrieved {len(detections)} detections for tokenized patient {patient_alias or 'Unknown'} (Token: {token_id})")
             return detections
             
         except Exception as e:
-            self.log_error(f"Error getting detections for patient {patient_code}", e)
+            self.log_error(f"Error getting detections for tokenized patient {patient_alias or 'Unknown'} (Token: {token_id})", e)
             return []
     
     def update_detection_status(self, 

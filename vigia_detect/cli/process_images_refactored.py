@@ -23,6 +23,11 @@ from vigia_detect.webhook.client import SyncWebhookClient
 from vigia_detect.webhook.models import DetectionPayload, Detection, Severity
 from vigia_detect.config.settings import settings
 
+# FASE 1: PHI Tokenization Integration
+import asyncio
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent / 'fase1'))
+from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+
 # Configurar logging usando el módulo centralizado
 from vigia_detect.core.base_client import BaseClient
 
@@ -66,9 +71,15 @@ Ejemplos:
     )
     
     parser.add_argument(
+        '--hospital-mrn',
+        type=str,
+        help='Hospital MRN (Medical Record Number) para tokenización PHI (formato: MRN-YYYY-NNN-XX)'
+    )
+    
+    parser.add_argument(
         '--patient-code',
         type=str,
-        help='Código único del paciente (formato: XX-YYYY-NNN)'
+        help='[DEPRECATED] Use --hospital-mrn instead. Legacy patient code support.'
     )
     
     parser.add_argument(
@@ -120,10 +131,37 @@ Ejemplos:
     return parser.parse_args()
 
 
+async def tokenize_hospital_mrn(hospital_mrn: str) -> Optional[TokenizedPatient]:
+    """
+    Tokeniza el Hospital MRN (Bruce Wayne → Batman)
+    
+    Args:
+        hospital_mrn: Hospital MRN (formato: MRN-2025-001-BW)
+        
+    Returns:
+        TokenizedPatient object o None si falla
+    """
+    try:
+        tokenized_patient = await tokenize_patient_phi(
+            hospital_mrn=hospital_mrn,
+            request_purpose="CLI image processing for LPP detection"
+        )
+        logger.info(f"PHI tokenization successful: {hospital_mrn[:8]}... → {tokenized_patient.patient_alias}")
+        return tokenized_patient
+    except Exception as e:
+        logger.error(f"PHI tokenization failed: {e}")
+        return None
+
 def validate_patient_code(code: str) -> bool:
     """Valida el formato del código de paciente usando el validador centralizado"""
     from utils.validators import validate_patient_code
     return validate_patient_code(code)
+
+def validate_hospital_mrn(mrn: str) -> bool:
+    """Valida el formato del Hospital MRN"""
+    import re
+    pattern = r'^MRN-\d{4}-\d{3}-\w+$'
+    return re.match(pattern, mrn) is not None
 
 
 def print_detection_summary(results: List[dict]):
@@ -276,7 +314,7 @@ def send_webhook_notifications(results: List[dict], patient_code: Optional[str],
 
 @track_energy("cli_process_images")
 def main():
-    """Función principal del CLI"""
+    """Función principal del CLI con tokenización PHI"""
     args = parse_args()
     
     # Configurar nivel de logging
@@ -291,11 +329,43 @@ def main():
     # Crear directorio de salida si no existe
     os.makedirs(args.output, exist_ok=True)
     
-    # Validar código de paciente si se proporciona
-    if args.patient_code and not validate_patient_code(args.patient_code):
-        logger.error(f"Código de paciente inválido: {args.patient_code}")
-        logger.info("Formato esperado: XX-YYYY-NNN (ej: CD-2025-001)")
-        return 1
+    # FASE 1: PHI TOKENIZATION VALIDATION AND PROCESSING
+    tokenized_patient = None
+    effective_patient_id = None
+    
+    # Priorizar hospital-mrn sobre patient-code (legacy)
+    if args.hospital_mrn:
+        # Validar formato Hospital MRN
+        if not validate_hospital_mrn(args.hospital_mrn):
+            logger.error(f"Hospital MRN inválido: {args.hospital_mrn}")
+            logger.info("Formato esperado: MRN-YYYY-NNN-XX (ej: MRN-2025-001-BW)")
+            return 1
+        
+        # Tokenizar PHI: Bruce Wayne → Batman
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            tokenized_patient = loop.run_until_complete(
+                tokenize_hospital_mrn(args.hospital_mrn)
+            )
+            if not tokenized_patient:
+                logger.error("PHI tokenization failed - cannot process without proper data protection")
+                return 1
+            
+            effective_patient_id = tokenized_patient.token_id  # Use Batman token
+            logger.info(f"Using tokenized patient: {tokenized_patient.patient_alias} (Token: {effective_patient_id})")
+            
+        finally:
+            loop.close()
+            
+    elif args.patient_code:
+        # Legacy patient code support (deprecated)
+        logger.warning("Using deprecated --patient-code. Consider using --hospital-mrn for PHI compliance.")
+        if not validate_patient_code(args.patient_code):
+            logger.error(f"Código de paciente inválido: {args.patient_code}")
+            logger.info("Formato esperado: XX-YYYY-NNN (ej: CD-2025-001)")
+            return 1
+        effective_patient_id = args.patient_code
     
     # Listar imágenes
     image_files = list_image_files(args.input)
@@ -320,7 +390,7 @@ def main():
         
         batch_results = processor.process_batch(
             batch,
-            patient_code=args.patient_code,
+            patient_code=effective_patient_id,  # Use Batman token or legacy patient_code
             save_visualizations=True,
             output_dir=args.output
         )
@@ -331,32 +401,47 @@ def main():
     
     # Guardar en base de datos si se solicita
     if args.save_db:
-        if not args.patient_code:
-            logger.error("Se requiere --patient-code para guardar en base de datos")
+        if not effective_patient_id:
+            logger.error("Se requiere --hospital-mrn o --patient-code para guardar en base de datos")
             return 1
         
         try:
             db_client = SupabaseClientRefactored()
-            process_with_db(results, args.patient_code, db_client)
+            process_with_db(results, effective_patient_id, db_client)
         except Exception as e:
             logger.error(f"Error conectando con base de datos: {e}")
             return 1
     
     # Enviar notificaciones via webhook si se solicita
     if args.webhook or settings.webhook_enabled:
-        send_webhook_notifications(results, args.patient_code, args.webhook_url)
+        send_webhook_notifications(results, effective_patient_id, args.webhook_url)
     
     # Guardar resumen en archivo
     summary_path = os.path.join(args.output, 'processing_summary.json')
     import json
     from datetime import datetime
     with open(summary_path, 'w') as f:
-        json.dump({
-            'patient_code': args.patient_code,
+        summary_data = {
+            'effective_patient_id': effective_patient_id,
             'total_images': len(image_files),
             'results': results,
             'timestamp': datetime.now().isoformat()
-        }, f, indent=2)
+        }
+        
+        # Add tokenization info if available
+        if tokenized_patient:
+            summary_data['phi_tokenization'] = {
+                'hospital_mrn_partial': args.hospital_mrn[:8] + "..." if args.hospital_mrn else None,
+                'tokenized_as': tokenized_patient.patient_alias,
+                'token_id': tokenized_patient.token_id,
+                'expires_at': tokenized_patient.expires_at.isoformat(),
+                'phi_compliant': True
+            }
+        elif args.patient_code:
+            summary_data['legacy_patient_code'] = args.patient_code
+            summary_data['phi_compliant'] = False
+            
+        json.dump(summary_data, f, indent=2)
     
     logger.info(f"Resumen guardado en: {summary_path}")
     

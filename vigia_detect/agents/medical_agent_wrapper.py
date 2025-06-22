@@ -47,7 +47,7 @@ class LPPMedicalAgent:
             6: "MONITOREO_ESTRICTO"
         }
     
-    def analyze_lpp_image(self, image_path: str, patient_code: str, 
+    def analyze_lpp_image(self, image_path: str, token_id: str, 
                          detection_result: Dict[str, Any],
                          patient_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
@@ -55,7 +55,7 @@ class LPPMedicalAgent:
         
         Args:
             image_path: Path to the medical image
-            patient_code: Patient identifier
+            token_id: Batman token identifier (HIPAA compliant)
             detection_result: CV detection result
             patient_context: Additional patient medical context
             
@@ -68,11 +68,11 @@ class LPPMedicalAgent:
             
             if not detections:
                 # No LPP detected
-                analysis = self._generate_no_lpp_analysis(patient_code, patient_context)
+                analysis = self._generate_no_lpp_analysis(token_id, patient_context)
                 return {
                     'success': True,
                     'analysis': analysis,
-                    'patient_code': patient_code,
+                    'token_id': token_id,  # Batman token (HIPAA compliant)
                     'image_path': image_path,
                     'processing_timestamp': datetime.now().isoformat()
                 }
@@ -89,12 +89,12 @@ class LPPMedicalAgent:
             )
             
             # Merge with legacy format for compatibility
-            analysis = self._merge_with_legacy_format(evidence_based_analysis, patient_code)
+            analysis = self._merge_with_legacy_format(evidence_based_analysis, token_id)
             
             return {
                 'success': True,
                 'analysis': analysis,
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'image_path': image_path,
                 'processing_timestamp': datetime.now().isoformat(),
                 'evidence_based_decision': evidence_based_analysis  # Nueva documentación médica
@@ -104,7 +104,7 @@ class LPPMedicalAgent:
             return {
                 'success': False,
                 'error': str(e),
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'analysis': self._generate_error_analysis(str(e))
             }
     
@@ -125,7 +125,7 @@ class LPPMedicalAgent:
         
         return grade_mapping.get(class_name, 0)
     
-    def _generate_no_lpp_analysis(self, patient_code: str, 
+    def _generate_no_lpp_analysis(self, token_id: str, 
                                  patient_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate analysis for cases with no LPP detected"""
         return {
@@ -145,7 +145,7 @@ class LPPMedicalAgent:
         }
     
     def _generate_lpp_analysis(self, grade: int, confidence: float, location: str,
-                              patient_code: str, patient_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+                              token_id: str, patient_context: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate comprehensive LPP analysis"""
         
         analysis = {
@@ -278,7 +278,7 @@ class LPPMedicalAgent:
         elif confidence < 0.7:
             analysis['clinical_recommendations'].append('Considerar segunda evaluación')
     
-    def _merge_with_legacy_format(self, evidence_based_analysis: Dict[str, Any], patient_code: str) -> Dict[str, Any]:
+    def _merge_with_legacy_format(self, evidence_based_analysis: Dict[str, Any], token_id: str) -> Dict[str, Any]:
         """
         Fusiona el análisis basado en evidencia con el formato legacy para compatibilidad.
         """
@@ -330,9 +330,9 @@ class LPPMedicalAgent:
 # Export for backward compatibility
 lpp_agent = LPPMedicalAgent()
 
-def procesar_imagen_lpp(image_path: str, patient_code: str, detection_result: Dict[str, Any]) -> Dict[str, Any]:
-    """Legacy function wrapper for compatibility"""
-    return lpp_agent.analyze_lpp_image(image_path, patient_code, detection_result)
+def procesar_imagen_lpp(image_path: str, token_id: str, detection_result: Dict[str, Any]) -> Dict[str, Any]:
+    """Legacy function wrapper for compatibility - Now uses Batman tokens"""
+    return lpp_agent.analyze_lpp_image(image_path, token_id, detection_result)
 
 def generar_reporte_lpp(analysis: Dict[str, Any]) -> str:
     """Generate LPP report from analysis"""
@@ -347,7 +347,7 @@ def generar_reporte_lpp(analysis: Dict[str, Any]) -> str:
     report = f"""
 REPORTE DE ANÁLISIS LPP
 ======================
-Paciente: {analysis.get('patient_code', 'N/A')}
+Token ID: {analysis.get('token_id', 'N/A')}  # Batman token (HIPAA compliant)
 Fecha: {analysis.get('processing_timestamp', 'N/A')}
 
 RESULTADO:

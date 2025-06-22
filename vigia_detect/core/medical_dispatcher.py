@@ -32,6 +32,11 @@ class ProcessingRoute(Enum):
     HUMAN_REVIEW = "human_review_queue"
     EMERGENCY = "emergency_escalation"
     INVALID = "invalid_input"
+    
+    # FASE 2 - Multimodal Analysis Routes
+    VOICE_ANALYSIS_REQUIRED = "voice_analysis_required"
+    MULTIMODAL_ANALYSIS = "multimodal_analysis"  # Voice + Image
+    FASE2_COMPLETE = "fase2_complete"
 
 
 class TriageDecision:
@@ -227,7 +232,11 @@ class MedicalDispatcher:
             # Extraer indicadores clave
             has_image = metadata.get("has_media", False)
             has_text = metadata.get("has_text", False)
+            has_voice = metadata.get("has_voice", False) or metadata.get("has_audio", False)
             text_content = raw_content.get("text", "").strip()
+            
+            # Detectar si es una consulta multimodal (FASE 2)
+            is_multimodal_context = self._is_multimodal_medical_context(text_content)
             
             # Buscar indicadores de emergencia
             emergency_keywords = [
@@ -265,7 +274,31 @@ class MedicalDispatcher:
             
             # Lógica de triage basada en el documento de arquitectura
             
-            # Ruta 1: Imagen clínica con código de paciente tokenizado
+            # Ruta 1: Análisis multimodal (FASE 2) - Imagen + Voz
+            if has_image and has_voice and has_valid_patient_code and is_multimodal_context:
+                decision = TriageDecision(
+                    route=ProcessingRoute.MULTIMODAL_ANALYSIS,
+                    confidence=0.98,
+                    reason="Multimodal analysis required: Image + Voice data with valid tokenized patient",
+                    flags=["has_tokenized_patient", "multimodal_context", "phi_protected", "fase2_trigger"]
+                )
+                decision.tokenized_patient = tokenized_patient
+                decision.analysis_mode = "multimodal"
+                return decision
+            
+            # Ruta 1B: Imagen con posible voz requerida (FASE 2 parcial)
+            if has_image and has_valid_patient_code and is_multimodal_context and not has_voice:
+                decision = TriageDecision(
+                    route=ProcessingRoute.VOICE_ANALYSIS_REQUIRED,
+                    confidence=0.90,
+                    reason="Image analysis complete, voice analysis required for FASE 2",
+                    flags=["has_tokenized_patient", "voice_required", "phi_protected", "fase2_pending"]
+                )
+                decision.tokenized_patient = tokenized_patient
+                decision.analysis_mode = "voice_pending"
+                return decision
+            
+            # Ruta 1C: Imagen clínica estándar (FASE 1)
             if has_image and has_valid_patient_code:
                 decision = TriageDecision(
                     route=ProcessingRoute.CLINICAL_IMAGE,
@@ -275,6 +308,7 @@ class MedicalDispatcher:
                 )
                 # Adjuntar datos tokenizados (NO PHI)
                 decision.tokenized_patient = tokenized_patient
+                decision.analysis_mode = "image_only"
                 return decision
             
             # Ruta 2: Consulta médica estructurada
@@ -562,6 +596,71 @@ class MedicalDispatcher:
             "by_route": self.routing_metrics["routes"],
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
+
+
+    def _is_multimodal_medical_context(self, text_content: str) -> bool:
+        """
+        Detectar si el contexto requiere análisis multimodal (FASE 2).
+        
+        Busca indicadores que sugieran que tanto imagen como voz 
+        son necesarios para una evaluación médica completa.
+        
+        Args:
+            text_content: Contenido de texto del mensaje
+            
+        Returns:
+            True si se requiere análisis multimodal
+        """
+        if not text_content:
+            return False
+        
+        text_lower = text_content.lower()
+        
+        # Indicadores de análisis multimodal
+        multimodal_indicators = [
+            # Dolor y expresión vocal
+            "dolor", "pain", "quejido", "gemido", "llanto",
+            "crying", "moaning", "groaning", "sobbing",
+            
+            # Estrés y ansiedad vocal
+            "ansiedad", "anxiety", "estrés", "stress", "nervioso",
+            "nervous", "agitado", "agitated", "preocupado", "worried",
+            
+            # Contexto emocional
+            "emocional", "emotional", "estado mental", "mental state",
+            "psicológico", "psychological", "angustia", "anguish",
+            
+            # Evaluación comprehensiva
+            "evaluación completa", "complete evaluation", "análisis total",
+            "comprehensive analysis", "evaluación integral",
+            
+            # Indicadores de voz médica
+            "voz", "voice", "habla", "speech", "expresión vocal",
+            "vocal expression", "tono", "tone"
+        ]
+        
+        # Verificar presencia de indicadores
+        indicator_count = sum(
+            1 for indicator in multimodal_indicators 
+            if indicator in text_lower
+        )
+        
+        # Contexto multimodal si hay 2+ indicadores o términos específicos
+        if indicator_count >= 2:
+            return True
+        
+        # Verificar frases específicas que requieren multimodal
+        multimodal_phrases = [
+            "evaluación completa del paciente",
+            "análisis integral de",
+            "estado emocional y físico",
+            "dolor y estrés",
+            "comprehensive patient assessment",
+            "emotional and physical state",
+            "pain and stress evaluation"
+        ]
+        
+        return any(phrase in text_lower for phrase in multimodal_phrases)
 
 
 class MedicalDispatcherFactory:

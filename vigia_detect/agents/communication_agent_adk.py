@@ -100,7 +100,7 @@ def send_emergency_alert_adk_tool(
         start_time = datetime.now(timezone.utc)
         
         # Validate alert content
-        required_fields = ['patient_code', 'alert_type', 'clinical_context']
+        required_fields = ['token_id', 'alert_type', 'clinical_context']  # Batman token
         missing_fields = [field for field in required_fields if field not in alert_content]
         if missing_fields:
             return {
@@ -240,7 +240,7 @@ def send_clinical_result_adk_tool(
         # Extract clinical data
         lpp_grade = clinical_data.get('lpp_grade', 0)
         confidence = clinical_data.get('confidence_score', 0.0)
-        patient_code = clinical_data.get('patient_code', 'UNKNOWN')
+        token_id = clinical_data.get('token_id', clinical_data.get('patient_code', 'UNKNOWN'))  # Batman token
         
         # Determine priority based on LPP grade
         priority = _determine_clinical_priority(lpp_grade, confidence)
@@ -276,7 +276,7 @@ def send_clinical_result_adk_tool(
             metadata={
                 'lpp_grade': lpp_grade,
                 'confidence': confidence,
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'evidence_included': include_evidence,
                 'sent_timestamp': start_time.isoformat()
             },
@@ -315,7 +315,7 @@ def send_clinical_result_adk_tool(
             'clinical_summary': {
                 'lpp_grade': lpp_grade,
                 'confidence': confidence,
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'priority': priority.name
             },
             'evidence_included': include_evidence,
@@ -743,7 +743,7 @@ def get_communication_status_adk_tool() -> Dict[str, Any]:
 
 def _format_emergency_message(alert_content: Dict[str, Any], urgency_level: str) -> Dict[str, Any]:
     """Format emergency alert message with medical context"""
-    patient_code = alert_content.get('patient_code', 'UNKNOWN')
+    token_id = alert_content.get('token_id', alert_content.get('patient_code', 'UNKNOWN'))  # Batman token
     alert_type = alert_content.get('alert_type', 'Medical Alert')
     clinical_context = alert_content.get('clinical_context', 'No context provided')
     
@@ -784,7 +784,7 @@ def _format_emergency_message(alert_content: Dict[str, Any], urgency_level: str)
             "fields": [
                 {
                     "type": "mrkdwn",
-                    "text": f"*Paciente:* {patient_code}"
+                    "text": f"*Token ID:* {token_id}"  # Batman token (HIPAA compliant)
                 },
                 {
                     "type": "mrkdwn",
@@ -811,7 +811,7 @@ def _format_clinical_result_message(clinical_data: Dict[str, Any], include_evide
     """Format clinical result message with evidence-based context"""
     lpp_grade = clinical_data.get('lpp_grade', 0)
     confidence = clinical_data.get('confidence_score', 0.0)
-    patient_code = clinical_data.get('patient_code', 'UNKNOWN')
+    token_id = clinical_data.get('token_id', clinical_data.get('patient_code', 'UNKNOWN'))  # Batman token
     
     # LPP grade indicators
     grade_indicators = {
@@ -856,7 +856,7 @@ def _format_clinical_result_message(clinical_data: Dict[str, Any], include_evide
             "fields": [
                 {
                     "type": "mrkdwn",
-                    "text": f"*Paciente:* {patient_code}"
+                    "text": f"*Token ID:* {token_id}"  # Batman token (HIPAA compliant)
                 },
                 {
                     "type": "mrkdwn",
@@ -887,7 +887,7 @@ def _format_review_request_message(
     include_buttons: bool
 ) -> Dict[str, Any]:
     """Format human review request message"""
-    patient_code = review_request.get('patient_code', 'UNKNOWN')
+    token_id = review_request.get('token_id', review_request.get('patient_code', 'UNKNOWN'))  # Batman token
     reason = review_request.get('review_reason', 'Evaluación especializada requerida')
     
     # Urgency indicators
@@ -934,7 +934,7 @@ def _format_review_request_message(
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Paciente:* {patient_code}"
+                    "text": f"*Token ID:* {token_id}"  # Batman token (HIPAA compliant)
                 }
             ]
         }

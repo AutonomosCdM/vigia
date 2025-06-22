@@ -68,16 +68,16 @@ class WebhookHandlers:
         - Store in database
         - Update cache
         """
-        patient_code = payload.get('patient_code', 'UNKNOWN')
+        token_id = payload.get('token_id', payload.get('patient_code', 'UNKNOWN'))  # Batman token
         risk_level = payload.get('risk_level', 'LOW')
         detections = payload.get('detections', [])
         
-        logger.info(f"Detection completed for patient {patient_code}")
+        logger.info(f"Detection completed for token {token_id}")
         logger.info(f"Risk level: {risk_level}, Detections: {len(detections)}")
         
         # Send notifications for high-risk cases
         if risk_level in ['HIGH', 'CRITICAL']:
-            await self._send_urgent_notifications(patient_code, risk_level, detections)
+            await self._send_urgent_notifications(token_id, risk_level, detections)
         
         # Store in database
         if self.db:
@@ -89,7 +89,7 @@ class WebhookHandlers:
         # Update cache
         if self.redis:
             try:
-                await self._update_detection_cache(patient_code, payload)
+                await self._update_detection_cache(token_id, payload)
             except Exception as e:
                 logger.error(f"Failed to update cache: {e}")
         
@@ -111,11 +111,11 @@ class WebhookHandlers:
         - Notify technical team
         - Track failure metrics
         """
-        patient_code = payload.get('patient_code', 'UNKNOWN')
+        token_id = payload.get('token_id', payload.get('patient_code', 'UNKNOWN'))  # Batman token
         error = payload.get('error', 'Unknown error')
         image_path = payload.get('image_path', 'N/A')
         
-        logger.error(f"Detection failed for patient {patient_code}: {error}")
+        logger.error(f"Detection failed for token {token_id}: {error}")
         
         # Send technical notification
         if self.slack:
@@ -124,7 +124,7 @@ class WebhookHandlers:
                     title="Detection Failure",
                     error_message=error,
                     context={
-                        "patient_code": patient_code,
+                        "token_id": token_id,  # Batman token (HIPAA compliant)
                         "image_path": image_path,
                         "timestamp": datetime.now().isoformat()
                     }
@@ -154,27 +154,27 @@ class WebhookHandlers:
         - Notify care team
         - Update patient history
         """
-        patient_code = payload.get('patient_code')
+        token_id = payload.get('token_id', payload.get('patient_code'))  # Batman token
         update_type = payload.get('update_type')
         changes = payload.get('changes', {})
         
-        logger.info(f"Patient {patient_code} updated: {update_type}")
+        logger.info(f"Token {token_id} updated: {update_type}")
         
         # Update database
-        if self.db and patient_code:
+        if self.db and token_id:
             try:
-                await self._update_patient_record(patient_code, changes)
+                await self._update_patient_record(token_id, changes)
             except Exception as e:
                 logger.error(f"Failed to update patient record: {e}")
         
         # Send notifications for significant changes
         if update_type in ['status_change', 'risk_escalation']:
-            await self._notify_care_team(patient_code, update_type, changes)
+            await self._notify_care_team(token_id, update_type, changes)
         
         # Update cache
-        if self.redis and patient_code:
+        if self.redis and token_id:
             try:
-                await self._invalidate_patient_cache(patient_code)
+                await self._invalidate_patient_cache(token_id)
             except Exception as e:
                 logger.error(f"Failed to invalidate cache: {e}")
         
@@ -195,15 +195,15 @@ class WebhookHandlers:
         - Log protocol activation
         """
         protocol_name = payload.get('protocol_name')
-        patient_code = payload.get('patient_code')
+        token_id = payload.get('token_id', payload.get('patient_code'))  # Batman token
         trigger_reason = payload.get('trigger_reason')
         actions = payload.get('actions', [])
         
-        logger.warning(f"Protocol triggered: {protocol_name} for patient {patient_code}")
+        logger.warning(f"Protocol triggered: {protocol_name} for token {token_id}")
         logger.warning(f"Reason: {trigger_reason}")
         
         # Send urgent notifications
-        await self._send_protocol_notifications(protocol_name, patient_code, trigger_reason)
+        await self._send_protocol_notifications(protocol_name, token_id, trigger_reason)
         
         # Create tasks for each protocol action
         tasks_created = []
@@ -365,6 +365,212 @@ class WebhookHandlers:
         """Trigger dependent analysis workflow."""
         logger.info(f"Triggering {analysis_type} analysis for {patient_code}")
         # Implementation depends on your workflow system
+
+    async def handle_fase2_completion(self, event_type: EventType, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle FASE 2 completion events (Image + Voice analysis complete).
+        
+        Actions:
+        - Process multimodal analysis results
+        - Generate comprehensive medical assessment
+        - Send enhanced notifications with combined insights
+        - Trigger FASE 3 (medical team notifications)
+        - Store multimodal results in Processing Database
+        """
+        token_id = payload.get('token_id', 'UNKNOWN')  # Batman token
+        image_analysis = payload.get('image_analysis', {})
+        voice_analysis = payload.get('voice_analysis', {})
+        enhanced_assessment = payload.get('enhanced_assessment', {})
+        
+        logger.info(f"FASE 2 completed for token {token_id} - Multimodal analysis ready")
+        
+        # Extract key metrics from combined analysis
+        combined_confidence = enhanced_assessment.get('confidence', 0)
+        urgency_level = enhanced_assessment.get('urgency_level', 'normal')
+        multimodal_available = enhanced_assessment.get('multimodal_available', False)
+        primary_concerns = enhanced_assessment.get('primary_concerns', [])
+        
+        # Log multimodal completion
+        analysis_type = "multimodal" if multimodal_available else "image_only"
+        logger.info(f"Analysis type: {analysis_type}, Confidence: {combined_confidence:.2f}, Urgency: {urgency_level}")
+        
+        # Assess combined risk level for notifications
+        combined_risk = self._assess_combined_risk(image_analysis, voice_analysis, enhanced_assessment)
+        
+        # Send enhanced notifications if high-risk
+        notifications_sent = False
+        if combined_risk in ['HIGH', 'CRITICAL']:
+            await self._send_multimodal_urgent_notifications(
+                token_id, combined_risk, image_analysis, voice_analysis, enhanced_assessment
+            )
+            notifications_sent = True
+            logger.info(f"Urgent notifications sent for {token_id} - Risk level: {combined_risk}")
+        
+        # Store multimodal results in Processing Database (Batman tokens only)
+        if self.db:
+            try:
+                await self._store_multimodal_results(payload)
+                logger.info(f"Multimodal results stored for token {token_id}")
+            except Exception as e:
+                logger.error(f"Failed to store multimodal results: {e}")
+        
+        # Update cache with enhanced assessment
+        if self.redis:
+            try:
+                await self._cache_multimodal_assessment(token_id, enhanced_assessment)
+            except Exception as e:
+                logger.error(f"Failed to cache multimodal assessment: {e}")
+        
+        # Trigger FASE 3 (medical team notifications) if criteria met
+        fase3_triggered = False
+        if self._should_trigger_fase3(combined_risk, enhanced_assessment):
+            await self._trigger_fase3_notifications(token_id, enhanced_assessment)
+            fase3_triggered = True
+            logger.info(f"FASE 3 triggered for token {token_id}")
+        
+        return {
+            "status": "fase2_completed",
+            "token_id": token_id,
+            "analysis_type": analysis_type,
+            "combined_risk_level": combined_risk,
+            "combined_confidence": combined_confidence,
+            "urgency_level": urgency_level,
+            "multimodal_analysis": multimodal_available,
+            "notifications_sent": notifications_sent,
+            "fase3_triggered": fase3_triggered,
+            "primary_concerns_count": len(primary_concerns),
+            "processing_timestamp": datetime.now().isoformat()
+        }
+    
+    def _assess_combined_risk(self, image_analysis: Dict[str, Any], 
+                            voice_analysis: Dict[str, Any], 
+                            enhanced_assessment: Dict[str, Any]) -> str:
+        """Assess combined risk level from multimodal analysis"""
+        urgency_level = enhanced_assessment.get('urgency_level', 'normal')
+        confidence = enhanced_assessment.get('confidence', 0)
+        
+        # Map urgency levels to risk levels
+        urgency_to_risk = {
+            'critical': 'CRITICAL',
+            'high': 'HIGH', 
+            'elevated': 'MEDIUM',
+            'normal': 'LOW'
+        }
+        
+        base_risk = urgency_to_risk.get(urgency_level, 'LOW')
+        
+        # Enhance risk assessment with confidence
+        if confidence >= 0.9 and base_risk in ['MEDIUM', 'HIGH']:
+            if base_risk == 'MEDIUM':
+                return 'HIGH'
+            elif base_risk == 'HIGH':
+                return 'CRITICAL'
+        
+        # Check for specific voice indicators that elevate risk
+        if voice_analysis.get('voice_available'):
+            medical_assessment = voice_analysis.get('medical_assessment', {})
+            if medical_assessment.get('follow_up_required') and base_risk == 'LOW':
+                return 'MEDIUM'
+        
+        return base_risk
+    
+    async def _send_multimodal_urgent_notifications(self, token_id: str, risk_level: str,
+                                                  image_analysis: Dict[str, Any],
+                                                  voice_analysis: Dict[str, Any],
+                                                  enhanced_assessment: Dict[str, Any]):
+        """Send urgent notifications with multimodal context"""
+        if not self.slack:
+            logger.warning("Slack not configured, skipping multimodal notifications")
+            return
+        
+        # Prepare enhanced notification message
+        message = f"🚨 FASE 2 COMPLETED - MULTIMODAL ANALYSIS\n"
+        message += f"Patient Token: {token_id}\n"
+        message += f"Risk Level: {risk_level}\n"
+        message += f"Analysis Type: {'Multimodal (Image + Voice)' if voice_analysis.get('voice_available') else 'Image Only'}\n"
+        message += f"Confidence: {enhanced_assessment.get('confidence', 0):.2f}\n"
+        message += f"Urgency: {enhanced_assessment.get('urgency_level', 'normal').upper()}\n"
+        
+        # Add primary concerns
+        concerns = enhanced_assessment.get('primary_concerns', [])
+        if concerns:
+            message += f"\nPrimary Concerns:\n"
+            for concern in concerns[:3]:  # Limit to top 3
+                message += f"• {concern}\n"
+        
+        # Add medical recommendations
+        recommendations = enhanced_assessment.get('medical_recommendations', [])
+        if recommendations:
+            message += f"\nRecommendations:\n"
+            for rec in recommendations[:3]:  # Limit to top 3
+                message += f"• {rec}\n"
+        
+        try:
+            await self.slack.send_urgent_alert(
+                message=message,
+                patient_id=token_id,
+                priority=risk_level
+            )
+        except Exception as e:
+            logger.error(f"Failed to send multimodal Slack notification: {e}")
+    
+    async def _store_multimodal_results(self, payload: Dict[str, Any]):
+        """Store multimodal analysis results in Processing Database"""
+        token_id = payload.get('token_id')
+        
+        # Prepare multimodal record for storage
+        multimodal_record = {
+            'token_id': token_id,  # Batman token (NO PHI)
+            'analysis_type': 'multimodal',
+            'image_analysis': payload.get('image_analysis', {}),
+            'voice_analysis': payload.get('voice_analysis', {}),
+            'enhanced_assessment': payload.get('enhanced_assessment', {}),
+            'fase2_completed': True,
+            'processing_timestamp': datetime.now().isoformat(),
+            'hipaa_compliant': True,
+            'tokenization_method': 'batman'
+        }
+        
+        # Store in multimodal_analyses table
+        await self.db.insert('multimodal_analyses', multimodal_record)
+    
+    async def _cache_multimodal_assessment(self, token_id: str, enhanced_assessment: Dict[str, Any]):
+        """Cache enhanced assessment for quick access"""
+        cache_key = f"enhanced_assessment:{token_id}"
+        await self.redis.set(cache_key, enhanced_assessment, expire=3600)  # 1 hour cache
+    
+    def _should_trigger_fase3(self, risk_level: str, enhanced_assessment: Dict[str, Any]) -> bool:
+        """Determine if FASE 3 should be triggered"""
+        # Trigger FASE 3 for high-risk cases or when follow-up is explicitly required
+        if risk_level in ['HIGH', 'CRITICAL']:
+            return True
+        
+        if enhanced_assessment.get('follow_up_required', False):
+            return True
+        
+        # Trigger if confidence is high and there are concerns
+        confidence = enhanced_assessment.get('confidence', 0)
+        concerns = enhanced_assessment.get('primary_concerns', [])
+        
+        return confidence >= 0.8 and len(concerns) >= 2
+    
+    async def _trigger_fase3_notifications(self, token_id: str, enhanced_assessment: Dict[str, Any]):
+        """Trigger FASE 3 medical team notifications"""
+        logger.info(f"Triggering FASE 3 notifications for token {token_id}")
+        
+        # This would integrate with the medical team notification system
+        # For now, log the trigger event
+        urgency = enhanced_assessment.get('urgency_level', 'normal')
+        confidence = enhanced_assessment.get('confidence', 0)
+        
+        logger.info(f"FASE 3 triggered - Token: {token_id}, Urgency: {urgency}, Confidence: {confidence:.2f}")
+        
+        # TODO: Integrate with actual FASE 3 notification system
+        # This could trigger:
+        # - Medical team Slack notifications
+        # - Assignment to on-call physician
+        # - Integration with hospital systems
+        # - Escalation protocols
 
 
 def create_default_handlers(config: Optional[Dict[str, Any]] = None) -> WebhookHandlers:

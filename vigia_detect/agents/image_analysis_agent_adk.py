@@ -43,13 +43,13 @@ logger = SecureLogger("image_analysis_agent_adk")
 
 # ADK Tools for Complete Image Analysis Pipeline
 
-def validate_medical_image_adk_tool(image_path: str, patient_code: str = None) -> Dict[str, Any]:
+def validate_medical_image_adk_tool(image_path: str, token_id: str = None) -> Dict[str, Any]:
     """
     ADK Tool: Validate medical image for processing
     
     Args:
         image_path: Path to medical image file
-        patient_code: Optional patient identifier for audit
+        token_id: Optional Batman token identifier for audit (HIPAA compliant)
         
     Returns:
         Validation result with compliance checks
@@ -62,7 +62,7 @@ def validate_medical_image_adk_tool(image_path: str, patient_code: str = None) -
             'hipaa_compliant': True,
             'medical_format_supported': True,
             'privacy_check_passed': True,
-            'patient_code': patient_code,
+            'token_id': token_id,  # Batman token (HIPAA compliant)
             'timestamp': datetime.now(timezone.utc).isoformat()
         })
         
@@ -72,7 +72,7 @@ def validate_medical_image_adk_tool(image_path: str, patient_code: str = None) -
         return {
             'valid': False,
             'error': str(e),
-            'patient_code': patient_code,
+            'token_id': token_id,  # Batman token (HIPAA compliant)
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
@@ -362,7 +362,7 @@ def get_detector_status_adk_tool() -> Dict[str, Any]:
         }
 
 
-def process_complete_medical_image_adk_tool(image_path: str, patient_code: str, 
+def process_complete_medical_image_adk_tool(image_path: str, token_id: str, 
                                           patient_context: Dict = None,
                                           confidence_threshold: float = 0.25) -> Dict[str, Any]:
     """
@@ -377,7 +377,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
     
     Args:
         image_path: Path to medical image
-        patient_code: Patient identifier
+        token_id: Batman token identifier (HIPAA compliant)
         patient_context: Medical context and risk factors
         confidence_threshold: Detection confidence threshold
         
@@ -393,7 +393,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
             return {
                 'success': False,
                 'error': f"Image validation failed: {validation_result.get('error', 'Unknown error')}",
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'timestamp': start_time.isoformat()
             }
         
@@ -405,7 +405,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
             return {
                 'success': False,
                 'error': f"Preprocessing failed: {preprocessing_result.get('error', 'Unknown error')}",
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'timestamp': start_time.isoformat()
             }
         
@@ -419,7 +419,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
             return {
                 'success': False,
                 'error': f"Detection failed: {detection_result.get('error', 'Unknown error')}",
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'timestamp': start_time.isoformat()
             }
         
@@ -431,7 +431,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
             return {
                 'success': False,
                 'error': f"Clinical assessment failed: {assessment_result.get('error', 'Unknown error')}",
-                'patient_code': patient_code,
+                'token_id': token_id,  # Batman token (HIPAA compliant)
                 'timestamp': start_time.isoformat()
             }
         
@@ -446,7 +446,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
         # Combine results
         return {
             'success': True,
-            'patient_code': patient_code,
+            'token_id': token_id,  # Batman token (HIPAA compliant)
             'processing_time': processing_time,
             'validation': validation_result,
             'preprocessing': preprocessing_result,
@@ -469,7 +469,7 @@ def process_complete_medical_image_adk_tool(image_path: str, patient_code: str,
         return {
             'success': False,
             'error': str(e),
-            'patient_code': patient_code,
+            'token_id': token_id,  # Batman token (HIPAA compliant)
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
 

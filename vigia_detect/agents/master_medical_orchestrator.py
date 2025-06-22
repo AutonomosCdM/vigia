@@ -140,10 +140,25 @@ class MasterMedicalOrchestrator:
                     case_data, 'image_analysis', image_analysis_result['error']
                 )
             
-            # Phase 2: Clinical Assessment
+            # FASE 2 Trigger: Voice Analysis (if required and available)
+            voice_analysis_result = None
+            if self._requires_voice_analysis(image_analysis_result, case_data):
+                logger.info(f"FASE 2 triggered: Análisis de voz requerido para paciente {patient_alias} (token: {token_id[:8]}...)")
+                voice_analysis_result = await self._coordinate_voice_analysis(case_data, image_analysis_result)
+                
+                if not voice_analysis_result['success']:
+                    logger.warning(f"Voice analysis failed for {patient_alias}, continuing with image-only analysis")
+                    voice_analysis_result = None
+                else:
+                    logger.info(f"FASE 2 completed: Análisis multimodal exitoso para paciente {patient_alias}")
+            
+            # Combine multimodal results for comprehensive assessment
+            combined_analysis = self._combine_multimodal_analysis(image_analysis_result, voice_analysis_result)
+            
+            # Phase 2: Clinical Assessment (using combined or image-only data)
             logger.info(f"Iniciando evaluación clínica para paciente {patient_alias} (token: {token_id[:8]}...)")
             clinical_result = await self._coordinate_clinical_assessment(
-                case_data, image_analysis_result
+                case_data, combined_analysis
             )
             
             if not clinical_result['success']:
@@ -649,6 +664,231 @@ class MasterMedicalOrchestrator:
                 'error_logged': True
             }
         }
+    
+    def _requires_voice_analysis(self, image_analysis_result: Dict[str, Any], case_data: Dict[str, Any]) -> bool:
+        """
+        Determine if voice analysis is required for FASE 2 multimodal assessment.
+        
+        Args:
+            image_analysis_result: Results from image analysis
+            case_data: Original case data including voice/audio availability
+            
+        Returns:
+            True if voice analysis is required and available
+        """
+        # Check if voice/audio data is available
+        has_voice_data = (
+            case_data.get('audio_data') is not None or 
+            case_data.get('voice_data') is not None or
+            case_data.get('has_audio', False) or
+            case_data.get('has_voice', False)
+        )
+        
+        if not has_voice_data:
+            return False
+        
+        # Check image analysis results for indicators that voice analysis would be beneficial
+        image_result = image_analysis_result.get('image_analysis', {})
+        
+        # Voice analysis is beneficial for high-confidence findings that might have emotional/pain components
+        confidence = image_result.get('confidence', 0.0)
+        lpp_grade = image_result.get('lpp_grade', 0)
+        
+        # Require voice analysis for significant medical findings
+        if confidence >= 0.7 and lpp_grade >= 2:
+            return True
+        
+        # Check for emotional or pain-related context in original message
+        message_text = case_data.get('message_text', '').lower()
+        voice_indicators = [
+            'dolor', 'pain', 'duele', 'hurts', 'molestia', 'discomfort',
+            'ansiedad', 'anxiety', 'estrés', 'stress', 'preocupado', 'worried',
+            'llanto', 'crying', 'gemido', 'moaning', 'quejido', 'groaning'
+        ]
+        
+        return any(indicator in message_text for indicator in voice_indicators)
+    
+    async def _coordinate_voice_analysis(self, case_data: Dict[str, Any], 
+                                       image_result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Coordinate voice analysis for FASE 2 multimodal processing.
+        
+        Args:
+            case_data: Original case data with voice/audio information
+            image_result: Results from image analysis to inform voice analysis
+            
+        Returns:
+            Voice analysis results with medical assessment
+        """
+        try:
+            # Import voice analysis components
+            from vigia_detect.systems.voice_medical_analysis import VoiceMedicalAnalysisEngine
+            from vigia_detect.ai.hume_ai_client import create_hume_ai_client
+            
+            # Extract voice data from case_data
+            audio_data = (
+                case_data.get('audio_data') or 
+                case_data.get('voice_data') or 
+                case_data.get('raw_content', {}).get('audio_data')
+            )
+            
+            if not audio_data:
+                return {
+                    'success': False,
+                    'error': 'No voice data available for analysis',
+                    'agent': 'voice_analysis'
+                }
+            
+            # Get patient context
+            token_id = case_data.get('token_id')
+            patient_context = case_data.get('patient_context', {})
+            
+            # Enhance patient context with image analysis results
+            enhanced_context = patient_context.copy()
+            if image_result.get('success'):
+                image_analysis = image_result.get('image_analysis', {})
+                enhanced_context.update({
+                    'has_lpp_detected': image_analysis.get('lpp_detected', False),
+                    'lpp_grade': image_analysis.get('lpp_grade', 0),
+                    'confidence_from_image': image_analysis.get('confidence', 0),
+                    'anatomical_location': image_analysis.get('anatomical_location'),
+                    'image_analysis_available': True
+                })
+            
+            # Initialize voice analysis components
+            voice_engine = VoiceMedicalAnalysisEngine()
+            hume_client = create_hume_ai_client()
+            
+            # Perform Hume AI voice analysis
+            voice_expressions_result = await hume_client.analyze_voice_expressions(
+                audio_data=audio_data,
+                token_id=token_id,
+                patient_context=enhanced_context
+            )
+            
+            # Generate comprehensive medical assessment
+            medical_assessment = voice_engine.analyze_patient_voice(
+                expressions=voice_expressions_result.expressions,
+                patient_context=enhanced_context,
+                token_id=token_id
+            )
+            
+            # Combine results
+            return {
+                'success': True,
+                'agent': 'voice_analysis',
+                'voice_expressions': voice_expressions_result,
+                'medical_assessment': medical_assessment.dict(),
+                'processing_timestamp': datetime.now().isoformat(),
+                'multimodal_context': enhanced_context,
+                'fase2_completed': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Voice analysis coordination failed: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+                'agent': 'voice_analysis',
+                'fase2_completed': False
+            }
+    
+    def _combine_multimodal_analysis(self, image_result: Dict[str, Any], 
+                                   voice_result: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Combine image and voice analysis results for comprehensive medical assessment.
+        
+        Args:
+            image_result: Image analysis results
+            voice_result: Voice analysis results (may be None)
+            
+        Returns:
+            Combined analysis with enhanced medical insights
+        """
+        combined = {
+            'success': image_result.get('success', False),
+            'analysis_type': 'image_only' if voice_result is None else 'multimodal',
+            'image_analysis': image_result.get('image_analysis', {}),
+            'agent': 'combined_analysis',
+            'processing_timestamp': datetime.now().isoformat()
+        }
+        
+        if voice_result and voice_result.get('success'):
+            # Add voice analysis results
+            combined['voice_analysis'] = {
+                'expressions': voice_result.get('voice_expressions', {}).expressions if voice_result.get('voice_expressions') else {},
+                'medical_assessment': voice_result.get('medical_assessment', {}),
+                'voice_available': True
+            }
+            
+            # Enhance overall assessment with multimodal insights
+            medical_assessment = voice_result.get('medical_assessment', {})
+            image_analysis = image_result.get('image_analysis', {})
+            
+            # Combine risk factors
+            image_confidence = image_analysis.get('confidence', 0)
+            voice_confidence = medical_assessment.get('confidence_score', 0)
+            
+            # Calculate enhanced confidence (multimodal is generally more reliable)
+            enhanced_confidence = min(0.95, (image_confidence + voice_confidence) / 2 + 0.1)
+            
+            # Determine enhanced urgency level
+            voice_urgency = medical_assessment.get('urgency_level', 'normal')
+            image_urgency = self._map_lpp_grade_to_urgency(image_analysis.get('lpp_grade', 0))
+            
+            enhanced_urgency = self._combine_urgency_levels(image_urgency, voice_urgency)
+            
+            # Add combined assessment
+            combined['enhanced_assessment'] = {
+                'confidence': enhanced_confidence,
+                'urgency_level': enhanced_urgency,
+                'multimodal_available': True,
+                'primary_concerns': medical_assessment.get('primary_concerns', []),
+                'medical_recommendations': medical_assessment.get('medical_recommendations', []),
+                'follow_up_required': medical_assessment.get('follow_up_required', False)
+            }
+            
+            combined['fase2_completed'] = True
+        else:
+            # Image-only analysis
+            combined['voice_analysis'] = {'voice_available': False}
+            combined['enhanced_assessment'] = {
+                'confidence': image_result.get('image_analysis', {}).get('confidence', 0),
+                'urgency_level': self._map_lpp_grade_to_urgency(
+                    image_result.get('image_analysis', {}).get('lpp_grade', 0)
+                ),
+                'multimodal_available': False
+            }
+            combined['fase2_completed'] = False
+        
+        return combined
+    
+    def _map_lpp_grade_to_urgency(self, lpp_grade: int) -> str:
+        """Map LPP grade to urgency level"""
+        if lpp_grade >= 4:
+            return 'critical'
+        elif lpp_grade >= 3:
+            return 'high'
+        elif lpp_grade >= 2:
+            return 'elevated'
+        else:
+            return 'normal'
+    
+    def _combine_urgency_levels(self, image_urgency: str, voice_urgency: str) -> str:
+        """Combine urgency levels from different modalities"""
+        urgency_priority = {'critical': 4, 'high': 3, 'elevated': 2, 'normal': 1}
+        
+        image_priority = urgency_priority.get(image_urgency, 1)
+        voice_priority = urgency_priority.get(voice_urgency, 1)
+        
+        # Take the higher urgency level
+        max_priority = max(image_priority, voice_priority)
+        
+        for level, priority in urgency_priority.items():
+            if priority == max_priority:
+                return level
+        
+        return 'normal'
     
     async def _handle_orchestration_error(self, case_data: Dict[str, Any], error: str) -> Dict[str, Any]:
         """Handle orchestration-level errors"""

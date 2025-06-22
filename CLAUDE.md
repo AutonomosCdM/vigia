@@ -401,6 +401,7 @@ python examples/medgemma_local_demo.py                     # Run complete demo
 ### Core Modules
 - **CV Pipeline** (`vigia_detect/cv_pipeline/`): Adaptive medical detection with MONAI primary + YOLOv5 backup, medical-grade preprocessing
 - **Messaging** (`vigia_detect/messaging/`): WhatsApp/Slack integration with template system
+- **Communication Agents** (`vigia_detect/agents/`): Bidirectional communication system with PatientCommunicationAgent (WhatsApp) and MedicalTeamAgent (Slack)
 - **Database** (`vigia_detect/db/`): Supabase client with row-level security policies and PHI tokenization
 - **Redis Layer** (`vigia_detect/redis_layer/`): Medical protocol caching and vector search
 - **Webhook System** (`vigia_detect/webhook/`): FastAPI-based external integrations with Batman token enforcement
@@ -434,13 +435,14 @@ python examples/medgemma_local_demo.py                     # Run complete demo
 - **Coverage reporting** enabled for webhook module
 
 ### Medical Workflow
-The system handles the complete medical workflow from input to clinical decision:
-1. **Input Reception**: WhatsApp Bot receives images/messages from healthcare staff
+The system handles the complete medical workflow from input to clinical decision with bidirectional communication:
+1. **Input Reception**: PatientCommunicationAgent receives images/messages from patients via WhatsApp
 2. **Medical Triage**: Triage Engine assesses clinical urgency and routes appropriately  
 3. **Clinical Analysis**: Specialized systems perform LPP detection and grading
-4. **Human Escalation**: Complex cases route to qualified medical personnel
-5. **Team Notification**: Slack Orchestrator delivers results to appropriate medical teams
-6. **Audit & Compliance**: All actions logged for medical-legal traceability
+4. **Team Notification**: MedicalTeamAgent delivers results to appropriate medical teams via Slack
+5. **Professional Review**: Medical professionals review and approve patient communications
+6. **Patient Response**: PatientCommunicationAgent delivers approved medical responses to patients
+7. **Audit & Compliance**: All actions logged for medical-legal traceability with complete bidirectional communication storage
 
 ### Key Configuration
 - Environment variables managed through `.env` files with secure credential handling
@@ -578,6 +580,50 @@ The MedGemma local integration represents a major shift toward fully private med
 - Full decision pathways reconstructible with medical evidence
 - Complete HIPAA compliance with Batman tokenization
 - Regulatory audit trail ready for FDA/CE marking
+
+**💬 BIDIRECTIONAL COMMUNICATION ARCHITECTURE IMPLEMENTED** - Complete patient ↔ system ↔ medical professional communication:
+
+#### 📱 **PATIENT COMMUNICATION AGENT (WhatsApp)**
+- ✅ **PatientCommunicationAgent**: Complete bidirectional WhatsApp communication with patients
+- ✅ **Medical Image Reception**: Receives and processes patient medical images with PHI tokenization
+- ✅ **Approved Response Delivery**: Sends medical team approved responses to patients
+- ✅ **Security Integration**: Complete security validation and PHI tokenization (Bruce Wayne → Batman)
+- ✅ **CV Pipeline Integration**: Automatic medical image processing with LPP detection
+- ✅ **Complete DB Storage**: All patient communications stored with HIPAA compliance
+
+#### 🩺 **MEDICAL TEAM AGENT (Slack)**
+- ✅ **MedicalTeamAgent**: Complete bidirectional Slack communication with medical professionals
+- ✅ **Diagnosis Delivery**: Sends comprehensive diagnoses to medical teams with interactive buttons
+- ✅ **Professional Inquiry Handling**: Processes medical professional questions and requests
+- ✅ **Follow-up Orchestration**: Coordinates additional analyses with specialized agents
+- ✅ **Approval Workflow**: Manages patient communication approval process
+- ✅ **Evidence Integration**: Includes scientific references and clinical evidence
+
+#### 🔗 **COMMUNICATION BRIDGE (Inter-Agent Coordination)**
+- ✅ **CommunicationBridge**: Orchestrates communication between Patient and Medical Team agents
+- ✅ **Approval Workflow Management**: Complete approval process coordination with status tracking
+- ✅ **Inter-Agent Routing**: Routes messages between agents with proper translation
+- ✅ **Session Management**: Manages communication sessions with timeout and monitoring
+- ✅ **Complete Audit Trail**: Full traceability for all inter-agent communications
+
+#### 🗄️ **DATABASE INTEGRATION & STORAGE**
+- ✅ **Communication Tables**: New database schema for patient_communications and medical_team_communications
+- ✅ **Approval Workflow Storage**: Complete approval workflow tracking and status management
+- ✅ **Session Coordination**: Communication session management with metrics and audit trails
+- ✅ **HIPAA Compliance**: All communications stored with Batman tokens (NO PHI exposure)
+
+#### 🧪 **COMPREHENSIVE TESTING SUITE**
+- ✅ **End-to-End Workflow Testing**: Complete bidirectional communication workflow validation
+- ✅ **Batman Token Validation**: PHI tokenization tested across all communication workflows
+- ✅ **Approval Flow Testing**: Medical team approval process with patient response delivery
+- ✅ **Error Handling Validation**: Comprehensive error scenarios and edge case testing
+- ✅ **Database Storage Verification**: All communications properly stored with audit trails
+
+**🎯 COMMUNICATION PROBLEM SOLVED: "¿Cómo se comunica el sistema con pacientes y profesionales?"**
+- Complete bidirectional communication between patients (WhatsApp) and medical professionals (Slack)
+- Approval workflow ensures medical professional oversight for all patient communications
+- Inter-agent coordination with complete audit trail and session management
+- 100% HIPAA compliance with Batman tokenization throughout communication workflows
 
 **🏆 PREVIOUS MILESTONES MAINTAINED**
 **🎯 MONAI MEDICAL AI MILESTONE ACHIEVED** - Medical-first architecture with MONAI primary + YOLOv5 backup implemented:
@@ -828,6 +874,22 @@ batman_token = await tokenizer.create_token_async(hospital_mrn, patient_data)
 # Redis medical protocol lookup
 from vigia_detect.redis_layer.vector_service import VectorService
 protocols = vector_service.search_protocols("LPP Grade 3 treatment")
+
+# Bidirectional Communication Architecture (NEW - Complete Workflow)
+# Patient Communication Agent (WhatsApp)
+from vigia_detect.agents.patient_communication_agent import PatientCommunicationAgentFactory
+patient_agent = PatientCommunicationAgentFactory.create_agent()
+result = await patient_agent.receive_patient_message_adk_tool(whatsapp_message, auto_process=True)
+
+# Medical Team Agent (Slack)
+from vigia_detect.agents.medical_team_agent import MedicalTeamAgentFactory
+medical_agent = MedicalTeamAgentFactory.create_agent()
+result = await medical_agent.send_diagnosis_to_team_adk_tool(diagnosis_data, enable_follow_up=True)
+
+# Communication Bridge (Inter-Agent Coordination)
+from vigia_detect.agents.communication_bridge import CommunicationBridgeFactory
+bridge = CommunicationBridgeFactory.create_bridge()
+result = await bridge.route_medical_diagnosis_to_patient(diagnosis_data, medical_approval)
 ```
 
 ### Project Structure Navigation

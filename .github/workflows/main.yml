@@ -17,20 +17,16 @@ jobs:
       - name: Claude Code Action Official
         uses: anthropics/claude-code-action@beta
         with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Optional: Specify files or directories to analyze
-          include-paths: |
-            vigia_detect/
-            apps/
-            config/
-          # Optional: Exclude only unnecessary files
-          exclude-paths: |
-            node_modules/
-            .git/
-            *.log
-          # Optional: Focus on specific analysis types
-          analysis-types: |
-            security
-            code-quality
-            architecture
-            medical-compliance
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          direct_prompt: |
+            Please analyze this medical system codebase focusing on:
+            - Security and HIPAA compliance
+            - Medical data handling and PHI protection
+            - Code quality and architecture
+            - Potential vulnerabilities or issues
+            
+            Pay special attention to:
+            - PHI tokenization implementation
+            - Database separation architecture
+            - Medical AI integration
+            - Audit trail completeness

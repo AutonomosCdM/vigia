@@ -246,22 +246,46 @@ class ServiceConfigManager:
         )
     
     def _configure_ai_models(self, mode: ServiceMode):
-        """Configure AI model services"""
+        """Configure AI model services with MONAI + YOLOv5 adaptive architecture"""
         if mode == ServiceMode.MOCK:
             config = {
                 'type': 'mock',
+                'detection_strategy': 'mock',
                 'yolo': {'mock': True, 'model_path': 'mock_yolo'},
+                'monai': {'mock': True, 'model_path': 'mock_monai'},
                 'medgemma': {'mock': True, 'endpoint': 'http://localhost:8004/mock'},
                 'embeddings': {'mock': True, 'model': 'mock_embeddings'}
             }
             available = True
         else:
             use_local_ai = os.getenv('USE_LOCAL_AI', 'true').lower() == 'true'
+            detection_strategy = os.getenv('DETECTION_STRATEGY', 'monai_primary').lower()
+            
             config = {
                 'type': 'real',
+                'detection_strategy': detection_strategy,  # monai_primary, yolo_primary, adaptive
+                'adaptive_detection': {
+                    'primary_engine': os.getenv('PRIMARY_DETECTION_ENGINE', 'monai'),
+                    'backup_engine': os.getenv('BACKUP_DETECTION_ENGINE', 'yolo'),
+                    'monai_timeout': float(os.getenv('MONAI_TIMEOUT', 8.0)),
+                    'intelligent_fallback': os.getenv('INTELLIGENT_FALLBACK', 'true').lower() == 'true',
+                    'confidence_threshold_monai': float(os.getenv('MONAI_CONFIDENCE_THRESHOLD', 0.7)),
+                    'confidence_threshold_yolo': float(os.getenv('YOLO_CONFIDENCE_THRESHOLD', 0.6))
+                },
+                'monai': {
+                    'model_path': os.getenv('MONAI_MODEL_PATH', './models/monai_lpp_model.pt'),
+                    'medical_grade': True,
+                    'preprocessing_pipeline': 'medical_standard',
+                    'device': 'cuda' if os.getenv('USE_GPU', 'true').lower() == 'true' else 'cpu',
+                    'precision_target': '90-95%',
+                    'medical_compliance': ['NPUAP', 'EPUAP', 'PPPIA']
+                },
                 'yolo': {
                     'model_path': os.getenv('YOLO_MODEL_PATH', './models/vigia_lpp_yolo.pt'),
-                    'confidence_threshold': float(os.getenv('MODEL_CONFIDENCE_THRESHOLD', 0.25))
+                    'confidence_threshold': float(os.getenv('MODEL_CONFIDENCE_THRESHOLD', 0.25)),
+                    'medical_grade': False,
+                    'precision_target': '85-90%',
+                    'backup_role': True
                 },
                 'medgemma': {
                     'use_local': use_local_ai,
@@ -412,6 +436,44 @@ def get_celery_config() -> Dict[str, Any]:
     """Get Celery configuration"""
     config = get_service_config().get_config(ServiceType.CELERY)
     return config.config if config else {}
+
+
+def get_ai_model_config() -> Dict[str, Any]:
+    """Get AI model configuration with MONAI support"""
+    config = get_service_config().get_config(ServiceType.AI_MODEL)
+    return config.config if config else {}
+
+
+def get_detection_strategy() -> str:
+    """Get current detection strategy (monai_primary, yolo_primary, adaptive)"""
+    config = get_ai_model_config()
+    return config.get('detection_strategy', 'monai_primary')
+
+
+def get_adaptive_detection_config() -> Dict[str, Any]:
+    """Get adaptive detection configuration"""
+    config = get_ai_model_config()
+    return config.get('adaptive_detection', {
+        'primary_engine': 'monai',
+        'backup_engine': 'yolo',
+        'monai_timeout': 8.0,
+        'intelligent_fallback': True,
+        'confidence_threshold_monai': 0.7,
+        'confidence_threshold_yolo': 0.6
+    })
+
+
+def is_monai_primary() -> bool:
+    """Check if MONAI is configured as primary detection engine"""
+    strategy = get_detection_strategy()
+    adaptive_config = get_adaptive_detection_config()
+    return (strategy == 'monai_primary' or 
+            (strategy == 'adaptive' and adaptive_config.get('primary_engine') == 'monai'))
+
+
+def should_use_medical_grade_detection() -> bool:
+    """Determine if medical-grade detection (MONAI) should be used"""
+    return is_monai_primary() and not is_using_mocks(ServiceType.AI_MODEL)
 
 
 if __name__ == "__main__":

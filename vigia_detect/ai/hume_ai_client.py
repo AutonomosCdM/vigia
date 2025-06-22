@@ -20,6 +20,7 @@ import asyncio
 import json
 import logging
 import os
+import gzip
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -34,9 +35,13 @@ from pydantic import BaseModel, Field
 # Medical logging with audit compliance
 from vigia_detect.utils.audit_service import AuditService
 from vigia_detect.db.supabase_client import SupabaseClient
+from vigia_detect.db.raw_outputs_client import RawOutputsClient
 
 # Batman tokenization for HIPAA compliance
 from fase1.phi_tokenization.service.tokenization_api import PHITokenizationService
+
+# Raw outputs capture
+from vigia_detect.cv_pipeline.adaptive_medical_detector import RawOutputCapture
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +80,7 @@ class VoiceAnalysisResult:
     timestamp: datetime
     confidence_level: float
     hipaa_compliant: bool = True  # Always True for Batman tokens
+    raw_outputs: Optional[RawOutputCapture] = None  # Raw Hume AI outputs for research
 
 
 class VoiceMedicalAssessment(BaseModel):
@@ -111,6 +117,7 @@ class HumeAIClient:
         self.audit_service = AuditService()
         self.supabase = SupabaseClient()
         self.tokenization_service = PHITokenizationService()
+        self.raw_outputs_client = RawOutputsClient()
         
         # Medical expression mappings for clinical analysis
         self.medical_expressions = {
@@ -194,6 +201,13 @@ class HumeAIClient:
                 patient_context or {}
             )
             
+            # Capture raw outputs for research and audit
+            raw_outputs = self._capture_hume_raw_outputs(
+                hume_result=hume_result,
+                expressions=expressions,
+                audio_metadata=patient_context.get('audio_metadata') if patient_context else None
+            )
+            
             # Create comprehensive result
             result = VoiceAnalysisResult(
                 token_id=token_id,  # Batman token
@@ -208,11 +222,32 @@ class HumeAIClient:
                 },
                 timestamp=datetime.now(),
                 confidence_level=medical_indicators.confidence_score,
-                hipaa_compliant=True  # Batman tokenization ensures compliance
+                hipaa_compliant=True,  # Batman tokenization ensures compliance
+                raw_outputs=raw_outputs  # Raw Hume AI outputs for research
             )
             
             # Store result in Processing Database (NO PHI)
             await self._store_analysis_result(result)
+            
+            # Store raw outputs if available
+            if result.raw_outputs:
+                try:
+                    raw_output_id = await self.raw_outputs_client.store_raw_output(
+                        token_id=token_id,
+                        ai_engine="hume_ai",
+                        raw_outputs=result.raw_outputs,
+                        structured_result_id=result.analysis_id,
+                        structured_result_type="voice_analysis",
+                        research_approved=True,
+                        retention_priority="high"  # Voice data is valuable for research
+                    )
+                    
+                    if raw_output_id:
+                        logger.info(f"Stored Hume AI raw outputs {raw_output_id} for analysis {result.analysis_id}")
+                    
+                except Exception as raw_error:
+                    logger.warning(f"Failed to store Hume AI raw outputs: {raw_error}")
+                    # Continue processing even if raw storage fails
             
             # Log successful analysis
             await self.audit_service.log_event(
@@ -501,6 +536,76 @@ class HumeAIClient:
         timestamp = datetime.now().isoformat()
         data = f"{token_id}_{timestamp}"
         return f"voice_{hashlib.md5(data.encode()).hexdigest()[:12]}"
+    
+    def _capture_hume_raw_outputs(self, 
+                                 hume_result: Dict[str, Any],
+                                 expressions: Dict[str, float],
+                                 audio_metadata: Optional[Dict[str, Any]] = None) -> RawOutputCapture:
+        """
+        Capture raw Hume AI outputs for research and audit.
+        
+        Args:
+            hume_result: Complete Hume API response
+            expressions: Processed emotion expressions
+            audio_metadata: Optional audio metadata
+            
+        Returns:
+            RawOutputCapture with Hume AI data
+        """
+        # Extract raw expression vectors if available
+        raw_vectors = None
+        try:
+            predictions = hume_result.get('predictions', [])
+            if predictions:
+                prediction = predictions[0]
+                models = prediction.get('models', {})
+                prosody = models.get('prosody', {})
+                
+                # Convert prosody data to numpy array for compression
+                prosody_array = np.array([
+                    [emotion.get('score', 0.0) for emotion in 
+                     prosody.get('grouped_predictions', [{}])[0].get('predictions', [{}])[0].get('emotions', [])]
+                ])
+                
+                if prosody_array.size > 0:
+                    raw_vectors = gzip.compress(prosody_array.tobytes())
+        except Exception as e:
+            logger.warning(f"Failed to extract raw emotion vectors: {e}")
+        
+        # Model metadata
+        model_metadata = {
+            "model_architecture": "hume_prosody",
+            "api_version": "v0",
+            "model_version": "evi_large",
+            "emotion_count": len(expressions),
+            "prosody_model": "prosody_v2",
+            "language_detection": "english",
+            "medical_context_aware": True,
+            "medical_grade": False  # External API, not medical-grade
+        }
+        
+        # Processing metadata
+        processing_metadata = {
+            "expression_count": len(expressions),
+            "max_emotion_score": max(expressions.values()) if expressions else 0.0,
+            "min_emotion_score": min(expressions.values()) if expressions else 0.0,
+            "avg_emotion_score": sum(expressions.values()) / len(expressions) if expressions else 0.0,
+            "medical_context": "voice_analysis",
+            "analysis_type": "emotion_prosody",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Add audio metadata if available
+        if audio_metadata:
+            processing_metadata.update(audio_metadata)
+        
+        return RawOutputCapture(
+            raw_predictions=hume_result,  # Complete Hume API response
+            expression_vectors=raw_vectors,  # Compressed emotion vectors
+            model_metadata=model_metadata,
+            processing_metadata=processing_metadata,
+            compressed_size=len(raw_vectors) if raw_vectors else 0
+        )
     
     async def _store_analysis_result(self, result: VoiceAnalysisResult):
         """Store analysis result in Processing Database (Batman tokens only)"""

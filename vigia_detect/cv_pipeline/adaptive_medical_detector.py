@@ -24,6 +24,8 @@ import torch
 import cv2
 import numpy as np
 import logging
+import gzip
+import base64
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple, Union
 from enum import Enum
@@ -47,6 +49,7 @@ except ImportError:
 # Vigia components
 from .real_lpp_detector import PressureUlcerDetector
 from ..utils.audit_service import AuditService
+from ..db.raw_outputs_client import RawOutputsClient
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +84,18 @@ class DetectionMetrics:
     audit_timestamp: datetime
 
 
+@dataclass 
+class RawOutputCapture:
+    """Raw AI output capture for research and audit"""
+    raw_predictions: Any  # Raw model predictions
+    confidence_maps: Optional[np.ndarray] = None  # MONAI segmentation masks
+    detection_arrays: Optional[np.ndarray] = None  # YOLOv5 detection arrays
+    expression_vectors: Optional[np.ndarray] = None  # Hume AI emotion vectors
+    model_metadata: Optional[Dict[str, Any]] = None  # Model-specific metadata
+    processing_metadata: Optional[Dict[str, Any]] = None  # Processing information
+    compressed_size: Optional[int] = None  # Storage efficiency metrics
+
+
 @dataclass
 class MedicalAssessment:
     """Enhanced medical assessment with multimodal context"""
@@ -93,6 +108,7 @@ class MedicalAssessment:
     requires_human_review: bool
     detection_metrics: DetectionMetrics
     token_id: str  # Batman token for HIPAA compliance
+    raw_outputs: Optional[RawOutputCapture] = None  # Raw AI outputs for research
 
 
 class AdaptiveMedicalDetector:
@@ -130,6 +146,9 @@ class AdaptiveMedicalDetector:
         
         # Initialize audit service
         self.audit_service = AuditService()
+        
+        # Initialize raw outputs client
+        self.raw_outputs_client = RawOutputsClient()
         
         # Initialize models
         self.monai_model = None
@@ -264,6 +283,24 @@ class AdaptiveMedicalDetector:
             assessment = self._create_medical_assessment(
                 detection_result, engine, reason, start_time, token_id, patient_context
             )
+            
+            # Store raw outputs if available
+            if assessment.raw_outputs:
+                try:
+                    raw_output_id = await self.raw_outputs_client.store_raw_output(
+                        token_id=token_id,
+                        ai_engine=engine.value.replace("_primary", "").replace("_backup", ""),
+                        raw_outputs=assessment.raw_outputs,
+                        research_approved=True,
+                        retention_priority="high" if assessment.detection_metrics.medical_grade else "standard"
+                    )
+                    
+                    if raw_output_id:
+                        logger.info(f"Stored raw outputs {raw_output_id} for {engine.value}")
+                    
+                except Exception as raw_error:
+                    logger.warning(f"Failed to store raw outputs: {raw_error}")
+                    # Continue processing even if raw storage fails
             
             # Log successful analysis
             try:
@@ -411,8 +448,14 @@ class AdaptiveMedicalDetector:
                 except asyncio.TimeoutError:
                     raise TimeoutError(f"MONAI detection timeout after {self.monai_timeout}s")
             
+            # Capture raw outputs for research and audit
+            raw_outputs = self._capture_monai_raw_outputs(predictions)
+            
             # Process MONAI predictions
             results = self._process_monai_predictions(predictions, image.shape)
+            
+            # Add raw outputs to results
+            results['raw_outputs'] = raw_outputs
             
             # Update statistics
             processing_time = time.time() - start_time
@@ -514,6 +557,9 @@ class AdaptiveMedicalDetector:
             # Run YOLOv5 detection
             detections = self.yolo_detector.detect(image)
             
+            # Capture raw outputs for research and audit
+            raw_outputs = self._capture_yolo_raw_outputs(detections)
+            
             # Add engine metadata
             for detection in detections:
                 detection['medical_grade'] = False
@@ -534,7 +580,8 @@ class AdaptiveMedicalDetector:
                 'detections': detections,
                 'processing_engine': 'yolo',
                 'medical_grade': False,
-                'confidence_threshold': self.confidence_threshold_yolo
+                'confidence_threshold': self.confidence_threshold_yolo,
+                'raw_outputs': raw_outputs
             }
             
         except Exception as e:
@@ -648,6 +695,9 @@ class AdaptiveMedicalDetector:
             audit_timestamp=datetime.now()
         )
         
+        # Extract raw outputs if available
+        raw_outputs = detection_result.get('raw_outputs')
+        
         return MedicalAssessment(
             lpp_grade=lpp_grade,
             confidence=confidence,
@@ -657,7 +707,8 @@ class AdaptiveMedicalDetector:
             evidence_level=evidence_level,
             requires_human_review=lpp_grade >= 3 or confidence < 0.6,
             detection_metrics=metrics,
-            token_id=token_id
+            token_id=token_id,
+            raw_outputs=raw_outputs
         )
     
     def _create_mock_assessment(self, token_id: str, start_time: float, error: str) -> MedicalAssessment:
@@ -682,6 +733,122 @@ class AdaptiveMedicalDetector:
             requires_human_review=True,
             detection_metrics=metrics,
             token_id=token_id
+        )
+    
+    def _compress_numpy_array(self, array: np.ndarray) -> bytes:
+        """
+        Compress numpy array for efficient storage.
+        
+        Args:
+            array: Numpy array to compress
+            
+        Returns:
+            Compressed binary data
+        """
+        # Convert to bytes and compress with gzip
+        array_bytes = array.tobytes()
+        compressed = gzip.compress(array_bytes)
+        return compressed
+    
+    def _capture_monai_raw_outputs(self, 
+                                  predictions: torch.Tensor,
+                                  confidence_maps: Optional[torch.Tensor] = None,
+                                  model_metadata: Optional[Dict[str, Any]] = None) -> RawOutputCapture:
+        """
+        Capture raw MONAI outputs for research and audit.
+        
+        Args:
+            predictions: Raw MONAI predictions
+            confidence_maps: Optional segmentation confidence maps
+            model_metadata: Model-specific metadata
+            
+        Returns:
+            RawOutputCapture with compressed MONAI data
+        """
+        # Convert to numpy for storage
+        raw_predictions = predictions.cpu().numpy()
+        
+        # Capture confidence maps if available (for segmentation models)
+        compressed_confidence_maps = None
+        if confidence_maps is not None:
+            confidence_maps_np = confidence_maps.cpu().numpy()
+            compressed_confidence_maps = self._compress_numpy_array(confidence_maps_np)
+        
+        # Model metadata
+        if model_metadata is None:
+            model_metadata = {
+                "model_architecture": "medical_sam" if hasattr(self.monai_model, 'encoder') else "densenet121",
+                "medical_specialization": "pressure_injury_detection",
+                "preprocessing": "monai_medical_transforms",
+                "device": str(self.device),
+                "model_parameters": sum(p.numel() for p in self.monai_model.parameters()),
+                "medical_grade": True
+            }
+        
+        # Processing metadata
+        processing_metadata = {
+            "prediction_shape": raw_predictions.shape,
+            "prediction_dtype": str(raw_predictions.dtype),
+            "confidence_threshold": self.confidence_threshold_monai,
+            "medical_context": "lpp_detection",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Calculate compression efficiency
+        original_size = raw_predictions.nbytes
+        if compressed_confidence_maps:
+            original_size += confidence_maps_np.nbytes
+        
+        return RawOutputCapture(
+            raw_predictions=raw_predictions.tolist(),  # JSON serializable
+            confidence_maps=compressed_confidence_maps,
+            model_metadata=model_metadata,
+            processing_metadata=processing_metadata,
+            compressed_size=len(compressed_confidence_maps) if compressed_confidence_maps else 0
+        )
+    
+    def _capture_yolo_raw_outputs(self, 
+                                 detections: List[Dict[str, Any]],
+                                 raw_detection_arrays: Optional[np.ndarray] = None) -> RawOutputCapture:
+        """
+        Capture raw YOLOv5 outputs for research and audit.
+        
+        Args:
+            detections: Processed YOLOv5 detections
+            raw_detection_arrays: Raw detection arrays from YOLOv5
+            
+        Returns:
+            RawOutputCapture with YOLOv5 data
+        """
+        # Model metadata
+        model_metadata = {
+            "model_architecture": "yolov5",
+            "model_version": "yolov5s" if hasattr(self.yolo_detector, 'model_version') else "unknown",
+            "medical_adaptation": "pressure_injury_tuned",
+            "anchor_boxes": "yolo_standard",
+            "medical_grade": False
+        }
+        
+        # Processing metadata
+        processing_metadata = {
+            "detection_count": len(detections),
+            "confidence_threshold": self.confidence_threshold_yolo,
+            "nms_threshold": 0.45,  # Standard YOLOv5 NMS
+            "medical_context": "lpp_detection_backup",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Compress detection arrays if available
+        compressed_arrays = None
+        if raw_detection_arrays is not None:
+            compressed_arrays = self._compress_numpy_array(raw_detection_arrays)
+        
+        return RawOutputCapture(
+            raw_predictions=detections,  # Already processed detections
+            detection_arrays=compressed_arrays,
+            model_metadata=model_metadata,
+            processing_metadata=processing_metadata,
+            compressed_size=len(compressed_arrays) if compressed_arrays else 0
         )
     
     def _determine_urgency_level(self, 

@@ -142,7 +142,7 @@ and Chilean medical device regulations, privacy laws, and security standards.
         })
         
         # Database Separation
-        dual_db_exists = self._file_exists('fase1/dual_database/schemas/hospital_phi_database.sql')
+        dual_db_exists = self._file_exists('vigia_detect/db/schemas/hospital_phi_database.sql')
         checks.append({
             'requirement': 'Database Separation (HIPAA Required)',
             'status': 'PASS' if dual_db_exists else 'FAIL',
@@ -456,8 +456,8 @@ reviewed by qualified medical compliance officers before production deployment.*
     def _check_layer_architecture(self) -> bool:
         """Check 3-layer architecture implementation."""
         return (
-            self._file_exists('fase1/whatsapp_agent/isolated_bot.py') and
-            self._file_exists('fase1/orchestration/medical_dispatcher.py') and
+            self._file_exists('vigia_detect/messaging/whatsapp/isolated_bot.py') and
+            self._file_exists('vigia_detect/core/medical_dispatcher.py') and
             self._file_exists('vigia_detect/systems/clinical_processing.py')
         )
     
@@ -471,8 +471,8 @@ reviewed by qualified medical compliance officers before production deployment.*
     def _check_database_architecture(self) -> bool:
         """Check database architecture compliance."""
         return (
-            self._file_exists('fase1/dual_database/schemas/hospital_phi_database.sql') and
-            self._file_exists('fase1/dual_database/schemas/processing_database.sql')
+            self._file_exists('vigia_detect/db/schemas/hospital_phi_database.sql') and
+            self._file_exists('vigia_detect/db/schemas/processing_database.sql')
         )
     
     def _format_compliance_section(self, title: str, checks: List[Dict[str, Any]]) -> str:

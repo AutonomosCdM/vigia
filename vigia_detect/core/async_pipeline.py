@@ -12,11 +12,8 @@ from vigia_detect.core.celery_config import celery_app
 from vigia_detect.utils.secure_logger import SecureLogger
 from vigia_detect.utils.failure_handler import log_task_failure
 
-# FASE 1: PHI Tokenization Integration
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'fase1'))
-from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+# PHI Tokenization Integration
+from vigia_detect.core.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
 
 logger = SecureLogger(__name__)
 

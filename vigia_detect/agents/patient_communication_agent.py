@@ -44,8 +44,7 @@ from ..db.supabase_client import SupabaseClient
 from ..utils.security_validator import validate_and_sanitize_image, sanitize_user_input
 
 # PHI Tokenization integration
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'fase1'))
-from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+from vigia_detect.core.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
 
 # AgentOps Monitoring Integration
 from ..monitoring.agentops_client import AgentOpsClient

@@ -23,10 +23,9 @@ from vigia_detect.webhook.client import SyncWebhookClient
 from vigia_detect.webhook.models import DetectionPayload, Detection, Severity
 from vigia_detect.config.settings import settings
 
-# FASE 1: PHI Tokenization Integration
+# PHI Tokenization Integration
 import asyncio
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent / 'fase1'))
-from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+from vigia_detect.core.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
 
 # Configurar logging usando el módulo centralizado
 from vigia_detect.core.base_client import BaseClient

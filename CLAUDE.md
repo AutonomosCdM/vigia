@@ -5,10 +5,10 @@ Vigia is a medical-grade pressure injury (LPP) detection system using computer v
 
 ## Architecture Overview
 
-### Phase-Based Development Structure
-- **FASE 1**: `fase1/` - Patient reception with dual database architecture (COMPLETED)
-- **FASE 2**: `vigia_detect/` - Multimodal medical processing with voice + image analysis (COMPLETED)  
-- **FASE 3**: `vigia_detect/a2a/` - Distributed infrastructure for agent communication (READY)
+### Development Architecture
+- **Core System**: `vigia_detect/` - Complete medical processing pipeline with multimodal analysis (COMPLETED)
+- **Dual Database**: `vigia_detect/db/schemas/` - Hospital PHI separation and Batman tokenization (COMPLETED)  
+- **A2A Infrastructure**: `vigia_detect/a2a/` - Distributed agent communication (READY)
 
 ### 3-Layer Security Architecture
 **Layer 1 - Input Isolation**: WhatsApp bot with no medical data access
@@ -97,7 +97,7 @@ python scripts/setup_medgemma_local.py --check-only        # Hugging Face setup
 ### Common Development Patterns
 ```python
 # PHI Tokenization (CRITICAL)
-from fase1.phi_tokenization.client.tokenization_client import PHITokenizationClient
+from vigia_detect.core.phi_tokenization_client import PHITokenizationClient
 tokenizer = PHITokenizationClient()
 batman_token = await tokenizer.create_token_async(hospital_mrn, patient_data)
 
@@ -118,7 +118,7 @@ medical_agent = MedicalTeamAgentFactory.create_agent()
 ```
 
 ### Project Structure
-- **FASE 1**: `fase1/` - Patient reception, PHI tokenization, dual database
+- **Core System**: `vigia_detect/` - Complete medical pipeline, PHI tokenization, dual database
 - **Medical Logic**: `vigia_detect/systems/` and `vigia_detect/agents/`
 - **CV Pipeline**: `vigia_detect/cv_pipeline/` - MONAI + YOLOv5 detection
 - **AI Integration**: `vigia_detect/ai/` - MedGemma + Hume AI

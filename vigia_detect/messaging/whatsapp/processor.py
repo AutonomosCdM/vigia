@@ -33,10 +33,9 @@ try:
     from vigia_detect.utils.image_utils import save_detection_result
     from vigia_detect.utils.security_validator import validate_and_sanitize_image, sanitize_user_input
     
-    # FASE 1: PHI Tokenization Integration
+    # PHI Tokenization Integration
     import asyncio
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'fase1'))
-    from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
+    from vigia_detect.core.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
     
     lpp_detect_available = True
     phi_tokenization_available = True

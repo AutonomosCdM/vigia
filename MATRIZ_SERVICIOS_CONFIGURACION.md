@@ -272,14 +272,17 @@ services:
     ports: ["5432:5432"]
     environment:
       POSTGRES_DB: vigia_dev
-      POSTGRES_USER: dev_user
-      POSTGRES_PASSWORD: dev_password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
-    command: redis-server --requirepass dev_password
+    command: redis-server --requirepass ${REDIS_PASSWORD}
 ```
+
+**⚠️ SECURITY NOTE:** All passwords and secrets shown here use environment variable placeholders. 
+Never commit actual credentials to version control.
 
 **Environment Variables (.env.development):**
 ```bash
@@ -287,18 +290,23 @@ ENVIRONMENT=development
 DEBUG=true
 LOG_LEVEL=DEBUG
 
+# Secure credential management - set these in your actual .env file
+POSTGRES_USER=your_db_user
+POSTGRES_PASSWORD=your_secure_db_password  
+REDIS_PASSWORD=your_secure_redis_password
+
 # Database
-DATABASE_URL=postgresql://dev_user:dev_password@localhost:5432/vigia_dev
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:5432/vigia_dev
 
 # Redis
 REDIS_HOST=localhost
-REDIS_PASSWORD=dev_password
+REDIS_PASSWORD=${REDIS_PASSWORD}
 
 # Mock Services
 USE_MOCK_SERVICES=true
 TWILIO_ACCOUNT_SID=mock_sid
 SLACK_BOT_TOKEN=mock_token
-HUME_API_KEY=mock_key
+HUME_API_KEY=${HUME_API_KEY}
 ```
 
 ### **🧪 TESTING/STAGING**

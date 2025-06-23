@@ -48,6 +48,11 @@ pylint==3.1.0
 
 # AI/ML Services
 google-cloud-aiplatform==1.49.0
+
+# Task Queue & Message Broker
+celery==5.3.6
+kombu==5.3.5
+redis==5.0.4
 google-generativeai==0.8.0
 anthropic==0.25.7
 

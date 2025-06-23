@@ -37,11 +37,9 @@ from vigia_detect.utils.audit_service import AuditService
 from vigia_detect.db.supabase_client import SupabaseClient
 from vigia_detect.db.raw_outputs_client import RawOutputsClient
 
-# Batman tokenization for HIPAA compliance
-from fase1.phi_tokenization.service.tokenization_api import PHITokenizationService
+# Batman tokenization for HIPAA compliance (import will be done dynamically if needed)
 
-# Raw outputs capture
-from vigia_detect.cv_pipeline.adaptive_medical_detector import RawOutputCapture
+# Raw outputs capture will be imported only when needed to avoid circular imports
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +78,7 @@ class VoiceAnalysisResult:
     timestamp: datetime
     confidence_level: float
     hipaa_compliant: bool = True  # Always True for Batman tokens
-    raw_outputs: Optional[RawOutputCapture] = None  # Raw Hume AI outputs for research
+    raw_outputs: Optional[Any] = None  # Raw Hume AI outputs for research
 
 
 class VoiceMedicalAssessment(BaseModel):
@@ -540,7 +538,7 @@ class HumeAIClient:
     def _capture_hume_raw_outputs(self, 
                                  hume_result: Dict[str, Any],
                                  expressions: Dict[str, float],
-                                 audio_metadata: Optional[Dict[str, Any]] = None) -> RawOutputCapture:
+                                 audio_metadata: Optional[Dict[str, Any]] = None) -> Any:
         """
         Capture raw Hume AI outputs for research and audit.
         
@@ -550,7 +548,7 @@ class HumeAIClient:
             audio_metadata: Optional audio metadata
             
         Returns:
-            RawOutputCapture with Hume AI data
+            RawOutputCapture object with Hume AI data
         """
         # Extract raw expression vectors if available
         raw_vectors = None
@@ -599,6 +597,8 @@ class HumeAIClient:
         if audio_metadata:
             processing_metadata.update(audio_metadata)
         
+        # Dynamic import to avoid circular imports
+        from vigia_detect.cv_pipeline.adaptive_medical_detector import RawOutputCapture
         return RawOutputCapture(
             raw_predictions=hume_result,  # Complete Hume API response
             expression_vectors=raw_vectors,  # Compressed emotion vectors

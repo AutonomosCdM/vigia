@@ -48,6 +48,10 @@ from .risk_assessment_agent import RiskAssessmentAgent
 from .monai_review_agent import MonaiReviewAgent  
 from .diagnostic_agent import DiagnosticAgent
 
+# AgentOps Monitoring Integration
+from ..monitoring.agentops_client import AgentOpsClient
+from ..monitoring.medical_telemetry import MedicalTelemetry
+
 logger = SecureLogger("medical_team_agent")
 
 
@@ -90,9 +94,169 @@ class CommunicationRecord:
         self.timestamp = timestamp
 
 
+class MedicalTeamTelemetry:
+    """AgentOps telemetry wrapper for medical team communication events"""
+    
+    def __init__(self):
+        self.telemetry = MedicalTelemetry(
+            app_id="vigia-medical-team",
+            environment="production",
+            enable_phi_protection=True
+        )
+        self.current_session = None
+    
+    async def start_diagnosis_session(self, token_id: str, diagnosis_context: Dict[str, Any]) -> str:
+        """Start AgentOps session for diagnosis delivery"""
+        session_id = f"medical_team_{token_id}_{int(datetime.now().timestamp())}"
+        
+        try:
+            self.current_session = await self.telemetry.start_medical_session(
+                session_id=session_id,
+                patient_context={
+                    "token_id": token_id,  # Batman token (HIPAA safe)
+                    "communication_type": "medical_team_slack",
+                    "agent_type": "MedicalTeamAgent",
+                    **diagnosis_context
+                },
+                session_type="medical_team_communication"
+            )
+            logger.info(f"AgentOps session started for medical team: {session_id}")
+            return session_id
+        except Exception as e:
+            logger.error(f"Failed to start AgentOps session: {e}")
+            return session_id
+    
+    async def track_diagnosis_delivery(self, session_id: str, delivery_data: Dict[str, Any], 
+                                     results: List[Dict[str, Any]]) -> None:
+        """Track medical diagnosis delivery to teams"""
+        try:
+            await self.telemetry.track_medical_decision(
+                session_id=session_id,
+                decision_type="diagnosis_delivery_to_team",
+                input_data={
+                    "primary_diagnosis": delivery_data.get("primary_diagnosis", "unknown"),
+                    "lpp_grade": delivery_data.get("lpp_grade", 0),
+                    "confidence": delivery_data.get("confidence_level", 0.0),
+                    "target_specialists": delivery_data.get("target_specialists", []),
+                    "evidence_included": delivery_data.get("include_evidence", False)
+                },
+                decision_result={
+                    "successful_deliveries": sum(1 for r in results if r.get('success')),
+                    "total_channels": len(results),
+                    "channels_notified": [r['channel'] for r in results if r.get('success')],
+                    "follow_up_enabled": delivery_data.get("enable_follow_up", False)
+                },
+                evidence_level="A"  # Medical team communications are evidence-based
+            )
+        except Exception as e:
+            logger.error(f"Failed to track diagnosis delivery: {e}")
+    
+    async def track_medical_inquiry(self, session_id: str, inquiry_data: Dict[str, Any], 
+                                  orchestration_results: Dict[str, Any]) -> None:
+        """Track medical professional inquiries and orchestration"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="MedicalTeamAgent",
+                action="handle_medical_inquiry",
+                input_data={
+                    "inquiry_type": inquiry_data.get("inquiry_type", "general"),
+                    "user_id": inquiry_data.get("user_id", "unknown"),
+                    "channel": inquiry_data.get("channel", "unknown"),
+                    "auto_orchestrate": inquiry_data.get("auto_orchestrate", True)
+                },
+                output_data={
+                    "orchestration_triggered": orchestration_results.get("orchestration_triggered", False),
+                    "agents_involved": orchestration_results.get("agents_involved", []),
+                    "acknowledgment_sent": True,
+                    "session_id": session_id
+                },
+                session_id=session_id,
+                execution_time=inquiry_data.get("processing_time_ms", 0) / 1000.0
+            )
+        except Exception as e:
+            logger.error(f"Failed to track medical inquiry: {e}")
+    
+    async def track_follow_up_orchestration(self, session_id: str, orchestration_data: Dict[str, Any], 
+                                          agent_results: List[Dict[str, Any]]) -> None:
+        """Track follow-up analysis orchestration with other agents"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="MedicalTeamAgent",
+                action="orchestrate_follow_up_analysis",
+                input_data={
+                    "analysis_type": orchestration_data.get("analysis_type", "comprehensive"),
+                    "target_agents": orchestration_data.get("target_agents", []),
+                    "priority": orchestration_data.get("priority", "medium")
+                },
+                output_data={
+                    "successful_analyses": sum(1 for r in agent_results if r.get('success')),
+                    "total_agents": len(agent_results),
+                    "orchestration_id": orchestration_data.get("orchestration_id"),
+                    "session_id": session_id
+                },
+                session_id=session_id,
+                execution_time=orchestration_data.get("total_processing_time_ms", 0) / 1000.0
+            )
+        except Exception as e:
+            logger.error(f"Failed to track follow-up orchestration: {e}")
+    
+    async def track_patient_approval(self, session_id: str, approval_data: Dict[str, Any]) -> None:
+        """Track patient communication approval workflow"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="MedicalTeamAgent",
+                action="approve_patient_communication",
+                input_data={
+                    "approval_status": approval_data.get("approval_status", "approved"),
+                    "requesting_professional": approval_data.get("requesting_professional", "unknown"),
+                    "has_modifications": approval_data.get("approval_status") == "modified"
+                },
+                output_data={
+                    "approval_id": approval_data.get("approval_id"),
+                    "patient_communication_triggered": approval_data.get("patient_communication_triggered", False),
+                    "session_id": session_id
+                },
+                session_id=session_id,
+                execution_time=0.5  # Approval workflows are typically quick
+            )
+        except Exception as e:
+            logger.error(f"Failed to track patient approval: {e}")
+    
+    async def track_team_communication_error(self, session_id: str, error_type: str, 
+                                           error_context: Dict[str, Any]) -> None:
+        """Track medical team communication errors"""
+        try:
+            await self.telemetry.track_medical_error_with_escalation(
+                error_type=f"medical_team_{error_type}",
+                error_message=error_context.get("error_message", "Medical team communication error"),
+                context={
+                    "communication_direction": error_context.get("direction", "system_to_medical"),
+                    "error_severity": error_context.get("severity", "medium"),
+                    "channel_affected": error_context.get("channel", "unknown")
+                },
+                session_id=session_id,
+                requires_human_review=error_context.get("requires_escalation", True),
+                severity=error_context.get("severity", "medium")
+            )
+        except Exception as e:
+            logger.error(f"Failed to track team communication error: {e}")
+    
+    async def end_medical_team_session(self, session_id: str) -> Dict[str, Any]:
+        """End AgentOps session with summary"""
+        try:
+            return await self.telemetry.end_medical_session(session_id)
+        except Exception as e:
+            logger.error(f"Failed to end AgentOps session: {e}")
+            return {"error": str(e)}
+
+
+# Global telemetry instance
+_medical_team_telemetry = MedicalTeamTelemetry()
+
+
 # ADK Tools for Medical Team Agent
 
-def send_diagnosis_to_team_adk_tool(
+async def send_diagnosis_to_team_adk_tool(
     diagnosis_data: Dict[str, Any],
     target_specialists: List[str] = None,
     include_evidence: bool = True,
@@ -118,6 +282,17 @@ def send_diagnosis_to_team_adk_tool(
         primary_diagnosis = diagnosis_data.get('primary_diagnosis', 'No diagnosis available')
         confidence = diagnosis_data.get('confidence_level', 0.0)
         lpp_grade = diagnosis_data.get('lpp_grade', 0)
+        
+        # Start AgentOps session for diagnosis delivery
+        diagnosis_context = {
+            "primary_diagnosis": primary_diagnosis,
+            "lpp_grade": lpp_grade,
+            "confidence": confidence,
+            "target_specialists": target_specialists,
+            "include_evidence": include_evidence,
+            "enable_follow_up": enable_follow_up
+        }
+        session_id = await _medical_team_telemetry.start_diagnosis_session(token_id, diagnosis_context)
         
         # Determine target channels based on diagnosis
         if not target_specialists:
@@ -189,6 +364,22 @@ def send_diagnosis_to_team_adk_tool(
         if enable_follow_up:
             follow_up_setup = _setup_follow_up_monitoring(token_id, delivery_results)
         
+        # Track diagnosis delivery in AgentOps
+        if session_id:
+            delivery_data = {
+                "primary_diagnosis": primary_diagnosis,
+                "lpp_grade": lpp_grade,
+                "confidence_level": confidence,
+                "target_specialists": target_specialists,
+                "include_evidence": include_evidence,
+                "enable_follow_up": enable_follow_up
+            }
+            await _medical_team_telemetry.track_diagnosis_delivery(
+                session_id=session_id,
+                delivery_data=delivery_data,
+                results=delivery_results
+            )
+        
         return {
             'success': True,
             'diagnosis_summary': {
@@ -208,6 +399,20 @@ def send_diagnosis_to_team_adk_tool(
         
     except Exception as e:
         logger.error(f"Error sending diagnosis to team: {str(e)}")
+        
+        # Track error in AgentOps if session exists
+        if 'session_id' in locals():
+            await _medical_team_telemetry.track_team_communication_error(
+                session_id=session_id,
+                error_type="diagnosis_delivery_failed",
+                error_context={
+                    "error_message": str(e),
+                    "direction": "system_to_medical",
+                    "severity": "high",
+                    "requires_escalation": True
+                }
+            )
+        
         return {
             'success': False,
             'error': str(e),
@@ -216,7 +421,7 @@ def send_diagnosis_to_team_adk_tool(
         }
 
 
-def handle_medical_inquiry_adk_tool(
+async def handle_medical_inquiry_adk_tool(
     slack_message: Dict[str, Any],
     inquiry_type: str = "general",
     auto_orchestrate: bool = True
@@ -243,6 +448,15 @@ def handle_medical_inquiry_adk_tool(
         
         # Extract token_id from message context (Batman token)
         token_id = _extract_token_from_message(text, slack_message)
+        
+        # Start AgentOps session for inquiry handling
+        inquiry_context = {
+            "inquiry_type": inquiry_type,
+            "user_id": user_id,
+            "channel": channel,
+            "auto_orchestrate": auto_orchestrate
+        }
+        session_id = await _medical_team_telemetry.start_diagnosis_session(token_id, inquiry_context)
         
         # Classify inquiry type if not provided
         if inquiry_type == "general":
@@ -278,6 +492,21 @@ def handle_medical_inquiry_adk_tool(
         # Send acknowledgment to Slack
         acknowledgment = _send_inquiry_acknowledgment(channel, thread_ts, inquiry_type, orchestration_results)
         
+        # Track medical inquiry in AgentOps
+        if session_id:
+            inquiry_data = {
+                "inquiry_type": inquiry_type,
+                "user_id": user_id,
+                "channel": channel,
+                "auto_orchestrate": auto_orchestrate,
+                "processing_time_ms": int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+            }
+            await _medical_team_telemetry.track_medical_inquiry(
+                session_id=session_id,
+                inquiry_data=inquiry_data,
+                orchestration_results=orchestration_results or {}
+            )
+        
         return {
             'success': True,
             'inquiry_id': inquiry_id,
@@ -297,6 +526,21 @@ def handle_medical_inquiry_adk_tool(
         
     except Exception as e:
         logger.error(f"Error handling medical inquiry: {str(e)}")
+        
+        # Track error in AgentOps if session exists
+        if 'session_id' in locals():
+            await _medical_team_telemetry.track_team_communication_error(
+                session_id=session_id,
+                error_type="inquiry_handling_failed",
+                error_context={
+                    "error_message": str(e),
+                    "direction": "medical_to_system",
+                    "severity": "medium",
+                    "channel": slack_message.get("channel", "unknown"),
+                    "requires_escalation": True
+                }
+            )
+        
         return {
             'success': False,
             'error': str(e),

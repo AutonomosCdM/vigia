@@ -32,6 +32,11 @@ from vigia_detect.utils.audit_service import AuditService
 from vigia_detect.systems.medical_knowledge import MedicalKnowledgeSystem
 from vigia_detect.db.agent_analysis_client import AgentAnalysisClient
 
+# AgentOps Monitoring Integration
+from vigia_detect.monitoring.agentops_client import AgentOpsClient
+from vigia_detect.monitoring.medical_telemetry import MedicalTelemetry
+from vigia_detect.monitoring.adk_wrapper import adk_agent_wrapper
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,6 +112,14 @@ class RiskAssessmentAgent(BaseAgent):
         self.audit_service = AuditService()
         self.medical_knowledge = MedicalKnowledgeSystem()
         self.analysis_client = AgentAnalysisClient()  # NEW: Analysis storage
+        
+        # AgentOps monitoring integration
+        self.telemetry = MedicalTelemetry(
+            app_id="vigia-risk-assessment",
+            environment="production",
+            enable_phi_protection=True
+        )
+        self.current_session = None
         
         # Risk calculation weights based on medical evidence
         self.risk_factor_weights = {
@@ -187,12 +200,32 @@ class RiskAssessmentAgent(BaseAgent):
                 
         except Exception as e:
             logger.error(f"Error processing message in Risk Assessment Agent: {e}")
+            
+            # Track error in AgentOps if session exists
+            if hasattr(self, 'current_session') and self.current_session:
+                try:
+                    await self.telemetry.track_medical_error_with_escalation(
+                        error_type="risk_assessment_processing_error",
+                        error_message=str(e),
+                        context={
+                            "agent_id": self.agent_id,
+                            "message_action": message.action,
+                            "error_severity": "medium"
+                        },
+                        session_id=self.current_session,
+                        requires_human_review=True,
+                        severity="medium"
+                    )
+                except Exception as telemetry_error:
+                    logger.error(f"Failed to track error in AgentOps: {telemetry_error}")
+            
             return AgentResponse(
                 success=False,
                 message=f"Processing error: {str(e)}",
                 data={}
             )
     
+    @adk_agent_wrapper
     async def _handle_risk_assessment(self, message: AgentMessage) -> AgentResponse:
         """Handle complete LPP risk assessment requests"""
         try:
@@ -210,8 +243,16 @@ class RiskAssessmentAgent(BaseAgent):
                     data={}
                 )
             
+            # Start AgentOps session for risk assessment
+            session_id = await self._start_risk_assessment_session(token_id, patient_context, assessment_type)
+            self.current_session = session_id
+            
             # Perform comprehensive risk assessment
             result = await self.assess_lpp_risk(token_id, patient_context, assessment_type)
+            
+            # Track assessment in AgentOps
+            if session_id:
+                await self._track_risk_assessment_completion(session_id, result, processing_time)
             
             # Update statistics
             processing_time = (datetime.now() - start_time).total_seconds()
@@ -235,6 +276,53 @@ class RiskAssessmentAgent(BaseAgent):
                 message=f"Risk assessment failed: {str(e)}",
                 data={}
             )
+    
+    async def _start_risk_assessment_session(self, token_id: str, patient_context: Dict[str, Any], assessment_type: str) -> str:
+        """Start AgentOps session for risk assessment"""
+        session_id = f"risk_assessment_{token_id}_{int(datetime.now().timestamp())}"
+        
+        try:
+            await self.telemetry.start_medical_session(
+                session_id=session_id,
+                patient_context={
+                    "token_id": token_id,  # Batman token (HIPAA safe)
+                    "assessment_type": assessment_type,
+                    "agent_type": "RiskAssessmentAgent",
+                    "risk_factors_count": len(patient_context.get("risk_factors", [])),
+                    "has_medical_history": bool(patient_context.get("medical_history"))
+                },
+                session_type="risk_assessment"
+            )
+            logger.info(f"AgentOps risk assessment session started: {session_id}")
+            return session_id
+        except Exception as e:
+            logger.error(f"Failed to start AgentOps session: {e}")
+            return session_id
+    
+    async def _track_risk_assessment_completion(self, session_id: str, result: 'RiskAssessmentResult', processing_time: float) -> None:
+        """Track risk assessment completion in AgentOps"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="RiskAssessmentAgent",
+                action="complete_lpp_risk_assessment",
+                input_data={
+                    "assessment_type": "comprehensive",
+                    "braden_score": result.braden_score,
+                    "norton_score": result.norton_score,
+                    "risk_factors_analyzed": len(result.risk_factors)
+                },
+                output_data={
+                    "risk_level": result.risk_level.value,
+                    "probability_score": result.probability_score,
+                    "confidence": result.confidence,
+                    "interventions_recommended": len(result.prevention_strategies),
+                    "escalation_required": result.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]
+                },
+                session_id=session_id,
+                execution_time=processing_time
+            )
+        except Exception as e:
+            logger.error(f"Failed to track risk assessment completion: {e}")
     
     async def assess_lpp_risk(
         self,

@@ -47,6 +47,10 @@ from ..utils.security_validator import validate_and_sanitize_image, sanitize_use
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'fase1'))
 from fase1.phi_tokenization.client.phi_tokenization_client import tokenize_patient_phi, TokenizedPatient
 
+# AgentOps Monitoring Integration
+from ..monitoring.agentops_client import AgentOpsClient
+from ..monitoring.medical_telemetry import MedicalTelemetry
+
 logger = SecureLogger("patient_communication_agent")
 
 
@@ -97,9 +101,160 @@ class PatientCommunicationRecord:
         self.approved_by = approved_by
 
 
+class PatientCommunicationTelemetry:
+    """AgentOps telemetry wrapper for patient communication events"""
+    
+    def __init__(self):
+        self.telemetry = MedicalTelemetry(
+            app_id="vigia-patient-communication",
+            environment="production",
+            enable_phi_protection=True
+        )
+        self.current_session = None
+    
+    async def start_communication_session(self, token_id: str, patient_context: Dict[str, Any]) -> str:
+        """Start AgentOps session for patient communication"""
+        session_id = f"patient_comm_{token_id}_{int(datetime.now().timestamp())}"
+        
+        try:
+            self.current_session = await self.telemetry.start_medical_session(
+                session_id=session_id,
+                patient_context={
+                    "token_id": token_id,  # Batman token (HIPAA safe)
+                    "communication_type": "patient_whatsapp",
+                    "agent_type": "PatientCommunicationAgent",
+                    **patient_context
+                },
+                session_type="patient_communication"
+            )
+            logger.info(f"AgentOps session started for patient communication: {session_id}")
+            return session_id
+        except Exception as e:
+            logger.error(f"Failed to start AgentOps session: {e}")
+            return session_id
+    
+    async def track_message_reception(self, session_id: str, message_data: Dict[str, Any], 
+                                    image_processed: bool = False) -> None:
+        """Track patient message reception event"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="PatientCommunicationAgent",
+                action="receive_patient_message",
+                input_data={
+                    "message_type": message_data.get("message_type", "text"),
+                    "has_image": message_data.get("has_image", False),
+                    "image_processed": image_processed,
+                    "auto_processing": message_data.get("auto_process", True)
+                },
+                output_data={
+                    "reception_status": "success",
+                    "processing_triggered": image_processed,
+                    "session_id": session_id
+                },
+                session_id=session_id,
+                execution_time=message_data.get("processing_time_ms", 0) / 1000.0
+            )
+        except Exception as e:
+            logger.error(f"Failed to track message reception: {e}")
+    
+    async def track_response_delivery(self, session_id: str, response_data: Dict[str, Any], 
+                                    approval_metadata: Dict[str, Any]) -> None:
+        """Track approved response delivery event"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="PatientCommunicationAgent",
+                action="send_approved_response",
+                input_data={
+                    "response_type": response_data.get("response_type", "medical_results"),
+                    "approved_by": approval_metadata.get("approved_by", "medical_team"),
+                    "approval_status": approval_metadata.get("approval_status", "approved"),
+                    "has_modifications": approval_metadata.get("has_modifications", False)
+                },
+                output_data={
+                    "delivery_status": response_data.get("delivery_status", "delivered"),
+                    "delivery_timestamp": response_data.get("delivery_timestamp"),
+                    "session_id": session_id
+                },
+                session_id=session_id,
+                execution_time=response_data.get("delivery_time_ms", 0) / 1000.0
+            )
+        except Exception as e:
+            logger.error(f"Failed to track response delivery: {e}")
+    
+    async def track_medical_image_processing(self, session_id: str, image_data: Dict[str, Any], 
+                                           processing_results: Dict[str, Any]) -> None:
+        """Track medical image processing from patient"""
+        try:
+            # Track LPP detection if results are available
+            if processing_results.get("lpp_detected"):
+                await self.telemetry.track_lpp_detection_event(
+                    session_id=session_id,
+                    image_path=image_data.get("safe_image_path", "patient_image"),
+                    detection_results={
+                        "lpp_grade": processing_results.get("lpp_grade", 0),
+                        "confidence": processing_results.get("confidence", 0.0),
+                        "anatomical_location": processing_results.get("anatomical_location", "unknown"),
+                        "processing_source": "patient_whatsapp"
+                    },
+                    agent_name="PatientCommunicationAgent"
+                )
+            
+            # Track general image processing
+            await self.telemetry.track_agent_interaction(
+                agent_name="PatientCommunicationAgent",
+                action="process_medical_image",
+                input_data={
+                    "image_format": image_data.get("format", "unknown"),
+                    "image_size_bytes": image_data.get("size_bytes", 0),
+                    "security_validated": image_data.get("security_validated", False)
+                },
+                output_data={
+                    "processing_success": processing_results.get("success", False),
+                    "lpp_detected": processing_results.get("lpp_detected", False),
+                    "confidence": processing_results.get("confidence", 0.0),
+                    "requires_human_review": processing_results.get("requires_human_review", False)
+                },
+                session_id=session_id,
+                execution_time=processing_results.get("processing_time_ms", 0) / 1000.0
+            )
+        except Exception as e:
+            logger.error(f"Failed to track medical image processing: {e}")
+    
+    async def track_communication_error(self, session_id: str, error_type: str, 
+                                      error_context: Dict[str, Any]) -> None:
+        """Track communication errors with escalation"""
+        try:
+            await self.telemetry.track_medical_error_with_escalation(
+                error_type=f"patient_communication_{error_type}",
+                error_message=error_context.get("error_message", "Patient communication error"),
+                context={
+                    "communication_direction": error_context.get("direction", "unknown"),
+                    "error_severity": error_context.get("severity", "medium"),
+                    "retry_attempted": error_context.get("retry_attempted", False)
+                },
+                session_id=session_id,
+                requires_human_review=error_context.get("requires_escalation", True),
+                severity=error_context.get("severity", "medium")
+            )
+        except Exception as e:
+            logger.error(f"Failed to track communication error: {e}")
+    
+    async def end_communication_session(self, session_id: str) -> Dict[str, Any]:
+        """End AgentOps session with summary"""
+        try:
+            return await self.telemetry.end_medical_session(session_id)
+        except Exception as e:
+            logger.error(f"Failed to end AgentOps session: {e}")
+            return {"error": str(e)}
+
+
+# Global telemetry instance
+_patient_telemetry = PatientCommunicationTelemetry()
+
+
 # ADK Tools for Patient Communication Agent
 
-def receive_patient_message_adk_tool(
+async def receive_patient_message_adk_tool(
     whatsapp_message: Dict[str, Any],
     auto_process: bool = True,
     security_check: bool = True
@@ -123,6 +278,15 @@ def receive_patient_message_adk_tool(
         message_body = whatsapp_message.get('text', {}).get('body', '')
         media_url = whatsapp_message.get('image', {}).get('url', '')
         message_id = whatsapp_message.get('id', str(uuid.uuid4()))
+        
+        # Initialize AgentOps session for this communication
+        session_id = None
+        patient_context = {
+            "message_id": message_id,
+            "has_image": bool(media_url),
+            "auto_process": auto_process,
+            "security_check": security_check
+        }
         
         # Classify message type
         message_type = _classify_patient_message(whatsapp_message)
@@ -152,10 +316,10 @@ def receive_patient_message_adk_tool(
                 }
                 
                 # Tokenize PHI
-                tokenization_result = asyncio.run(tokenize_patient_phi(
+                tokenization_result = await tokenize_patient_phi(
                     hospital_mrn=f"whatsapp_{phone_number}",
                     patient_data=patient_data
-                ))
+                )
                 
                 if tokenization_result and hasattr(tokenization_result, 'token_id'):
                     token_id = tokenization_result.token_id
@@ -166,11 +330,29 @@ def receive_patient_message_adk_tool(
                 logger.warning(f"PHI tokenization failed, using fallback: {str(token_error)}")
                 token_id = f"batman_fallback_{uuid.uuid4().hex[:8]}"
         
+        # Start AgentOps session with Batman token
+        if token_id:
+            patient_context["token_id"] = token_id
+            session_id = await _patient_telemetry.start_communication_session(token_id, patient_context)
+        
         # Process medical image if present
         image_processing_result = None
         if media_url and message_type == MessageType.MEDICAL_IMAGE.value:
             if auto_process:
                 image_processing_result = _process_medical_image(media_url, token_id, message_id)
+                
+                # Track medical image processing in AgentOps
+                if session_id and image_processing_result:
+                    await _patient_telemetry.track_medical_image_processing(
+                        session_id=session_id,
+                        image_data={
+                            "safe_image_path": f"patient_whatsapp_{message_id}",
+                            "format": "whatsapp_image",
+                            "size_bytes": image_processing_result.get("image_size_bytes", 0),
+                            "security_validated": security_results.get("safe", False) if security_results else True
+                        },
+                        processing_results=image_processing_result
+                    )
         
         # Store communication in DB
         communication_id = _store_patient_communication_in_db(
@@ -196,6 +378,20 @@ def receive_patient_message_adk_tool(
         # Send acknowledgment to patient
         acknowledgment_sent = _send_patient_acknowledgment(phone_number, message_type, token_id)
         
+        # Track message reception in AgentOps
+        if session_id:
+            message_data = {
+                "message_type": message_type,
+                "has_image": bool(media_url),
+                "auto_process": auto_process,
+                "processing_time_ms": int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+            }
+            await _patient_telemetry.track_message_reception(
+                session_id=session_id,
+                message_data=message_data,
+                image_processed=bool(image_processing_result)
+            )
+        
         return {
             'success': True,
             'communication_id': communication_id,
@@ -219,6 +415,21 @@ def receive_patient_message_adk_tool(
         
     except Exception as e:
         logger.error(f"Error receiving patient message: {str(e)}")
+        
+        # Track error in AgentOps if session exists
+        if session_id:
+            await _patient_telemetry.track_communication_error(
+                session_id=session_id,
+                error_type="message_reception_failed",
+                error_context={
+                    "error_message": str(e),
+                    "direction": "patient_to_system",
+                    "severity": "high",
+                    "retry_attempted": False,
+                    "requires_escalation": True
+                }
+            )
+        
         return {
             'success': False,
             'error': str(e),
@@ -227,7 +438,7 @@ def receive_patient_message_adk_tool(
         }
 
 
-def send_approved_response_adk_tool(
+async def send_approved_response_adk_tool(
     response_data: Dict[str, Any],
     approval_metadata: Dict[str, Any],
     delivery_options: Dict[str, Any] = None

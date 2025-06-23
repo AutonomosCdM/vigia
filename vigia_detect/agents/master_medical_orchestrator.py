@@ -42,6 +42,11 @@ from vigia_detect.agents.monai_review_agent import MonaiReviewAgent
 from vigia_detect.agents.diagnostic_agent import DiagnosticAgent
 from vigia_detect.agents.adk.voice_analysis import VoiceAnalysisAgent
 
+# AgentOps Monitoring Integration
+from vigia_detect.monitoring.agentops_client import AgentOpsClient
+from vigia_detect.monitoring.medical_telemetry import MedicalTelemetry
+from vigia_detect.monitoring.adk_wrapper import adk_agent_wrapper
+
 warnings.filterwarnings("ignore", category=UserWarning, module=".*pydantic.*")
 
 # Configure logging
@@ -93,6 +98,14 @@ class MasterMedicalOrchestrator:
         self.audit_service = AuditService()
         self.orchestrator_id = f"master_orchestrator_{datetime.now().strftime('%Y%m%d')}"
         
+        # AgentOps Monitoring Integration
+        self.telemetry = MedicalTelemetry(
+            app_id="vigia-master-orchestrator",
+            environment="production",
+            enable_phi_protection=True
+        )
+        self.current_session = None
+        
         # Agent registry for A2A communication (ENHANCED with new agents)
         self.registered_agents = {
             'image_analysis': None,       # Original agents
@@ -117,6 +130,124 @@ class MasterMedicalOrchestrator:
             'avg_processing_time': 0.0
         }
     
+    def _assess_case_complexity(self, case_data: Dict[str, Any]) -> str:
+        """Assess medical case complexity for AgentOps tracking"""
+        complexity_score = 0
+        
+        # Image complexity factors
+        if case_data.get('image_path'):
+            complexity_score += 1
+        
+        # Voice analysis complexity
+        if case_data.get('voice_data'):
+            complexity_score += 1
+        
+        # Risk factors complexity
+        risk_factors = case_data.get('patient_context', {}).get('risk_factors', [])
+        if len(risk_factors) > 3:
+            complexity_score += 2
+        elif len(risk_factors) > 1:
+            complexity_score += 1
+        
+        # Medical history complexity
+        if case_data.get('patient_context', {}).get('medical_history'):
+            complexity_score += 1
+        
+        # Determine complexity level
+        if complexity_score >= 4:
+            return "high"
+        elif complexity_score >= 2:
+            return "medium"
+        else:
+            return "low"
+    
+    async def start_orchestration_session(self, token_id: str, case_context: Dict[str, Any]) -> str:
+        """Start AgentOps session for medical case orchestration"""
+        session_id = f"orchestration_{token_id}_{int(datetime.now().timestamp())}"
+        
+        try:
+            self.current_session = await self.telemetry.start_medical_session(
+                session_id=session_id,
+                patient_context={
+                    "token_id": token_id,  # Batman token (HIPAA safe)
+                    "orchestrator_id": self.orchestrator_id,
+                    "agent_count": len(self.registered_agents),
+                    "coordination_type": "9_agent_medical_pipeline",
+                    **case_context
+                },
+                session_type="master_orchestration"
+            )
+            logger.info(f"AgentOps orchestration session started: {session_id}")
+            return session_id
+        except Exception as e:
+            logger.error(f"Failed to start AgentOps orchestration session: {e}")
+            return session_id
+    
+    async def track_agent_coordination(self, session_id: str, coordination_data: Dict[str, Any]) -> None:
+        """Track multi-agent coordination events"""
+        try:
+            await self.telemetry.track_agent_interaction(
+                agent_name="MasterMedicalOrchestrator",
+                action="coordinate_medical_agents",
+                input_data={
+                    "total_agents": coordination_data.get("total_agents", 0),
+                    "active_agents": coordination_data.get("active_agents", []),
+                    "coordination_pattern": coordination_data.get("pattern", "sequential"),
+                    "case_complexity": coordination_data.get("complexity", "standard")
+                },
+                output_data={
+                    "successful_coordinations": coordination_data.get("successful_coordinations", 0),
+                    "failed_coordinations": coordination_data.get("failed_coordinations", 0),
+                    "escalations_triggered": coordination_data.get("escalations", 0),
+                    "final_decision_confidence": coordination_data.get("final_confidence", 0.0)
+                },
+                session_id=session_id,
+                execution_time=coordination_data.get("total_processing_time", 0.0)
+            )
+        except Exception as e:
+            logger.error(f"Failed to track agent coordination: {e}")
+    
+    async def track_medical_decision_fusion(self, session_id: str, fusion_data: Dict[str, Any]) -> None:
+        """Track multi-agent medical decision fusion"""
+        try:
+            await self.telemetry.track_medical_decision(
+                session_id=session_id,
+                decision_type="multi_agent_fusion",
+                input_data={
+                    "agent_decisions": fusion_data.get("individual_decisions", {}),
+                    "confidence_scores": fusion_data.get("confidence_scores", {}),
+                    "conflict_resolution": fusion_data.get("conflicts_resolved", 0)
+                },
+                decision_result={
+                    "fused_diagnosis": fusion_data.get("final_diagnosis"),
+                    "fused_confidence": fusion_data.get("final_confidence", 0.0),
+                    "evidence_level": fusion_data.get("evidence_level", "A"),
+                    "consensus_achieved": fusion_data.get("consensus", True)
+                },
+                evidence_level=fusion_data.get("evidence_level", "A")
+            )
+        except Exception as e:
+            logger.error(f"Failed to track medical decision fusion: {e}")
+    
+    async def track_orchestration_error(self, session_id: str, error_type: str, error_context: Dict[str, Any]) -> None:
+        """Track orchestration errors with escalation"""
+        try:
+            await self.telemetry.track_medical_error_with_escalation(
+                error_type=f"orchestration_{error_type}",
+                error_message=error_context.get("error_message", "Orchestration error"),
+                context={
+                    "failed_agent": error_context.get("failed_agent", "unknown"),
+                    "orchestration_stage": error_context.get("stage", "unknown"),
+                    "case_complexity": error_context.get("complexity", "standard")
+                },
+                session_id=session_id,
+                requires_human_review=error_context.get("requires_escalation", True),
+                severity=error_context.get("severity", "high")
+            )
+        except Exception as e:
+            logger.error(f"Failed to track orchestration error: {e}")
+    
+    @adk_agent_wrapper
     async def process_medical_case(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main orchestration function for processing medical cases.
@@ -137,6 +268,16 @@ class MasterMedicalOrchestrator:
         token_id = case_data.get('token_id')  # Tokenized patient ID (NO PHI)
         patient_alias = case_data.get('patient_alias', 'Unknown')  # Display alias
         
+        # Start AgentOps orchestration session
+        case_context = {
+            "patient_alias": patient_alias,
+            "image_present": bool(case_data.get('image_path')),
+            "voice_present": bool(case_data.get('voice_data')),
+            "risk_factors": case_data.get('patient_context', {}).get('risk_factors', []),
+            "case_complexity": self._assess_case_complexity(case_data)
+        }
+        session_id = await self.start_orchestration_session(token_id, case_context)
+        
         try:
             # Initialize session and audit
             await self._initialize_case_session(case_data)
@@ -145,7 +286,35 @@ class MasterMedicalOrchestrator:
             logger.info(f"Iniciando análisis de imagen para paciente {patient_alias} (token: {token_id[:8]}...)")
             image_analysis_result = await self._coordinate_image_analysis(case_data)
             
+            # Track image analysis coordination
+            if session_id:
+                await self.track_agent_coordination(
+                    session_id=session_id,
+                    coordination_data={
+                        "total_agents": 1,
+                        "active_agents": ["image_analysis"],
+                        "pattern": "image_analysis_phase",
+                        "complexity": case_context["case_complexity"],
+                        "successful_coordinations": 1 if image_analysis_result['success'] else 0,
+                        "failed_coordinations": 0 if image_analysis_result['success'] else 1
+                    }
+                )
+            
             if not image_analysis_result['success']:
+                # Track error in AgentOps
+                if session_id:
+                    await self.track_orchestration_error(
+                        session_id=session_id,
+                        error_type="image_analysis_failed",
+                        error_context={
+                            "error_message": "Image analysis coordination failed",
+                            "failed_agent": "image_analysis",
+                            "stage": "phase_1_image_analysis",
+                            "complexity": case_context["case_complexity"],
+                            "requires_escalation": True,
+                            "severity": "high"
+                        }
+                    )
                 return await self._handle_processing_error(
                     case_data, 'image_analysis', image_analysis_result['error']
                 )
@@ -171,7 +340,35 @@ class MasterMedicalOrchestrator:
                 case_data, combined_analysis
             )
             
+            # Track clinical assessment coordination
+            if session_id:
+                await self.track_agent_coordination(
+                    session_id=session_id,
+                    coordination_data={
+                        "total_agents": 2,
+                        "active_agents": ["image_analysis", "clinical_assessment"],
+                        "pattern": "clinical_assessment_phase",
+                        "complexity": case_context["case_complexity"],
+                        "successful_coordinations": 2 if clinical_result['success'] else 1,
+                        "failed_coordinations": 0 if clinical_result['success'] else 1
+                    }
+                )
+            
             if not clinical_result['success']:
+                # Track error in AgentOps
+                if session_id:
+                    await self.track_orchestration_error(
+                        session_id=session_id,
+                        error_type="clinical_assessment_failed",
+                        error_context={
+                            "error_message": "Clinical assessment coordination failed",
+                            "failed_agent": "clinical_assessment",
+                            "stage": "phase_2_clinical_assessment",
+                            "complexity": case_context["case_complexity"],
+                            "requires_escalation": True,
+                            "severity": "high"
+                        }
+                    )
                 return await self._handle_processing_error(
                     case_data, 'clinical_assessment', clinical_result['error']
                 )
@@ -237,9 +434,72 @@ class MasterMedicalOrchestrator:
                 }
             )
             
+            # Track final medical decision fusion in AgentOps
+            if session_id:
+                fusion_data = {
+                    "individual_decisions": {
+                        "image_analysis": image_analysis_result.get('diagnosis', 'unknown'),
+                        "clinical_assessment": clinical_result.get('assessment', 'unknown'),
+                        "risk_assessment": risk_assessment_result.get('risk_level', 'unknown') if risk_assessment_result else 'not_performed',
+                        "integrated_diagnosis": diagnostic_result.get('diagnosis', 'unknown') if diagnostic_result else 'not_performed'
+                    },
+                    "confidence_scores": {
+                        "image_analysis": image_analysis_result.get('confidence', 0.0),
+                        "clinical_assessment": clinical_result.get('confidence', 0.0),
+                        "risk_assessment": risk_assessment_result.get('confidence', 0.0) if risk_assessment_result else 0.0,
+                        "integrated_diagnosis": diagnostic_result.get('confidence', 0.0) if diagnostic_result else 0.0
+                    },
+                    "final_diagnosis": final_result.get('consolidated_diagnosis', 'unknown'),
+                    "final_confidence": final_result.get('overall_confidence', 0.0),
+                    "evidence_level": final_result.get('evidence_level', 'A'),
+                    "conflicts_resolved": final_result.get('conflicts_resolved', 0),
+                    "consensus": final_result.get('consensus_achieved', True)
+                }
+                
+                await self.track_medical_decision_fusion(session_id, fusion_data)
+                
+                # Track final coordination summary
+                await self.track_agent_coordination(
+                    session_id=session_id,
+                    coordination_data={
+                        "total_agents": 9,  # All agents in the pipeline
+                        "active_agents": [name for name, result in {
+                            'image_analysis': image_analysis_result,
+                            'voice_analysis': voice_analysis_result,
+                            'clinical_assessment': clinical_result,
+                            'protocol': protocol_result,
+                            'communication': communication_result,
+                            'workflow': workflow_result,
+                            'risk_assessment': risk_assessment_result,
+                            'monai_review': monai_review_result,
+                            'diagnostic': diagnostic_result
+                        }.items() if result and result.get('success')],
+                        "pattern": "complete_9_agent_pipeline",
+                        "complexity": case_context["case_complexity"],
+                        "successful_coordinations": sum(1 for result in [
+                            image_analysis_result, clinical_result, protocol_result, 
+                            communication_result, workflow_result, risk_assessment_result,
+                            monai_review_result, diagnostic_result
+                        ] if result and result.get('success')),
+                        "failed_coordinations": sum(1 for result in [
+                            image_analysis_result, clinical_result, protocol_result,
+                            communication_result, workflow_result, risk_assessment_result,
+                            monai_review_result, diagnostic_result
+                        ] if result and not result.get('success')),
+                        "escalations": final_result.get('escalations_triggered', 0),
+                        "final_confidence": final_result.get('overall_confidence', 0.0),
+                        "total_processing_time": (datetime.now() - start_time).total_seconds()
+                    }
+                )
+            
             # Update statistics
             processing_time = (datetime.now() - start_time).total_seconds()
             await self._update_processing_stats(processing_time, final_result)
+            
+            # End AgentOps session with summary
+            if session_id:
+                session_summary = await self.telemetry.end_medical_session(session_id)
+                logger.info(f"AgentOps orchestration session completed: {session_id} - Duration: {session_summary.get('duration', 'N/A')}s")
             
             # Close session
             await self._finalize_case_session(session_token, final_result)
@@ -248,6 +508,22 @@ class MasterMedicalOrchestrator:
             
         except Exception as e:
             logger.error(f"Error en orquestación médica: {str(e)}")
+            
+            # Track orchestration error in AgentOps
+            if 'session_id' in locals():
+                await self.track_orchestration_error(
+                    session_id=session_id,
+                    error_type="orchestration_failure",
+                    error_context={
+                        "error_message": str(e),
+                        "failed_agent": "master_orchestrator",
+                        "stage": "complete_orchestration",
+                        "complexity": case_context.get("case_complexity", "unknown"),
+                        "requires_escalation": True,
+                        "severity": "critical"
+                    }
+                )
+            
             error_result = await self._handle_orchestration_error(case_data, str(e))
             await self._finalize_case_session(session_token, error_result)
             return error_result

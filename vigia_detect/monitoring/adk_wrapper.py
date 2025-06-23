@@ -396,3 +396,102 @@ class ADKMedicalAgent(ADKAgentWrapper):
             
         except Exception as e:
             logger.warning(f"Failed to track medical decision: {e}")
+
+
+# Convenience decorator function for quick integration
+def adk_agent_wrapper(
+    action_name: Optional[str] = None,
+    medical_critical: bool = False,
+    escalate_on_error: bool = False,
+    agent_name: Optional[str] = None
+):
+    """
+    Convenience decorator for wrapping ADK agent functions with AgentOps tracking
+    
+    Args:
+        action_name: Name of the action (uses function name if None)
+        medical_critical: Whether this is a medical-critical operation
+        escalate_on_error: Whether to escalate errors for human review
+        agent_name: Agent name (auto-detected from class if None)
+    """
+    def decorator(func: Callable):
+        @wraps(func)
+        async def async_wrapper(self, *args, **kwargs):
+            # Auto-detect agent name from class
+            detected_agent_name = agent_name or getattr(self, 'agent_id', self.__class__.__name__)
+            
+            # Create wrapper if not exists
+            if not hasattr(self, '_adk_wrapper'):
+                self._adk_wrapper = ADKAgentWrapper(
+                    agent_name=detected_agent_name,
+                    enable_telemetry=True,
+                    medical_context=getattr(self, 'medical_context', {})
+                )
+            
+            # Execute with tracking
+            try:
+                start_time = time.time()
+                result = await func(self, *args, **kwargs)
+                execution_time = time.time() - start_time
+                
+                # Track successful execution
+                if self._adk_wrapper.enable_telemetry and self._adk_wrapper.agentops_client:
+                    try:
+                        self._adk_wrapper.agentops_client.track_agent_interaction(
+                            agent_name=detected_agent_name,
+                            action=action_name or func.__name__,
+                            input_data={
+                                'args_count': len(args),
+                                'kwargs_keys': list(kwargs.keys()),
+                                'medical_critical': medical_critical
+                            },
+                            output_data={
+                                'success': True,
+                                'result_type': type(result).__name__
+                            },
+                            execution_time=execution_time,
+                            success=True
+                        )
+                    except Exception as tracking_error:
+                        logger.warning(f"Failed to track agent interaction: {tracking_error}")
+                
+                return result
+                
+            except Exception as e:
+                execution_time = time.time() - start_time
+                
+                # Track error
+                if hasattr(self, '_adk_wrapper') and self._adk_wrapper.enable_telemetry:
+                    try:
+                        severity = "critical" if medical_critical else "medium"
+                        self._adk_wrapper.agentops_client.track_medical_error(
+                            error_type=f"adk_agent_error_{func.__name__}",
+                            error_message=str(e),
+                            context={
+                                'agent_name': detected_agent_name,
+                                'action_name': action_name or func.__name__,
+                                'medical_critical': medical_critical,
+                                'execution_time': execution_time
+                            },
+                            severity=severity,
+                            requires_escalation=escalate_on_error
+                        )
+                    except Exception as tracking_error:
+                        logger.warning(f"Failed to track error: {tracking_error}")
+                
+                # Re-raise original exception
+                raise
+        
+        @wraps(func)
+        def sync_wrapper(self, *args, **kwargs):
+            # For sync functions, just execute normally
+            # (AgentOps tracking requires async for proper session management)
+            return func(self, *args, **kwargs)
+        
+        # Return appropriate wrapper based on function type
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return sync_wrapper
+    
+    return decorator

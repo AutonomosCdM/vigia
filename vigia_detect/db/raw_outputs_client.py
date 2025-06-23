@@ -29,7 +29,7 @@ try:
 except ImportError:
     SUPABASE_AVAILABLE = False
 
-from ..cv_pipeline.adaptive_medical_detector import RawOutputCapture
+# RawOutputCapture will be imported dynamically to avoid circular imports
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class RawOutputsClient:
     async def store_raw_output(self,
                               token_id: str,
                               ai_engine: str,
-                              raw_outputs: RawOutputCapture,
+                              raw_outputs: Any,
                               structured_result_id: Optional[str] = None,
                               structured_result_type: Optional[str] = None,
                               research_approved: bool = True,
@@ -246,7 +246,7 @@ class RawOutputsClient:
             logger.error(f"Error retrieving research data: {e}")
             return []
     
-    def _calculate_raw_size(self, raw_outputs: RawOutputCapture) -> int:
+    def _calculate_raw_size(self, raw_outputs: Any) -> int:
         """Calculate total raw data size"""
         size = 0
         
@@ -264,7 +264,7 @@ class RawOutputsClient:
         
         return size
     
-    def _calculate_quality_score(self, raw_outputs: RawOutputCapture) -> float:
+    def _calculate_quality_score(self, raw_outputs: Any) -> float:
         """Calculate quality score for raw output"""
         # Basic quality scoring based on data completeness and metadata
         score = 0.5  # Base score
@@ -280,7 +280,7 @@ class RawOutputsClient:
         
         return min(score, 1.0)
     
-    def _generate_research_tags(self, ai_engine: str, raw_outputs: RawOutputCapture) -> List[str]:
+    def _generate_research_tags(self, ai_engine: str, raw_outputs: Any) -> List[str]:
         """Generate research tags for categorization"""
         tags = [ai_engine, "medical_ai", "lpp_detection"]
         

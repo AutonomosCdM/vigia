@@ -33,6 +33,10 @@ from ..db.supabase_client import SupabaseClient
 from ..utils.secure_logger import SecureLogger
 from ..utils.audit_service import AuditService, AuditEventType, AuditLevel
 
+# AgentOps Monitoring Integration
+from ..monitoring.agentops_client import AgentOpsClient
+from ..monitoring.medical_telemetry import MedicalTelemetry
+
 logger = SecureLogger("communication_bridge")
 
 
@@ -66,6 +70,14 @@ class CommunicationBridge:
         self.supabase_client = SupabaseClient()
         self.audit_service = AuditService()
         self.active_workflows = {}  # In-memory workflow tracking
+        
+        # AgentOps monitoring integration
+        self.telemetry = MedicalTelemetry(
+            app_id="vigia-communication-bridge",
+            environment="production",
+            enable_phi_protection=True
+        )
+        self.current_session = None
         
     async def route_medical_diagnosis_to_patient(self, diagnosis_data: Dict[str, Any], 
                                                medical_approval: Dict[str, Any]) -> Dict[str, Any]:

@@ -61,6 +61,21 @@ class TriageRule:
 
 
 @dataclass
+class TriageDecision:
+    """Decision from triage engine (backward compatibility)."""
+    route: str
+    urgency: ClinicalUrgency
+    confidence: float
+    reasoning: str
+    timestamp: Optional[datetime] = None
+    metadata: Optional[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now(timezone.utc)
+
+
+@dataclass
 class TriageResult:
     """Resultado del proceso de triage."""
     urgency: ClinicalUrgency
@@ -811,3 +826,7 @@ class TriageEngineFactory:
         engine = MedicalTriageEngine()
         engine.rules = rules
         return engine
+
+
+# Backward compatibility alias
+TriageEngine = MedicalTriageEngine

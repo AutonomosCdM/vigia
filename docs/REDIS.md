@@ -1,8 +1,8 @@
-# Redis Integration Documentation
+# Redis + MedGemma Integration Documentation
 
 ## Overview
 
-Vigia uses Redis for semantic caching and vector search capabilities to enhance medical detection workflows. The system provides intelligent caching of medical queries and embeddings-based search for medical protocols.
+Vigia uses Redis for semantic caching and vector search capabilities integrated with MedGemma local AI to enhance medical detection workflows. The system provides intelligent caching of medical queries, embeddings-based search for medical protocols, and on-premise medical AI analysis.
 
 ## Architecture
 

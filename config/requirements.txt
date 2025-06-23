@@ -17,7 +17,6 @@ pydantic-settings==2.2.1
 # sentencepiece>=0.1.99  # For tokenization
 
 # Vector Search Dependencies  
-sentence-transformers>=2.2.2
 faiss-cpu>=1.7.4  # Use faiss-gpu if CUDA available
 
 # Security
@@ -52,7 +51,6 @@ google-cloud-aiplatform==1.49.0
 # Task Queue & Message Broker
 celery==5.3.6
 kombu==5.3.5
-redis==5.0.4
 google-generativeai==0.8.0
 anthropic==0.25.7
 

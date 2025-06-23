@@ -3,6 +3,7 @@
 Demo simple y funcional de AgentOps para Vigia LPP-Detect
 """
 
+import os
 import time
 import uuid
 from datetime import datetime
@@ -16,7 +17,7 @@ def main():
     
     # 1. Inicializar cliente AgentOps
     client = AgentOpsClient(
-        api_key="995199e8-36e5-47e7-96b9-221a3ee12fb9",
+        api_key=os.getenv("AGENTOPS_API_KEY"),
         app_id="vigia-lpp-production",
         environment="production",
         enable_phi_protection=True,

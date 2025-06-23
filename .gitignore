@@ -103,6 +103,9 @@ tmp/
 backup/
 *.bak
 *.old
+*.backup
+*_temp.py
+temp_*.py
 
 # Database
 *.db

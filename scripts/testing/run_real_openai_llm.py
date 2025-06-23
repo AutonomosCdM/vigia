@@ -26,8 +26,8 @@ def run_real_openai_medical_session():
     print("Making REAL LLM calls to OpenAI that AgentOps will auto-track!")
     print()
     
-    # Initialize AgentOps with your API key
-    api_key = "995199e8-36e5-47e7-96b9-221a3ee12fb9"
+    # Initialize AgentOps with environment API key
+    api_key = os.getenv("AGENTOPS_API_KEY")
     print(f"✅ Using your AgentOps API key: {api_key[:10]}...")
     
     print("1️⃣ Initializing AgentOps...")

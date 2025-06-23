@@ -1,3 +1,4 @@
+import os
 import agentops
 
 print("AgentOps available methods:")
@@ -15,7 +16,7 @@ print("\n" + "="*50)
 
 try:
     # Test basic initialization
-    agentops.init(api_key="995199e8-36e5-47e7-96b9-221a3ee12fb9", auto_start_session=False)
+    agentops.init(api_key=os.getenv("AGENTOPS_API_KEY"), auto_start_session=False)
     print("✅ AgentOps initialization: OK")
     
     # Test session start

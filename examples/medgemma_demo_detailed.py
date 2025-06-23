@@ -273,9 +273,11 @@ async def demo_detailed_process():
 
 async def main():
     """Función principal"""
-    # Configurar API key temporalmente si no está en el ambiente
+    # Verificar API key está en el ambiente
     if not os.environ.get('GOOGLE_API_KEY'):
-        os.environ['GOOGLE_API_KEY'] = 'AIzaSyBqAPpzFkpBuLiVPkSCSuUDcRiO4GQDoHk'
+        print("❌ Error: GOOGLE_API_KEY no está configurada en el ambiente")
+        print("Configure la variable de ambiente: export GOOGLE_API_KEY=your_api_key")
+        return
     
     # Usar modelo Flash para evitar límites de cuota
     os.environ['MEDGEMMA_MODEL'] = 'gemini-1.5-flash'

@@ -24,8 +24,8 @@ def run_agentops_with_retry():
     print("🏥 AGENTOPS WITH RETRY LOGIC")
     print("=" * 50)
     
-    # Use your provided API key directly
-    api_key = "995199e8-36e5-47e7-96b9-221a3ee12fb9"
+    # Use environment API key
+    api_key = os.getenv("AGENTOPS_API_KEY")
     print(f"✅ Using your API key: {api_key[:10]}...")
     print()
     

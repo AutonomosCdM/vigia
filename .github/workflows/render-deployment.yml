@@ -46,7 +46,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        if [ -f requirements-medical.txt ]; then pip install -r requirements-medical.txt; fi
+        if [ -f config/requirements-medical.txt ]; then pip install -r config/requirements-medical.txt; fi
         pip install pytest psycopg2-binary redis
         
     - name: Run medical compliance tests

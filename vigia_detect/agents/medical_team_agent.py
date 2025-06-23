@@ -305,7 +305,7 @@ def handle_medical_inquiry_adk_tool(
         }
 
 
-def orchestrate_follow_up_analysis_adk_tool(
+async def orchestrate_follow_up_analysis_adk_tool(
     analysis_request: Dict[str, Any],
     target_agents: List[str] = None,
     priority: str = "medium"

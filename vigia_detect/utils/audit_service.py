@@ -65,6 +65,14 @@ class AuditSeverity(Enum):
     CRITICAL = 4
 
 
+class AuditLevel(Enum):
+    """Niveles de auditoría (alias for AuditSeverity for compatibility)."""
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    CRITICAL = "critical"
+
+
 class ComplianceStandard(Enum):
     """Estándares de cumplimiento."""
     HIPAA = "hipaa"

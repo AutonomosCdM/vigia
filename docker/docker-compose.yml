@@ -18,8 +18,8 @@ services:
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-false}
       - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-60}
     volumes:
-      - ./data/input:/app/data/input:ro
-      - ./data/output:/app/data/output
+      - vigia-input:/app/data/input
+      - vigia-output:/app/data/output
       - ./logs:/app/logs
     depends_on:
       - redis
@@ -170,6 +170,8 @@ services:
       - monitoring
 
 volumes:
+  vigia-input:
+  vigia-output:
   redis-data:
   prometheus-data:
   grafana-data:

@@ -1,5 +1,13 @@
 from typing import List, Dict, Optional
-from redisvl import RedisVL
+try:
+    from redisvl.index import Index
+    from redisvl.query import Query
+    REDISVL_AVAILABLE = True
+except ImportError:
+    REDISVL_AVAILABLE = False
+    Index = None
+    Query = None
+
 from .config import get_redis_config
 
 class VectorSearchService:
@@ -7,10 +15,12 @@ class VectorSearchService:
     
     def __init__(self):
         self.config = get_redis_config()
-        self.rvl = RedisVL(
-            redis_url=f"redis://:{self.config.password}@{self.config.host}:{self.config.port}",
-            index_name=self.config.vector_index
-        )
+        if not REDISVL_AVAILABLE:
+            raise ImportError("redisvl is not available. Install with: pip install redisvl")
+        
+        redis_url = f"redis://:{self.config.password}@{self.config.host}:{self.config.port}"
+        # Initialize with basic configuration - create index if needed
+        self.index = None  # Will be initialized when needed
 
     async def index_protocol(self, protocol_id: str, text: str, embedding: List[float], metadata: Dict):
         """Index a medical protocol with its vector embedding."""

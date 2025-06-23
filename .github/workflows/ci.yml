@@ -91,8 +91,8 @@ jobs:
     
     - name: Run test suite
       run: |
-        chmod +x scripts/run_tests.sh
-        ./scripts/run_tests.sh ${{ matrix.test-suite }}
+        chmod +x scripts/testing/run_tests.sh
+        ./scripts/testing/run_tests.sh ${{ matrix.test-suite }}
     
     - name: Upload test results
       if: always()

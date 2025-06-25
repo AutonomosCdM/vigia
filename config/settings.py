@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v):
-        allowed = ["development", "staging", "production"]
+        allowed = ["development", "staging", "production", "testing"]
         if v not in allowed:
             raise ValueError(f"Environment must be one of {allowed}")
         return v

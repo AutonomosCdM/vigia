@@ -40,7 +40,7 @@ class ImageProcessor:
         # Inicializar detector y preprocesador
         self.detector = LPPDetector(
             model_type=model_type,
-            confidence_threshold=confidence_threshold
+            conf_threshold=confidence_threshold
         )
         self.preprocessor = ImagePreprocessor()
         

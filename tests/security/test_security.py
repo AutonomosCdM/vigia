@@ -247,18 +247,6 @@ class TestDataMasking:
 class TestEndpointSecurity:
     """Test API endpoint security"""
     
-    @pytest.mark.asyncio
-    async def test_rate_limiting(self):
-        """Test rate limiting is implemented"""
-        # This would test actual rate limiting implementation
-        # For now, we'll create a placeholder
-        assert True  # TODO: Implement when rate limiting is added
-    
-    def test_authentication_required(self):
-        """Test endpoints require authentication"""
-        # This would test that endpoints check for API keys
-        # For now, we'll create a placeholder
-        assert True  # TODO: Test actual endpoints
 
 
 class TestDockerSecurity:

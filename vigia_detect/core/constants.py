@@ -5,6 +5,16 @@ from enum import Enum
 from typing import Dict, Any, Final, ClassVar
 
 
+class ProcessingRoute(Enum):
+    """Medical processing routes for triage engine"""
+    EMERGENCY = "emergency"          # Immediate medical attention required
+    URGENT = "urgent"               # Urgent medical review needed
+    ROUTINE = "routine"             # Standard medical workflow
+    PREVENTIVE = "preventive"       # Preventive care recommendations
+    REVIEW = "review"              # Requires medical professional review
+    AUTOMATIC = "automatic"        # Can be processed automatically
+
+
 class LPPGrade(Enum):
     """Grados de lesiones por presión según clasificación internacional"""
     NO_LESION = 0  # Sin lesión (eritema)

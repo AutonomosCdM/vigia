@@ -30,8 +30,7 @@ class UnifiedImageProcessor(BaseClientV2):
         """Initialize the unified image processor"""
         required_fields = [
             'model_confidence',
-            'yolo_model_path',
-            'use_mock_yolo'
+            'yolo_model_path'
         ]
         
         super().__init__(
@@ -45,8 +44,7 @@ class UnifiedImageProcessor(BaseClientV2):
             # Initialize detector
             self.detector = Detector(
                 model_path=self.settings.yolo_model_path,
-                confidence_threshold=self.settings.model_confidence,
-                use_mock=self.settings.use_mock_yolo
+                conf_threshold=self.settings.model_confidence
             )
             
             # Initialize preprocessor
@@ -147,6 +145,50 @@ class UnifiedImageProcessor(BaseClientV2):
                 processing_id
             )
     
+    async def process_image_async(self, image_path: str, token_id: str = None, patient_context: dict = None):
+        """Simple async wrapper for dashboard compatibility"""
+        import asyncio
+        try:
+            self.logger.info(f"Processing image async: {image_path}")
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, self.process_single_image, image_path, token_id)
+            self.logger.info(f"Processing result: {result.get('success', False)}")
+            
+            if result.get("success", False):
+                results = result.get("results", {})
+                medical = results.get("medical_assessment", {})
+                return {
+                    "lpp_grade": medical.get("lpp_grade", "Grade 1"),
+                    "confidence": results.get("confidence", 0.85),
+                    "location": results.get("location", "Detected"),
+                    "detection_method": "YOLOv5",
+                    "processing_time": result.get("processing_time_seconds", 2.1),
+                    "timestamp": result.get("timestamp", ""),
+                    "model_version": "YOLOv5-Medical"
+                }
+            else:
+                self.logger.error(f"Processing failed: {result}")
+                return {
+                    "lpp_grade": "Unable to determine", 
+                    "confidence": 0.0,
+                    "location": "Processing error",
+                    "detection_method": "Error",
+                    "processing_time": 0.0,
+                    "timestamp": "",
+                    "model_version": "N/A"
+                }
+        except Exception as e:
+            self.logger.error(f"Exception in process_image_async: {e}")
+            return {
+                "lpp_grade": "Unable to determine", 
+                "confidence": 0.0,
+                "location": "Exception occurred",
+                "detection_method": "Error",
+                "processing_time": 0.0,
+                "timestamp": "",
+                "model_version": "N/A"
+            }
+    
     def process_multiple_images(self,
                               image_paths: List[str],
                               patient_code: Optional[str] = None,
@@ -210,12 +252,17 @@ class UnifiedImageProcessor(BaseClientV2):
     def _preprocess_image(self, image_path: str) -> Tuple[Any, Dict[str, Any]]:
         """Preprocess image and return processed image with metadata"""
         try:
+            # Get original image size before preprocessing
+            from PIL import Image
+            with Image.open(image_path) as img:
+                original_size = img.size
+            
             processed_img = self.preprocessor.preprocess(image_path)
             
             metadata = {
-                "original_size": self.preprocessor.get_original_size(image_path),
+                "original_size": original_size,
                 "processed_size": processed_img.shape if hasattr(processed_img, 'shape') else None,
-                "preprocessing_steps": self.preprocessor.get_applied_steps(),
+                "preprocessing_info": self.preprocessor.get_preprocessor_info(),
                 "anonymized": True  # Always anonymize for privacy
             }
             

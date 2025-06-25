@@ -14,7 +14,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Project root directory
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
 # Function to print colored output
@@ -109,6 +109,7 @@ show_usage() {
     echo "  smoke       Run smoke tests only"
     echo "  medical     Run medical/clinical tests only"
     echo "  security    Run security tests only"
+    echo "  critical    Run critical deployment tests only"
     echo "  validate    Run validation script only"
     echo "  coverage    Run tests with coverage report"
     echo "  quick       Run quick validation (smoke + unit)"
@@ -144,7 +145,7 @@ while [[ $# -gt 0 ]]; do
             VERBOSE=true
             shift
             ;;
-        all|unit|integration|e2e|smoke|medical|security|validate|coverage|quick)
+        all|unit|integration|e2e|smoke|medical|security|critical|validate|coverage|quick)
             SUITE="$1"
             shift
             ;;
@@ -201,6 +202,9 @@ main() {
             ;;
         "security")
             run_test_suite "security" "Security Tests" "tests/security" "security" || FAILED_SUITES+=("security")
+            ;;
+        "critical")
+            run_test_suite "critical" "Critical Deployment Tests" "tests" "critical" || FAILED_SUITES+=("critical")
             ;;
         "coverage")
             print_status "Running tests with coverage..."

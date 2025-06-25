@@ -53,3 +53,7 @@ class VectorSearchService:
             return self.rvl.ping()
         except Exception:
             return False
+
+
+# Alias for backward compatibility
+VectorService = VectorSearchService
